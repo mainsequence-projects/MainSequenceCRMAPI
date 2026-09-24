@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRM MetaTables backend"
+  short_description: "CRM MetaTables backend with pinned Main Sequence contracts"
+  default_prompt: "Use $build-mainsequence-crm-metatables to implement the requested CRM work following the pinned handoff and existing platform boundaries."

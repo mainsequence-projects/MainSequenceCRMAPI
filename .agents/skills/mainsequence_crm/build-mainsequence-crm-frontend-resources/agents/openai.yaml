@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRM resource screens"
+  short_description: "CRM resource screens with pinned Main Sequence contracts"
+  default_prompt: "Use $build-mainsequence-crm-frontend-resources to implement the requested CRM work following the pinned handoff and existing platform boundaries."

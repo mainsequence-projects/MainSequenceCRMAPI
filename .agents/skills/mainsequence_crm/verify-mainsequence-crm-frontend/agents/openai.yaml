@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRM frontend verification"
+  short_description: "CRM frontend verification with pinned Main Sequence contracts"
+  default_prompt: "Use $verify-mainsequence-crm-frontend to implement the requested CRM work following the pinned handoff and existing platform boundaries."

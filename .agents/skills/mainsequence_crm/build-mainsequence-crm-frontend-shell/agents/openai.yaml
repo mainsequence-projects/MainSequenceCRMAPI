@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRM embedded frontend shell"
+  short_description: "CRM embedded frontend shell with pinned Main Sequence contracts"
+  default_prompt: "Use $build-mainsequence-crm-frontend-shell to implement the requested CRM work following the pinned handoff and existing platform boundaries."

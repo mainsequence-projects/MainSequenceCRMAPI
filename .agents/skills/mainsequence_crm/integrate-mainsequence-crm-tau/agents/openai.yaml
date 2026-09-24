@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRM optional Tau integration"
+  short_description: "CRM optional Tau integration with pinned Main Sequence contracts"
+  default_prompt: "Use $integrate-mainsequence-crm-tau to implement the requested CRM work following the pinned handoff and existing platform boundaries."

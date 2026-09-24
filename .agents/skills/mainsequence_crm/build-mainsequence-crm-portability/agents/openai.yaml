@@ -1,0 +1,4 @@
+interface:
+  display_name: "CRM import and export"
+  short_description: "CRM import and export with pinned Main Sequence contracts"
+  default_prompt: "Use $build-mainsequence-crm-portability to implement the requested CRM work following the pinned handoff and existing platform boundaries."

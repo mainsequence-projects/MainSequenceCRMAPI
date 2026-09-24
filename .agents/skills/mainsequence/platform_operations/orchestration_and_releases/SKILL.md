@@ -1,0 +1,397 @@
+---
+name: mainsequence-orchestration-and-releases
+description: Use this skill for Main Sequence jobs, schedules, backend-managed code-repository workflow files, code repository images, run inspection, resources, releases, and operational Artifacts. It does not own TimeIndexTableUpdater behavior, MetaTable schemas, API contracts, application UI design, or RBAC policy.
+---
+
+# Main Sequence Orchestration And Releases
+
+## Overview
+
+Use this skill when the task is about getting CodeRepository code to run on the platform in a controlled and verifiable way.
+
+This skill is for:
+
+- jobs
+- schedules
+- images
+- code repository resources
+- releases
+- operational logs and run inspection
+- Artifacts as job inputs or outputs
+
+## This Skill Can Do
+
+- create or review manual jobs
+- create or review scheduled jobs
+- author backend-managed declarations under `.mainsequence/workflows/`
+- validate workflow files through the CodeRepositoryBranch workflow endpoints
+- create or select code repository images
+- bind every job to one exact code repository image
+- configure standalone Job automatic deployment as future exact-image promotion
+- inspect job runs and logs
+- reason about code repository resources and resource releases
+- decide whether a `ResourceRelease` should opt into `automatic_deployment`
+- inspect automatic deployment run state for release rotations
+- review Artifact-based workflows in operational pipelines
+
+## This Skill Must Not Claim
+
+This skill must not claim ownership of:
+
+- TimeIndexTableUpdater producer behavior
+- MetaTable schema and row semantics
+- Command Center FastAPI wire contracts
+- RBAC or sharing policy
+- application UI implementation details
+
+## Route Adjacent Work
+
+- TimeIndexTableUpdaters:
+  `.agents/skills/mainsequence/data_publishing/time_index_table_updates/SKILL.md`
+- MetaTables:
+  `.agents/skills/mainsequence/data_publishing/meta_tables/SKILL.md`
+- Command Center FastAPI provider implementation and contract validation:
+  `.agents/skills/mainsequence/application_surfaces/api_surfaces/SKILL.md`
+- RBAC and sharing:
+  `.agents/skills/mainsequence/platform_operations/access_control_and_sharing/SKILL.md`
+
+## Read First
+
+1. `AGENTS.md`
+2. <https://mainsequence-sdk.github.io/mainsequence-sdk/knowledge/infrastructure/scheduling_jobs/>
+3. <https://mainsequence-sdk.github.io/mainsequence-sdk/knowledge/infrastructure/artifacts/>
+4. <https://mainsequence-sdk.github.io/mainsequence-sdk/knowledge/infrastructure/owner_observability/> when inspecting logs or resource usage
+
+If the task touches deployed FastAPI APIs, also use
+`.agents/skills/mainsequence/application_surfaces/api_surfaces/SKILL.md` before
+changing the operational workflow.
+
+## Inputs This Skill Needs
+
+Before changing orchestration or release behavior, collect or infer:
+
+- the execution target:
+  - `execution_path`
+  - app entrypoint
+- whether the job is:
+  - manual
+  - interval
+  - crontab
+  - one-off
+- the image strategy:
+  - existing image
+  - new image
+- whether the workflow is:
+  - direct CLI/client job creation
+  - backend-managed code-repository workflow declarations
+- whether a `ResourceRelease` should be manually pinned or opted into repository-sync automatic deployment
+- whether Artifact inputs or outputs are part of the run
+- who owns the exact initial image: the caller for manual pinning or the
+  backend for automatic deployment
+- whether future qualifying immutable repository events may promote a standalone Job
+
+If the execution target or image strategy is unclear, stop before scheduling anything.
+
+## Required Decisions
+
+For every non-trivial orchestration task, decide:
+
+1. Is this a one-off/manual workflow or a repository-managed recurring workflow?
+2. Should the jobs live in a `.mainsequence/workflows/*.yaml` declaration?
+3. Is the Job manually pinned to a caller-selected exact ready image, or does
+   automatic deployment make the backend derive it from the synchronized commit?
+4. Does the workflow depend on Artifacts?
+5. Is the task actually a release/resource problem instead of only a job problem?
+6. For a `ResourceRelease`, should repository sync be allowed to rotate the release automatically through `automatic_deployment`?
+
+## Build Rules
+
+### 1. Shared recurring jobs should be treated as code
+
+For shared recurring workflows, use direct `.yaml` or `.yml` children of
+`.mainsequence/workflows/`. Do not create `scheduled_jobs.yaml`; it is not a
+supported input.
+
+The backend owns workflow parsing, validation, defaults, permissions, and
+application. Retrieve the current template from
+`GET /api/v1/code-repository-branches/{uid}/workflow-template/`, validate the proposed
+`path` and `content` with
+`POST /api/v1/code-repository-branches/{uid}/validate-workflow/`, then commit the file.
+Do not reproduce the parser or construct an interpreted deployment payload in
+the SDK or CodeRepository code.
+
+Every file requires the backend-advertised `api_version`, a name, and resource
+declarations. Use the current template for accepted fields and resource kinds.
+There is no prune or strict-delete mode; removing a declaration does not delete
+an existing backend resource.
+
+Do not hide important recurring schedules in ad hoc shell history or one-off manual commands.
+
+### 2. Every Job requires one exact image
+
+Every persisted direct Job has one exact code repository image, but the creation mode
+determines who supplies it.
+
+Remember:
+
+- images are built from pushed commits
+- if a commit is not on the remote, it cannot be used for an image
+- there is no dynamic, blank-image, branch-tip, or `latest` Job mode
+- a manual Job requires the caller to select `related_image_uid`
+- an automatic Job forbids caller image selection; the backend derives the
+  exact initial image from the CodeRepositoryBranch's persisted synchronized commit
+
+When standalone Job automatic deployment is enabled during creation, the
+backend prepares the exact initial image and later qualifying immutable
+repository events may atomically promote another exact image. On an existing
+Job, enabling or disabling it retains the current exact image. The backend owns
+repository-event truth, policy evaluation, image preparation, and promotion;
+CodeRepository code and the SDK must not choose a Job's deployment branch or image.
+This deployment-policy rule does not replace ADR-0037 runtime source discovery:
+code executing inside the resulting code repository image still resolves and validates
+its attached Git branch and exact commit.
+
+For direct creation use:
+
+- `--automatic-deployment` to permit future exact-image promotion
+- `--no-automatic-deployment` to keep future repository events from changing
+  the Job image
+- `--automatic-redeployment-tag-regex` to require a full matching immutable
+  tag; omit the regex for every otherwise-eligible exact event
+
+Use `--related-image-uid` only for manual pinning. Omit it with
+`--automatic-deployment`; passing both is invalid.
+
+### 3. Jobs must be verifiable after creation
+
+Do not stop at creation.
+
+Use the standard CLI execution loop when execution success matters:
+
+- `mainsequence code-repository jobs list`
+- `mainsequence code-repository jobs run <JOB_UID>`
+- `mainsequence code-repository jobs run <JOB_UID> --arg=<ARG>` for repeatable
+  manual per-run arguments, including values that start with `-`
+- `mainsequence code-repository jobs run <JOB_UID> -- <ARG>...` for manual
+  passthrough arguments
+- `mainsequence code-repository jobs runs list <JOB_UID>`
+- `mainsequence code-repository jobs runs logs <JOB_RUN_UID> --max-wait-seconds 900`
+
+The Python equivalent for one manual run is:
+
+```python
+job.run_job(
+    command_args=[
+        "--start-date",
+        "2026-09-08T16:43:00Z",
+        "--family",
+        "jobs",
+    ]
+)
+```
+
+Treat each argument as one opaque argv string. Do not join arguments into a
+shell command, and do not treat `command_args` as a replacement for the saved
+Job entrypoint.
+
+Current support matrix:
+
+| Invocation | Argument support |
+| --- | --- |
+| `Job.run_job(command_args=[...])` | Supported for that manual run |
+| `mainsequence code-repository jobs run ... --arg/-- ...` | Supported for that manual run |
+| `Job.scheduled_command_args` | Persisted list copied into future scheduler-created runs |
+| `mainsequence code-repository jobs create/update --scheduled-arg ...` | Creates or replaces the persisted scheduled list |
+| `.mainsequence/workflows/*.yaml` Job declaration | Supports `scheduled_command_args` as an ordered `list[str]` |
+
+Keep `scheduled_command_args` separate from manual `command_args`. Retrieve the
+backend workflow template and use only its advertised contract. Preserve every
+list entry exactly; never collapse argv into a shell string. Updating the Job
+changes only future scheduler-created runs, while existing `JobRun.command_args`
+snapshots stay immutable.
+
+Verify:
+
+- the job exists
+- the run was triggered manually when immediate validation matters, or has already been triggered by the scheduler
+- manual per-run arguments are preserved as separate argv entries when used
+- scheduled arguments are persisted on the Job or validated workflow declaration
+- a scheduler-created run snapshots the configured list without merging manual arguments
+- the logs and run status match expectations
+
+Use owner-scoped observability rather than infrastructure discovery:
+
+- `JobRun.get_logs()` and `JobRun.get_resource_usage()`
+- `ResourceRelease.get_logs()` and `ResourceRelease.get_resource_usage()`
+- `Agent.get_logs()` and `Agent.get_resource_usage()`
+- `AgentSession.get_logs()` for one fixed session
+- `mainsequence code-repository jobs runs logs <JOB_RUN_UID>`
+- `mainsequence code-repository jobs runs resource-usage <JOB_RUN_UID>`
+- `mainsequence code-repository resources logs <RESOURCE_RELEASE_UID>`
+- `mainsequence code-repository resources resource-usage <RESOURCE_RELEASE_UID>`
+- `mainsequence agent logs <AGENT_UID>`
+- `mainsequence agent resource-usage <AGENT_UID>`
+- `mainsequence agent session logs <AGENT_SESSION_UID>`
+
+Do not ask the user for an Environment UID for these owner operations. The SDK
+preserves the backend-owned capability scope. Do not discover Knative services,
+revisions, pods, namespaces, or provider resources to retrieve telemetry.
+
+DeploymentRun build and orchestration logs remain a separate product surface;
+do not parse them as application-runtime `OwnerLogPage` rows.
+
+### 4. Workflow application is backend-owned
+
+Repository events apply valid workflow files independently. An invalid file is
+not applied and does not block another valid file. After pushing, inspect the
+repository-event action result and resulting deployment runs; a successful Git
+push alone does not prove deployment success.
+
+### 5. Artifacts are operational file primitives
+
+Use `Artifact` when the operational unit is a file.
+
+Artifact and Bucket operations derive their Organization Environment from the
+process-frozen current Git branch and registered `CodeRepositoryBranch`. Do not ask the
+user to select an Environment UID or branch UID.
+
+Examples:
+
+- vendor drops
+- generated reports
+- model files
+- input spreadsheets
+
+Do not force a file workflow into a table workflow too early.
+
+### 6. Resources and releases are part of deployment, not just code
+
+For deployed APIs, agents, or other supported resources:
+
+- the local file is not enough
+- the code repository resource must exist
+- the release must exist
+- the release must point at the intended image or resource version
+
+### 6.1 Automatic ResourceRelease deployment
+
+`automatic_deployment` is the automated deployment opt-in flag on a `ResourceRelease`. It means repository synchronization can rotate an existing release to the latest synced CodeRepository commit for the same resource path.
+
+When `automatic_deployment=True`, repository-sync events may create a unified `DeploymentRun` with `target_type="resource_release"` and source `repository_event`. That run:
+
+- reads the CodeRepository's current synced commit
+- resolves the current code repository resource at the release's existing resource path
+- resolves supporting resources required by the release kind
+- creates or resolves the code repository image for that commit
+- redeploys the existing release to the current resource, README, and code repository image
+- records state, phase, outcome, revision context, artifact context, steps, logs, result, and errors on the deployment run
+
+This is not a local development shortcut. It does not deploy unpushed local files. The repository must be pushed, the code repository must be synced, and code repository resource discovery must find the resource at the same path for the current commit.
+
+Enable `automatic_deployment` only when:
+
+- the release should track the CodeRepository's synced version
+- the resource path is stable across commits
+- the current synced branch/version is an acceptable deployment source for that release
+- required supporting resources are available for the current commit
+- the team accepts CI/CD-style rotation for this release
+
+Keep `automatic_deployment` disabled when:
+
+- the release must stay pinned to a manually selected image or resource version
+- each release rotation needs human approval
+- the resource path or entrypoint is still moving
+- API or widget contracts are not stable enough for automatic rotation
+- the current branch/CodeRepository sync target is not the intended deployment source
+
+Create opted-in releases with the CLI flags that exist:
+
+- `mainsequence code-repository resources create_fastapi --automatic-deployment`
+- use `--no-automatic-deployment` when the decision is explicitly to keep the release pinned/manual
+
+The SDK surface also accepts:
+
+- `CodeRepositoryResource.create_fastapi(..., automatic_deployment=True)`
+- `ResourceRelease.create(..., automatic_deployment=True)`
+- `ResourceRelease.deploy_current_version()` for an SDK-triggered manual deployment run; it returns `DeploymentRun`
+- `DeploymentRun.filter(target_type="resource_release", target_uid=release.uid)` to inspect runs for one release
+
+Every release also exposes its immutable revision lifecycle:
+
+- `desired_revision` is the public UID of the accepted revision being materialized
+- `active_revision` is the public UID of the ready revision currently serving behind the stable release URL
+- the two UIDs may differ while a deployment is running or after a deployment fails
+- `revision_retention_count` is the positive release-owned retention setting; omission on create uses the backend default
+- configure retention with `ResourceRelease.create(..., revision_retention_count=3)` or `release.patch(revision_retention_count=5)`
+
+Treat `active_revision` and `desired_revision` as read-only public identities. Do not substitute provider revision names, deployment names, or internal database IDs.
+
+Do not claim there is a CLI command for `deploy_current_version` unless the local CLI actually exposes one. In this SDK, the manual detail action is available through the client model.
+
+Inspect the unified run's `state`, `phase`, `outcome`, `steps`, `logs`, and `error` fields. Do not use legacy resource-release deployment status fields or filters.
+Detail responses also expose `builder_image` and `builder_runtime`; these are empty strings when the run has no static-site builder metadata.
+
+## Review Rules
+
+When reviewing an orchestration task, look for:
+
+- schedules that should have been version-controlled
+- direct job creation where a batch file should exist
+- missing or wrong `related_image_uid`
+- jobs tied to moving repository state instead of a pinned image
+- manual Job creation that omits an exact ready image
+- automatic Job creation that supplies a caller-selected image
+- client code that interprets automatic deployment as a branch-tip or `latest` selector
+- no run/log verification after creation
+- unsafe use of `--strict`
+- workflows depending on laptop-specific file paths instead of Artifacts
+- `automatic_deployment` enabled without an explicit decision about repository-sync CI/CD rotation
+- assumptions that automatic deployment will deploy local unpushed changes
+- automatic release rotation where the resource path or required supporting resources are not stable
+- tasks that are really resource/release problems rather than simple job problems
+
+## Validation Checklist
+
+Do not claim success until you have checked:
+
+- the execution target is correct
+- the job mode is correct:
+  - manual
+  - interval
+  - crontab
+  - one-off
+- manual image selection or backend-owned automatic image preparation is intentional
+- standalone Job automatic deployment and tag policy are intentionally enabled or disabled
+- the job exists after direct creation or repository workflow application
+- runs and logs were inspected when execution success matters
+- resources and releases were verified when deployment success matters
+- `automatic_deployment` is intentionally enabled or disabled on each release
+- automatic deployment runs were inspected when repository-sync rotation matters
+- automatic deployment results match the intended commit, resource, README, image, and terminal status
+
+If the workflow uses `.mainsequence/workflows/`, also check:
+
+- the current backend template and supported `api_version` were used
+- backend validation succeeded before commit
+- the file is a direct `.yaml` or `.yml` child of the workflow directory
+- repository-event and deployment results were inspected after push
+
+If the workflow uses Artifacts, also check:
+
+- the bucket and artifact identity are intentional
+- the workflow no longer depends on a fragile local path
+
+## This Skill Must Stop And Escalate When
+
+- the execution target is unclear
+- the image strategy is unclear but reproducibility matters
+- the backend rejects the workflow version, resource kind, or requested field
+- a manually pinned Job has no exact ready initial image
+- an automatically deployed Job has no persisted synchronized CodeRepositoryBranch commit
+- the workflow depends on local file paths that should be platform Artifacts
+- automatic deployment is requested but the deployment source branch/current synced CodeRepository version is unclear
+- automatic deployment is requested but the resource path or required README is not stable
+- the task is actually about RBAC policy rather than orchestration
+- the task is actually about producer semantics rather than platform execution
+
+Do not guess through operational state.

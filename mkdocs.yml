@@ -1,0 +1,41 @@
+site_name: Main Sequence CRM API
+site_description: Concepts, HTTP API, and delivery guidance for the CRM service.
+docs_dir: docs
+site_dir: site
+theme:
+  name: mkdocs
+markdown_extensions:
+  - tables
+  - toc
+nav:
+  - Home: index.md
+  - Concepts:
+      - Domain map: concepts/index.md
+      - Contacts: concepts/contacts.md
+      - Companies: concepts/companies.md
+      - Deals and pipelines: concepts/deals-pipelines.md
+      - Tasks and notes: concepts/tasks-notes.md
+      - Tags and activity: concepts/tags-activity.md
+      - Transfers: concepts/transfers.md
+  - API:
+      - Overview: api/index.md
+      - Conventions: api/conventions.md
+      - Mounted route index: api/route-index.md
+      - Contacts and companies: api/contacts-companies.md
+      - Deals and pipelines: api/deals-pipelines.md
+      - Tasks, notes, tags, and activity: api/engagement.md
+      - Imports and transfers: api/transfers.md
+      - Service and settings: api/service.md
+  - Delivery:
+      - Local development: delivery/local-development.md
+      - Persistence and migrations: delivery/persistence.md
+      - Verification and release: delivery/verification.md
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
