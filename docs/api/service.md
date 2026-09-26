@@ -12,6 +12,9 @@
 Readiness checks the active CRM MetaTable catalog, one `settings` row, the
 existing policy and directory adapters, and the default pipeline. It does not
 run a write proof. `/healthz` checks none of these dependencies. Bootstrap
+reuses its request's governed settings and default-pipeline read when building
+the response; it does not repeat that platform operation for each check.
+Bootstrap
 contains safe settings, the current principal, capabilities, the default
 pipeline, limits, `modules.solution_selling`, and `modules.google_workspace`.
 These flags reflect `extensions.solution_selling.active` and
@@ -25,6 +28,12 @@ defines the implemented one-request startup contract. Successful bootstrap
 embeds `readiness.status: ready` and an `assistant` object. A not-ready
 bootstrap returns `503` with the safe error and readiness checks, without
 partial CRM data. `/readiness/` remains a protected operational diagnostic.
+The CRM gives platform readiness and the bootstrap settings read 75 seconds
+each. A readiness timeout returns the last running check ID (such as `catalog`
+or `crm-settings`) in the `503` response. A settings read timeout returns `CRM_NOT_READY` with a
+stage-specific message. The loopback launcher also bounds the SDK signed-user
+lookup to 10 seconds and returns `LOCAL_SIGN_IN_TIMEOUT` with HTTP `503` if
+that lookup stalls. These errors do not expose credentials or partial CRM data.
 A platform Organization Environment UID is distinct from a CRM workspace or
 tenant UID. Assistant identity comes from `.agents/agent_card.json`; CRM YAML
 has no assistant section. At each bootstrap, a trusted, ready local Tau is

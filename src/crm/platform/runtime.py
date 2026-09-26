@@ -70,6 +70,7 @@ def request_port(request: Request, name: str):
 
 def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
     checks: list[dict[str, str]] = []
+    request.state.crm_readiness_step = "policy"
     policy: PolicyPort | None = request_port(request, "crm_policy")
     directory: DirectoryPort | None = request_port(request, "crm_directory")
     registry: RegistryPort | None = request_port(request, "crm_registry") or configured_registry()
@@ -83,6 +84,7 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
     )
     catalog_ready = False
     if registry is not None:
+        request.state.crm_readiness_step = "catalog"
         try:
             registry.validate()
         except Exception:
@@ -97,13 +99,18 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
         }
     )
     settings_ready = False
-    if catalog_ready:
+    bootstrap_ready = False
+    if catalog_ready and bootstrap_port:
+        request.state.crm_readiness_step = "bootstrap"
         try:
-            registry.validate_settings()
+            # This governed read validates the settings and default pipeline.
+            # Keep its document for this request's bootstrap response so the
+            # same platform operation is not repeated three times.
+            request.state.crm_bootstrap_document = bootstrap_port.read(actor_uid)
         except Exception:
             pass
         else:
-            settings_ready = True
+            settings_ready = bootstrap_ready = True
     checks.append(
         {
             "id": "crm-settings",
@@ -112,6 +119,7 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
         }
     )
     if directory:
+        request.state.crm_readiness_step = "directory"
         try:
             if not directory.display_name(actor_uid).strip():
                 raise ValueError("Missing display name")
@@ -135,28 +143,18 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
                 "message": "Existing directory adapter is not connected",
             }
         )
-    if bootstrap_port:
-        try:
-            bootstrap_port.validate(actor_uid)
-        except Exception:
-            checks.append(
-                {
-                    "id": "bootstrap",
-                    "status": "failed",
-                    "message": "CRM settings or default pipeline are unavailable",
-                }
-            )
-        else:
-            checks.append({"id": "bootstrap", "status": "ready", "message": "Validated"})
+    if bootstrap_ready:
+        checks.append({"id": "bootstrap", "status": "ready", "message": "Validated"})
     else:
         checks.append(
             {
                 "id": "bootstrap",
                 "status": "failed",
-                "message": "CRM settings read service is not connected",
+                "message": "CRM settings or default pipeline are unavailable" if bootstrap_port else "CRM settings read service is not connected",
             }
         )
-    if settings_ready and policy:
+    if catalog_ready and policy:
+        request.state.crm_readiness_step = "authorization"
         try:
             allowed = set(policy.capabilities(actor_uid))
             if not allowed <= CAPABILITIES:

@@ -7,21 +7,24 @@ without a FastAPI ResourceRelease. It must never be used behind a public proxy.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import os
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from starlette.concurrency import run_in_threadpool
 
 from mainsequence.client.models_user import RequestUserIdentity, User
 from src.crm.platform.catalog import configured_registry
 from src.crm.platform.local_runtime import build_local_services
 
 from .main import create_app as create_crm_app
+
+LOCAL_SIGN_IN_TIMEOUT_SECONDS = 10
 
 
 def _is_loopback(request: Request) -> bool:
@@ -38,16 +41,28 @@ def create_app() -> FastAPI:
     signed_user_lock = Lock()
     signed_user_cache = None
     signed_user_expires_at = 0.0
+    signed_user_future: Future | None = None
+    signed_user_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="crm-local-sign-in")
 
-    def locally_signed_user():
-        nonlocal signed_user_cache, signed_user_expires_at
+    async def locally_signed_user():
+        nonlocal signed_user_cache, signed_user_expires_at, signed_user_future
         with signed_user_lock:
             if signed_user_cache is not None and time.monotonic() < signed_user_expires_at:
                 return signed_user_cache
-            signed_user = User.get_authenticated_user_details()
+            if signed_user_future is None or signed_user_future.done():
+                signed_user_future = signed_user_executor.submit(User.get_authenticated_user_details)
+            pending = signed_user_future
+        signed_user = await asyncio.wait_for(
+            asyncio.wrap_future(pending), timeout=LOCAL_SIGN_IN_TIMEOUT_SECONDS
+        )
+        with signed_user_lock:
             signed_user_cache = signed_user
             signed_user_expires_at = time.monotonic() + 30
             return signed_user
+
+    @application.on_event("shutdown")
+    def stop_sign_in_worker():
+        signed_user_executor.shutdown(wait=False, cancel_futures=True)
 
     origin = os.environ.get("CRM_LOCAL_TAU_ORIGIN", "")
     if origin:
@@ -80,8 +95,14 @@ def create_app() -> FastAPI:
                 {"detail": "Local CRM does not accept caller identity headers."}, status_code=401
             )
         try:
-            signed_user = await run_in_threadpool(locally_signed_user)
+            signed_user = await locally_signed_user()
             identity = RequestUserIdentity(uid=signed_user.uid, username=signed_user.username)
+        except TimeoutError:
+            return JSONResponse(
+                {"error": {"code": "LOCAL_SIGN_IN_TIMEOUT", "message":
+                    "Main Sequence signed-in user lookup did not respond within 10 seconds. Check the local Main Sequence backend and SDK session."}},
+                status_code=503,
+            )
         except Exception:
             return JSONResponse(
                 {"detail": "A valid Main Sequence local sign-in is required."}, status_code=401

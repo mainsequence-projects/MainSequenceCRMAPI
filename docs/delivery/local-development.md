@@ -63,7 +63,17 @@ attempts platform Agent resolution or reports the assistant unavailable.
 `GET /healthz` only checks that the process responds. Protected CRM readiness
 has additional dependencies described in [service and settings API](../api/service.md).
 Bootstrap runs its synchronous platform readiness work in the API worker pool,
-so a slow catalog read does not block the event loop or `/healthz`.
+so a slow catalog read does not block the event loop or `/healthz`. The local
+signed-user lookup has a 10-second response deadline; readiness and settings
+reads have 75-second deadlines. When one expires, the protected API returns
+HTTP `503` with the failed stage. The frontend shows the bootstrap path,
+HTTP status, and the failed readiness check. A process-only `/healthz` success
+does not imply that the Main Sequence backend is reachable. SDK calls may
+continue in their worker after the response deadline; restart the stack after
+fixing a persistent backend or sign-in failure.
+The VS Code local stack checks the protected bootstrap before printing its
+ready message. If bootstrap returns a failed check or does not respond within
+100 seconds, the launcher prints that failure and stops all four services.
 
 ## Optional Google Workspace extension
 

@@ -106,6 +106,7 @@ def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch):
     assert "crm.read" in payload["capabilities"]
     assert any("mainsequence_crm__settings" in item["statement"]["sql"] for item in operations)
     assert any(item["statement"]["sql"].endswith("LIMIT 2") for item in operations)
+    assert len(operations) == 2  # One governed settings read per request.
 
 
 def test_local_policy_is_bound_to_authenticated_actor():

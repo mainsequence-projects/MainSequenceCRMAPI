@@ -1,5 +1,6 @@
 """The explicit local launcher binds a real SDK sign-in, never request headers."""
 
+from threading import Event
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -81,3 +82,20 @@ def test_local_launcher_rejects_remote_and_invalid_signin(monkeypatch):
         local_client.get("/api/crm/v1/readiness/").status_code
         == 401
     )
+
+
+def test_local_signin_timeout_returns_a_specific_503(monkeypatch):
+    release = Event()
+    monkeypatch.setattr("api.crm.local.LOCAL_SIGN_IN_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(
+        "api.crm.local.User.get_authenticated_user_details",
+        lambda: release.wait(1),
+    )
+    try:
+        response = TestClient(create_app(), client=("127.0.0.1", 50000)).get(
+            "/api/crm/v1/bootstrap/"
+        )
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "LOCAL_SIGN_IN_TIMEOUT"
+    finally:
+        release.set()

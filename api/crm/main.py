@@ -1,11 +1,11 @@
 """FastAPI release entrypoint for CRM."""
 
+import asyncio
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from starlette.concurrency import run_in_threadpool
 
 from api.crm.affiliation_routes import router as affiliation_router
 from api.crm.google_routes import router as google_router
@@ -19,6 +19,8 @@ from src.crm.google_workspace.config import google_workspace_enabled
 from src.crm.models.bootstrap import Bootstrap
 from src.crm.platform.runtime import authenticated_actor, readiness, request_port
 from src.crm.solution_selling.config import solution_selling_enabled
+
+BOOTSTRAP_STAGE_TIMEOUT_SECONDS = 75
 
 
 def create_app() -> FastAPI:
@@ -83,13 +85,42 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-def crm_readiness(request: Request, actor_uid=Depends(authenticated_actor)):
-    result = readiness(request, actor_uid)
+async def _bounded_readiness(request: Request, actor_uid) -> dict:
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(readiness, request, actor_uid),
+            timeout=BOOTSTRAP_STAGE_TIMEOUT_SECONDS,
+        )
+    except TimeoutError:
+        step = getattr(request.state, "crm_readiness_step", "platform-readiness")
+        labels = {
+            "policy": "CRM policy connection",
+            "catalog": "Main Sequence MetaTable catalog",
+            "crm-settings": "CRM settings",
+            "directory": "Main Sequence user directory",
+            "bootstrap": "CRM settings and default pipeline",
+            "authorization": "CRM policy authorization",
+        }
+        label = labels.get(step, "CRM platform readiness")
+        return {
+            "status": "not_ready",
+            "schema_version": "1",
+            "application_version": "0.1.0",
+            "checks": [{
+                "id": step,
+                "status": "failed",
+                "message": f"{label} did not respond within {BOOTSTRAP_STAGE_TIMEOUT_SECONDS:g} seconds.",
+            }],
+        }
+
+
+async def crm_readiness(request: Request, actor_uid=Depends(authenticated_actor)):
+    result = await _bounded_readiness(request, actor_uid)
     return JSONResponse(result, status_code=200 if result["status"] == "ready" else 503)
 
 
 async def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
-    result = await run_in_threadpool(readiness, request, actor_uid)
+    result = await _bounded_readiness(request, actor_uid)
     if result["status"] != "ready":
         payload = _error(request, "CRM_NOT_READY", "CRM setup is incomplete.")
         payload["readiness"] = result
@@ -104,12 +135,22 @@ async def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
             status_code=503,
         )
     try:
-        document = await run_in_threadpool(bootstrap_port.read, actor_uid)
+        document = getattr(request.state, "crm_bootstrap_document", None)
+        if document is None:
+            document = await asyncio.wait_for(
+                asyncio.to_thread(bootstrap_port.read, actor_uid),
+                timeout=BOOTSTRAP_STAGE_TIMEOUT_SECONDS,
+            )
         document["readiness"] = result
         document["assistant"] = await resolve_assistant(
             request.app.state.crm_local_tau_origin
         )
         return Bootstrap.model_validate(document).model_dump(mode="json")
+    except TimeoutError:
+        return JSONResponse(
+            _error(request, "CRM_NOT_READY", f"Main Sequence CRM settings or default pipeline did not respond within {BOOTSTRAP_STAGE_TIMEOUT_SECONDS:g} seconds."),
+            status_code=503,
+        )
     except Exception:
         return JSONResponse(
             _error(request, "CRM_NOT_READY", "CRM settings are unavailable."),
