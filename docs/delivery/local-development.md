@@ -63,9 +63,8 @@ callback pattern, and runtime values. Set
 routes and include `modules.google_workspace=true` in bootstrap. The
 frontend uses that bootstrap value and the user's import capability to show
 the module. It never reads the YAML itself. Keep the
-client secret and 32-byte token-encryption key in separate Main Sequence
-Secrets. `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_REDIRECT_URI` are the
-nonsecret API environment values. Apply migration `0008` before starting a
+client ID, client secret, and 32-byte token-encryption key in separate Main Sequence
+Secrets. `GOOGLE_OAUTH_REDIRECT_URI` is the API environment value. Apply migration `0008` before starting a
 process that expects the new catalog bindings. The loopback launcher is
 single-user only; use a separately registered localhost Web OAuth client for
 local consent testing, never the production client.

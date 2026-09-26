@@ -60,9 +60,9 @@ application OAuth client. Once the CRM FastAPI release has active exact-path
 public ingress for the callback and completion page, register the exact URI
 `https://<crm-api-host>/extensions/google/oauth/callback/` for each deployed
 environment; use a separately registered localhost URI for local development.
-Production uses HTTPS. The client ID and callback URI are nonsecret runtime
-configuration. Store the client secret and token-encryption key as separate
-Main Sequence **Secrets**, accessible only to the API runtime; neither belongs
+Production uses HTTPS. Store the client ID, client secret, and token-encryption
+key as three separate Main Sequence **Secrets**, accessible only to the API
+runtime. The exact callback URI is runtime environment configuration. Credentials do not belong
 in the repository, frontend, a Constant, or a CRM MetaTable. Main Sequence
 Secrets hold deployment configuration, not one Secret per Google user.
 Set `extensions.google_workspace.active: true` in `config/crm.yaml` to mount

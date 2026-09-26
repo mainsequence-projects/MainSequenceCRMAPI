@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import uuid
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 import src.crm.config as deployment_config
 from api.crm.main import create_app
@@ -67,6 +70,33 @@ def test_google_redirect_uri_uses_extension_route(monkeypatch):
     monkeypatch.setenv("GOOGLE_OAUTH_REDIRECT_URI", "https://crm.example.test/api/crm/v1/google/oauth/callback/")
     with pytest.raises(RuntimeError, match="exact Google callback route"):
         _configured_url("GOOGLE_OAUTH_REDIRECT_URI", callback=True)
+
+
+def test_google_config_reads_credentials_from_platform_secrets(monkeypatch):
+    values = {
+        "CRM_GOOGLE_OAUTH_CLIENT_ID": "platform-client.apps.googleusercontent.com",
+        "CRM_GOOGLE_OAUTH_CLIENT_SECRET": "platform-secret",
+        "CRM_GOOGLE_TOKEN_ENCRYPTION_KEY": base64.urlsafe_b64encode(b"k" * 32).decode("ascii"),
+    }
+    requested = []
+
+    def get_secret(*, name):
+        requested.append(name)
+        return SimpleNamespace(value=SecretStr(values[name]))
+
+    monkeypatch.setattr("src.crm.google_workspace.security.Secret.get", get_secret)
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", "ignored-env-client")
+    monkeypatch.setenv("GOOGLE_OAUTH_REDIRECT_URI", "http://127.0.0.1:38641/extensions/google/oauth/callback/")
+
+    loaded = GoogleConfig.load()
+    assert loaded.client_id == values["CRM_GOOGLE_OAUTH_CLIENT_ID"]
+    assert loaded.client_secret == values["CRM_GOOGLE_OAUTH_CLIENT_SECRET"]
+    assert len(loaded.token_key) == 32
+    assert set(requested) == set(values)
+
+    values["CRM_GOOGLE_OAUTH_CLIENT_ID"] = "PASTE_GOOGLE_OAUTH_CLIENT_ID"
+    with pytest.raises(RuntimeError, match="not configured"):
+        GoogleConfig.load()
 
 
 class MemoryStore:

@@ -14,6 +14,7 @@ from urllib.parse import urlencode, urlsplit
 
 import jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from pydantic import SecretStr
 
 from mainsequence.client import Secret
 
@@ -47,8 +48,10 @@ def _secret(name: str) -> str:
         value = record.value
     except Exception as exc:
         raise RuntimeError(f"Google integration Secret {name} is unavailable") from exc
-    if not isinstance(value, str) or not value:
-        raise RuntimeError(f"Google integration Secret {name} is empty")
+    if isinstance(value, SecretStr):
+        value = value.get_secret_value()
+    if not isinstance(value, str) or not value or value.startswith("PASTE_GOOGLE_"):
+        raise RuntimeError(f"Google integration Secret {name} is not configured")
     return value
 
 
@@ -74,9 +77,9 @@ class GoogleConfig:
 
     @classmethod
     def load(cls) -> GoogleConfig:
-        client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+        client_id = _secret("CRM_GOOGLE_OAUTH_CLIENT_ID").strip()
         if not client_id:
-            raise RuntimeError("GOOGLE_OAUTH_CLIENT_ID is unavailable")
+            raise RuntimeError("Google integration Secret CRM_GOOGLE_OAUTH_CLIENT_ID is empty")
         key_text = _secret("CRM_GOOGLE_TOKEN_ENCRYPTION_KEY")
         try:
             key = base64.urlsafe_b64decode(key_text + "=" * (-len(key_text) % 4))

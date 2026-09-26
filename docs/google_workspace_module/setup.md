@@ -172,15 +172,15 @@ through `api/crm/local.py` is separate from deployed gateway admission.
 
 ## Configure the CRM deployment
 
-The API reads these exact values. Create the two named Main Sequence Secrets
+The API reads these exact values. Create the three named Main Sequence Secrets
 in the Environment used by the CRM API runtime, and grant that runtime access.
-Do not share these Secrets with the frontend. The Google Cloud Web client ID
-and exact callback URI are nonsecret runtime environment values.
+Do not share these Secrets with the frontend. Only the exact callback URI is
+an API runtime environment value.
 
 | Runtime value | Where it belongs |
 | --- | --- |
 | `extensions.google_workspace.active: true` | Persisted `config/crm.yaml` value; route mounting and bootstrap use the same snapshot. |
-| `GOOGLE_OAUTH_CLIENT_ID` | Nonsecret API runtime configuration. |
+| `CRM_GOOGLE_OAUTH_CLIENT_ID` | Main Sequence Secret whose value is the Web client ID from Step 5. |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Nonsecret API runtime configuration; exactly the URI registered in Step 5. |
 | `CRM_GOOGLE_OAUTH_CLIENT_SECRET` | Main Sequence Secret whose value is the Web client secret from Step 5. |
 | `CRM_GOOGLE_TOKEN_ENCRYPTION_KEY` | Separate Main Sequence Secret whose value is 32 random bytes encoded as URL-safe base64. Generate and store it once; do not replace it while active grants exist. |
@@ -194,15 +194,16 @@ bootstrap and shows the Google Workspace navigation entry only to users with
 `crm.transfer.import`. The activation value is not a Google credential or a CRM permission.
 
 The CRM will create and protect its own per-user Google connection records.
-Do not put the client secret, downloaded OAuth JSON, refresh tokens, or the
+Do not put the client ID, client secret, downloaded OAuth JSON, refresh tokens, or the
 token-encryption key in Git, `.env` committed to Git, a Constant, the frontend,
 or this documentation. See the [Main Sequence Secret guidance](https://mainsequence-sdk.github.io/mainsequence-sdk/knowledge/infrastructure/constants_and_secrets/).
 
 ## Connect and verify
 
 1. Sign in to CRM through Main Sequence and open the Google Workspace module.
-2. Choose a source and **Connect**, then open the Google authorization link in
-   a separate browser tab. Choose the Google account to connect.
+2. Choose a source and **Connect**. The CRM opens Google authorization in a
+   separate browser tab; use the fallback link if the browser blocks that tab.
+   Choose the Google account to connect.
 3. Grant the requested source scope. Google's callback opens a token-free
    completion page. Return to the original CRM window; it polls the one-time
    attempt through the authenticated API and finalizes the grant for the
