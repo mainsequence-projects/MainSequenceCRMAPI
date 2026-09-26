@@ -166,8 +166,11 @@ FastAPI DeploymentRun passed workflow validation and image build, then failed
 at `deploy_runtime` with `runtime_deployment_failed`; it has no active revision.
 Local import and `/healthz` checks passed in a stripped environment. The
 platform exposed no more specific failure in that run or its available
-application logs. The deployed frontend/API contract, public Google callback,
-and managed assistant bootstrap remain unverified until the API is active.
+application logs. An offline wheel build then showed that the required
+`config/crm.yaml` was absent from the Python package, a plausible startup
+cause; the package definition now includes that file. The deployed
+frontend/API contract, public Google callback, and managed assistant
+bootstrap remain unverified until the API is active.
 
 ## Keeping this site current
 
