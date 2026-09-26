@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
 import uuid
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
@@ -79,9 +80,11 @@ def test_google_config_reads_credentials_from_platform_secrets(monkeypatch):
         "CRM_GOOGLE_TOKEN_ENCRYPTION_KEY": base64.urlsafe_b64encode(b"k" * 32).decode("ascii"),
     }
     requested = []
+    concurrent_reads = threading.Barrier(3, timeout=2)
 
     def get_secret(*, name):
         requested.append(name)
+        concurrent_reads.wait()
         return SimpleNamespace(value=SecretStr(values[name]))
 
     monkeypatch.setattr("src.crm.google_workspace.security.Secret.get", get_secret)

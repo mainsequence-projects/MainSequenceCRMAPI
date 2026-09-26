@@ -8,6 +8,7 @@ import json
 import os
 import secrets
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode, urlsplit
@@ -77,10 +78,16 @@ class GoogleConfig:
 
     @classmethod
     def load(cls) -> GoogleConfig:
-        client_id = _secret("CRM_GOOGLE_OAUTH_CLIENT_ID").strip()
+        redirect_uri = _configured_url("GOOGLE_OAUTH_REDIRECT_URI", callback=True)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            client_id_future = pool.submit(_secret, "CRM_GOOGLE_OAUTH_CLIENT_ID")
+            client_secret_future = pool.submit(_secret, "CRM_GOOGLE_OAUTH_CLIENT_SECRET")
+            key_future = pool.submit(_secret, "CRM_GOOGLE_TOKEN_ENCRYPTION_KEY")
+            client_id = client_id_future.result().strip()
+            client_secret = client_secret_future.result()
+            key_text = key_future.result()
         if not client_id:
             raise RuntimeError("Google integration Secret CRM_GOOGLE_OAUTH_CLIENT_ID is empty")
-        key_text = _secret("CRM_GOOGLE_TOKEN_ENCRYPTION_KEY")
         try:
             key = base64.urlsafe_b64decode(key_text + "=" * (-len(key_text) % 4))
         except Exception as exc:
@@ -89,8 +96,8 @@ class GoogleConfig:
             raise RuntimeError("Google token encryption key must be 32 bytes")
         return cls(
             client_id=client_id,
-            client_secret=_secret("CRM_GOOGLE_OAUTH_CLIENT_SECRET"),
-            redirect_uri=_configured_url("GOOGLE_OAUTH_REDIRECT_URI", callback=True),
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
             token_key=key,
         )
 

@@ -61,8 +61,13 @@ public ingress for the callback and completion page, register the exact URI
 `https://<crm-api-host>/extensions/google/oauth/callback/` for each deployed
 environment; use a separately registered localhost URI for local development.
 Production uses HTTPS. Store the client ID, client secret, and token-encryption
-key as three separate Main Sequence **Secrets**, accessible only to the API
-runtime. The exact callback URI is runtime environment configuration. Credentials do not belong
+key as three separate Main Sequence **Secrets** named
+`CRM_GOOGLE_OAUTH_CLIENT_ID`, `CRM_GOOGLE_OAUTH_CLIENT_SECRET`, and
+`CRM_GOOGLE_TOKEN_ENCRYPTION_KEY`, accessible only to the API runtime. The first
+two values come from the Google Cloud Web OAuth client; the third is a
+CRM-generated key for encrypting stored per-user Google grants. All three are
+required before the API can start a Google connection, even when the extension
+is active. The exact callback URI is runtime environment configuration. Credentials do not belong
 in the repository, frontend, a Constant, or a CRM MetaTable. Main Sequence
 Secrets hold deployment configuration, not one Secret per Google user.
 Set `extensions.google_workspace.active: true` in `config/crm.yaml` to mount

@@ -172,18 +172,30 @@ through `api/crm/local.py` is separate from deployed gateway admission.
 
 ## Configure the CRM deployment
 
-The API reads these exact values. Create the three named Main Sequence Secrets
-in the Environment used by the CRM API runtime, and grant that runtime access.
+Before a user can select **Connect**, create all three named Main Sequence
+Secrets in the Environment used by the CRM API runtime and grant that runtime
+access. The first two values come from the Google Cloud Web OAuth client. The
+third is a CRM-generated encryption key; Google does not issue it. The API
+loads all three when starting an OAuth attempt. Missing or placeholder values
+leave the integration unconfigured even when the extension appears in CRM.
 Do not share these Secrets with the frontend. Only the exact callback URI is
 an API runtime environment value.
 
 | Runtime value | Where it belongs |
 | --- | --- |
 | `extensions.google_workspace.active: true` | Persisted `config/crm.yaml` value; route mounting and bootstrap use the same snapshot. |
-| `CRM_GOOGLE_OAUTH_CLIENT_ID` | Main Sequence Secret whose value is the Web client ID from Step 5. |
+| `CRM_GOOGLE_OAUTH_CLIENT_ID` | Main Sequence Secret: identifies the Web OAuth client created in Google Cloud in Step 5. |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Nonsecret API runtime configuration; exactly the URI registered in Step 5. |
-| `CRM_GOOGLE_OAUTH_CLIENT_SECRET` | Main Sequence Secret whose value is the Web client secret from Step 5. |
-| `CRM_GOOGLE_TOKEN_ENCRYPTION_KEY` | Separate Main Sequence Secret whose value is 32 random bytes encoded as URL-safe base64. Generate and store it once; do not replace it while active grants exist. |
+| `CRM_GOOGLE_OAUTH_CLIENT_SECRET` | Main Sequence Secret: authenticates that Web OAuth client when the API exchanges Google's authorization code for tokens. |
+| `CRM_GOOGLE_TOKEN_ENCRYPTION_KEY` | Separate Main Sequence Secret: 32 random bytes encoded as URL-safe base64, used by CRM to encrypt stored per-user Google grants. Generate and store it once; do not replace it while active grants exist or those grants become unreadable. |
+
+Main Sequence Secret values cannot be patched after creation. If the local
+client ID and client secret records were created with setup placeholders, run
+`.venv/bin/python scripts/configure_google_oauth_secrets.py` from the API
+repository root. Its masked terminal prompts accept the two real Google values,
+replace only the placeholder records, and leave the encryption key untouched.
+The placeholder strings are not usable Google credentials.
+Do not paste credentials into chat or commit them to Git.
 
 Apply provider-scoped migration `0008` **before** starting the API with this
 code. The new private MetaTables hold one-time OAuth attempts and encrypted
@@ -233,6 +245,7 @@ defines the implementation tests and live release gates.
 | External test user denied | Add the exact Google account under **Audience → Test users** while the app is in Testing. |
 | Workspace admin blocks access | Ask the admin to review the OAuth client ID under **API controls → Manage App Access**. |
 | `invalid_grant` after a prior connection | The grant or refresh token may have expired or been revoked; reconnect the account. |
+| Local **Connect** stays at “Preparing Google authorization” | Check the protected CRM bootstrap and Main Sequence `/api/v1/users/me/` first. OAuth start reads three platform Secrets and uses governed table operations; a slow Main Sequence backend delays the Google URL. The CRM waits for the API response before opening Google's consent page. |
 
 External apps in **Testing** issue refresh tokens that normally expire after
 seven days for these nonidentity scopes. Internal apps do not need Google's

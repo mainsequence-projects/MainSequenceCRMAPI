@@ -36,6 +36,12 @@ it cannot distinguish multiple browser users. The deployed entrypoint remains
 proxies `/api/` and `/extensions/` to the local loopback listener during
 frontend development. Core CRM routes use `/api/crm/v1/`; optional module API
 routes use `/extensions/<module>/`.
+The local launcher shares a verified SDK user lookup across requests for at
+most 30 seconds, then revalidates it. Concurrent requests share the lookup;
+failed lookups are never cached. A responsive `/healthz` only proves the API
+process is running. If protected routes stall, check the Main Sequence
+`/api/v1/users/me/` response and the SDK sign-in; Google authorization cannot
+start until that identity check succeeds.
 The backend mounts optional modules from the strict, persisted
 `config/crm.yaml` and reports those same values in bootstrap. Both
 `extensions.solution_selling.active` and `extensions.google_workspace.active`
@@ -74,13 +80,16 @@ local consent testing, never the production client.
 The sibling static site's sole VS Code launch entry runs `scripts/dev-stack.mjs`.
 It starts this API on `127.0.0.1:38641`, Tau on `127.0.0.1:38642`, the guide
 on `127.0.0.1:38643`, and Vite on `127.0.0.1:38644`. The launcher refreshes
-this repository's local SDK user session and passes the resulting JWT pair to
+this repository's local SDK user session, explicitly renews its access token
+before startup, and passes the resulting JWT pair to
 Tau in process environment with `MAINSEQUENCE_AUTH_MODE=jwt` and
 `TAU_LOCAL_MODE=true`. It uses the same local provider/model as Sentinel:
 `TAU_LOCAL_PROVIDER=deemachine-ollama` and `TAU_LOCAL_MODEL=qwen3.8:27b`.
 Vite proxies `/api/` and `/extensions/` to this API, `/tau/` to Tau, and
 `/docs/` to the guide. All listeners bind to loopback; the launcher checks for
-port conflicts before starting. Tau `/ready` verifies provider and user
+port conflicts before starting. The local Vite proxy renews its SDK access
+token when near expiry; this needs a valid CLI sign-in on the same machine.
+Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 

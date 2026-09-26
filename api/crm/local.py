@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import time
+from threading import Lock
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
@@ -33,6 +35,20 @@ def _is_loopback(request: Request) -> bool:
 
 def create_app() -> FastAPI:
     application = create_crm_app()
+    signed_user_lock = Lock()
+    signed_user_cache = None
+    signed_user_expires_at = 0.0
+
+    def locally_signed_user():
+        nonlocal signed_user_cache, signed_user_expires_at
+        with signed_user_lock:
+            if signed_user_cache is not None and time.monotonic() < signed_user_expires_at:
+                return signed_user_cache
+            signed_user = User.get_authenticated_user_details()
+            signed_user_cache = signed_user
+            signed_user_expires_at = time.monotonic() + 30
+            return signed_user
+
     origin = os.environ.get("CRM_LOCAL_TAU_ORIGIN", "")
     if origin:
         parsed = urlsplit(origin)
@@ -60,7 +76,7 @@ def create_app() -> FastAPI:
                 {"detail": "Local CRM does not accept caller identity headers."}, status_code=401
             )
         try:
-            signed_user = await run_in_threadpool(User.get_authenticated_user_details)
+            signed_user = await run_in_threadpool(locally_signed_user)
             identity = RequestUserIdentity(uid=signed_user.uid, username=signed_user.username)
         except Exception:
             return JSONResponse(
