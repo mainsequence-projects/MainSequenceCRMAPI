@@ -62,6 +62,8 @@ attempts platform Agent resolution or reports the assistant unavailable.
 
 `GET /healthz` only checks that the process responds. Protected CRM readiness
 has additional dependencies described in [service and settings API](../api/service.md).
+Bootstrap runs its synchronous platform readiness work in the API worker pool,
+so a slow catalog read does not block the event loop or `/healthz`.
 
 ## Optional Google Workspace extension
 

@@ -89,7 +89,7 @@ def crm_readiness(request: Request, actor_uid=Depends(authenticated_actor)):
 
 
 async def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
-    result = readiness(request, actor_uid)
+    result = await run_in_threadpool(readiness, request, actor_uid)
     if result["status"] != "ready":
         payload = _error(request, "CRM_NOT_READY", "CRM setup is incomplete.")
         payload["readiness"] = result
