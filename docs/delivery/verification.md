@@ -178,6 +178,14 @@ memory explicitly, matching the resource fields used by other FastAPI
 releases. This is a deployment configuration attempt, not evidence that the
 resource request caused the earlier failure.
 
+That explicit-resource attempt also failed at `deploy_runtime` while the
+assistant deployed from the same image. A local file-path load of the declared
+FastAPI `source_path` raised an ImportError because its entrypoint used
+relative imports. The entrypoint now uses package-absolute route imports and
+loads both by module name and by file path. The platform's loader behavior
+is not exposed in the public error, so this check identifies a possible
+startup cause rather than proving the prior failure's root cause.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,

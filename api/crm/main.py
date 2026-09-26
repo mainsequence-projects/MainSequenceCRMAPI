@@ -7,19 +7,18 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from api.crm.affiliation_routes import router as affiliation_router
+from api.crm.google_routes import router as google_router
+from api.crm.record_routes import core_router, module_router
+from api.crm.resource_routes import router as resource_router
+from api.crm.routes import router as crm_router
+from api.crm.transfer_routes import router as transfer_router
 from src.crm.assistant_runtime import resolve_assistant
 from src.crm.config import crm_config
 from src.crm.google_workspace.config import google_workspace_enabled
 from src.crm.models.bootstrap import Bootstrap
 from src.crm.platform.runtime import authenticated_actor, readiness, request_port
 from src.crm.solution_selling.config import solution_selling_enabled
-
-from .affiliation_routes import router as affiliation_router
-from .google_routes import router as google_router
-from .record_routes import core_router, module_router
-from .resource_routes import router as resource_router
-from .routes import router as crm_router
-from .transfer_routes import router as transfer_router
 
 
 def create_app() -> FastAPI:
