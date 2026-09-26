@@ -1,0 +1,19 @@
+{
+  "name": "CRM assistant",
+  "description": "Helps the signed-in user discuss CRM records and plan authorized CRM work.",
+  "version": "1.0.0",
+  "capabilities": {
+    "extensions": [
+      {
+        "uri": "https://mainsequence.ai/a2a/extensions/response-kind/v1",
+        "description": "Select a completed message or asynchronous task response.",
+        "required": false,
+        "params": {
+          "supportedResponseKinds": ["message", "task"],
+          "defaultResponseKind": "message"
+        }
+      }
+    ]
+  },
+  "skills": []
+}

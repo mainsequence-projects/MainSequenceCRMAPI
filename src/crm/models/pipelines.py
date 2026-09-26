@@ -83,6 +83,13 @@ class Stage(BaseModel):
     is_active: StrictBool
 
 
+class PipelineStages(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    pipeline_uid: UUID
+    board_version: conint(strict=True, ge=1)
+    stages: list[Stage] = Field(..., max_length=100)
+
+
 class StageCreate(BaseModel):
     model_config = ConfigDict(
         extra="forbid",

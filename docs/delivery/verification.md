@@ -64,6 +64,99 @@ rows were then removed by exact UID. The test proves this create/patch path on
 the disposable provider, but does not exercise legacy URL backfill on
 nonempty data, every merge write interleaving, or a deployed API release.
 
+On 2026-09-24, provider-scoped revisions `0006` and `0007` added core
+Interaction, five Solution Selling tables, and the wider activity event
+type. The local provider finalized six new table bindings and a fresh process
+resolved all 24 at the new head. A governed empty prompter collection read
+passed. A live governed prompter create and versioned patch wrote its activity
+events; the synthetic prompter and those events were deleted by exact UID.
+An intentional invalid activity insert in a two-table command rolled back
+its prompter insert; a governed count confirmed zero residual rows. These are
+local provider checks. A separate governed profile create/read passed with a
+typed nine-cell JSONB template and the full-length activity entity type; its
+synthetic profile and activity rows were also deleted by exact UID. A fresh
+local FastAPI process with `INCLUDE_SOLUTION_SELLING=true` returned enabled
+bootstrap state and empty module/core Interaction collections through HTTP.
+These checks are
+not proof of every new relationship path or a deployed
+frontend/API release.
+
+The shared-service refactor on 2026-09-24 moved mounted CRM business
+operations from HTTP helpers into `src/crm/services/`. Local tests compare
+direct service and HTTP Contact commands, permission denial, semantic scope
+validation, and transfer direction authorization using injected stores. The
+full local test suite, Ruff, and strict MkDocs build passed. These tests use
+fakes for the parity cases; they do not prove a live Tau tool, a new governed
+mutation path, or a deployed release.
+
+The optional Tau dependency was updated to the latest `ms-tau-sdk` 1.2.8
+release commit. The ASGI entrypoint reads process settings; local tests verify
+that setting both exclusion variables removes the optional SDK tool sources
+from its configuration, while unset exclusions retain the SDK defaults. SDK
+catalogue tests cover composition with project tools and A2A Task controls.
+The project extension registers 46 typed CRM tools with Solution Selling
+disabled, or 66 when enabled. Local fake-store tests verify the tool and HTTP
+Contact commands reach the same shared service behavior, deny unauthorized
+calls, reject model-supplied actor arguments, and fail closed without a trusted
+runtime context. They do not establish a live principal or policy binding.
+No managed Agent has been deployed; provider, identity, and deployed-catalog
+behavior remain unverified.
+
+The Google Workspace extension is implemented in source behind
+`INCLUDE_GOOGLE_WORKSPACE_EXTENSION=true`. Its real Google consent flow and
+deployed frontend/API handoff are **not yet verified**. The CRM API workflow
+declares exact FastAPI `public_ingress` for
+`GET /extensions/google/oauth/callback/` and
+`GET /extensions/google/oauth/done/`. The exact branch's Main Sequence
+`validate-workflow/` endpoint accepted the API 2.3.0 declaration with no
+errors or warnings. It has not yet been deployed or externally probed. Confirm the release's
+`effective_public_ingress` and backend-issued `public_url` before registering
+the Google redirect URI; see the
+[setup procedure](../google_workspace_module/setup.md#configure-public-callback-routes-on-main-sequence).
+Migration `0008` applied to the configured local provider and a
+fresh process resolved 26 active bindings. A synthetic governed probe
+created an OAuth attempt, activated a token-shaped connection, imported a
+Contact with source identity and activity event, disconnected, and removed all
+probe rows. The probe used no Google account or real credentials. The
+governed import rollback probe forced the activity insert to fail and
+confirmed that neither the Contact nor source identity committed; its
+synthetic setup rows were removed. These checks prove the selected local
+command paths. A further synthetic Calendar probe created a Company and
+Google connection, imported a meeting Interaction with source provenance,
+updated it with the expected version, and removed all probe rows. A denied
+OAuth attempt also reached a terminal failure state in the governed local
+store and was removed. These checks do not prove live Google consent or
+production deployment. With the ignored local API `.env` flag set to `true`,
+a loopback FastAPI process returned ready status, bootstrap
+`modules.google_workspace=true`, the signed-in user's import capability, and
+an empty Google connection list. A local Chrome session displayed the
+**Google Contacts**, **Gmail correspondents**, and **Calendar meetings**
+destinations and the setup guidance when the OAuth client was absent. This is
+local UI evidence, not a real Google grant or deployed Command Center check.
+The Google Cloud app also needs the audience and scope review described in the
+[setup guide](../google_workspace_module/setup.md) before production use.
+Local tests of OAuth and source parsing are not evidence of those live gates.
+
+Earlier on 2026-09-26, the local stack was relaunched with
+`INCLUDE_SOLUTION_SELLING=true` and
+`INCLUDE_GOOGLE_WORKSPACE_EXTENSION=true`. Its protected bootstrap returned
+HTTP 200 with both `modules.solution_selling` and
+`modules.google_workspace` set to `true`; live OpenAPI included both
+`/extensions/solution-selling/` and `/extensions/google/` paths. The managed
+CRM API workflow at that time declared both values. This is historical local
+evidence for the previous environment-switch version.
+
+[ADR 0004](../crm_core/adrs/0004-single-bootstrap-and-assistant-runtime.md)
+is now implemented in source: the API loads `config/crm.yaml`, emits embedded
+readiness and runtime-selected assistant state in one bootstrap response, and
+the frontend makes that single startup request. The local Tau adapter sends
+A2A Messages through the Vite `/tau` proxy. A live local bootstrap returned
+HTTP 200 with readiness `ready`, both extensions active, and assistant runtime
+`local`. Tau accepted the A2A Message shape and reached model inference, but
+the model provider request failed with `CERTIFICATE_VERIFY_FAILED` on this
+machine. An end-to-end chat reply and a managed Agent deployment remain
+unverified. Repository tests and a frontend build verify the source behavior.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,

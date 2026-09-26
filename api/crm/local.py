@@ -8,6 +8,8 @@ without a FastAPI ResourceRelease. It must never be used behind a public proxy.
 from __future__ import annotations
 
 import ipaddress
+import os
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -31,6 +33,14 @@ def _is_loopback(request: Request) -> bool:
 
 def create_app() -> FastAPI:
     application = create_crm_app()
+    origin = os.environ.get("CRM_LOCAL_TAU_ORIGIN", "")
+    if origin:
+        parsed = urlsplit(origin)
+        if (parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost"}
+                or parsed.port is None or parsed.path or parsed.query or parsed.fragment
+                or parsed.username or parsed.password):
+            raise RuntimeError("CRM_LOCAL_TAU_ORIGIN must be a loopback HTTP origin")
+        application.state.crm_local_tau_origin = origin.rstrip("/")
 
     @application.middleware("http")
     async def local_signed_user(request: Request, call_next):

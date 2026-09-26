@@ -2,16 +2,23 @@
 
 The two model layers serve different purposes:
 
-- `src/crm/models/` contains the closed Pydantic domain and HTTP payload
-  classes; `src/crm/contracts/` validates and normalizes against those classes.
-- `src/crm/metatables/` contains 18 explicit SQLAlchemy-authored,
-  platform-managed MetaTable classes, one declaration per table. The migration
+- `src/crm/models/` contains core Pydantic domain and HTTP payload classes;
+  `src/crm/solution_selling/models.py` contains the optional module's Pydantic
+  contracts. `src/crm/contracts/` validates and normalizes the original core
+  resources against their classes.
+- `src/crm/metatables/` contains 26 explicit SQLAlchemy-authored,
+  platform-managed MetaTable classes. The migration
   provider uses their shared metadata. No JSON file creates classes at runtime.
 
 The tables cover singleton CRM settings; pipelines and stages; companies,
 contacts, contact-company affiliation periods, and tag links; deals and
 deal-contact links; notes, tasks and activity; redirects; source connections
-and identities; and transfer jobs and rows.
+and identities; transfer jobs and rows; core Interactions; and five optional
+Solution Selling record types.
+Two private Google OAuth tables store single-use attempts and encrypted
+per-user grant state. They are not exposed as CRM resources. The nonsecret
+Google source account is represented in `SourceConnection` for provenance;
+source identities link reviewed imports to CRM records.
 
 ## Code boundaries
 
@@ -25,6 +32,9 @@ uses only allowlisted SQL ordering expressions.
 
 `src/crm/repositories/gateway.py` is the small provider-bound MetaTable
 executor. `repositories/resources/` owns shared CRUD mechanics;
+`repositories/records.py` serves core Interaction and optional module records
+through the same governed operation boundary; the module's business contracts
+remain in `src/crm/solution_selling/`.
 `repositories/companies/`, `repositories/contacts/`, and
 `repositories/deals/` own their concept-specific read projections. Contact
 affiliation history and merge live with contacts; board queries and moves live
@@ -64,11 +74,34 @@ only when no other platform is populated, otherwise it refuses to lose data.
 The configured local CRM provider was upgraded on 2026-09-24; other providers
 must run their own provider-scoped upgrade before using this contact contract.
 
+Revision `0006` creates core `Interaction` and the five Solution Selling
+tables, and adds a Deal `(uid, company_uid)` uniqueness constraint to support
+composite foreign keys. It was generated from the SQLAlchemy MetaTable
+declarations and applied to the configured local `mainsequence-crm` provider
+on 2026-09-24. The upgrade finalized six new catalog entries; it did not
+delete existing records. Other providers must upgrade before running code
+that expects these tables. `extensions.solution_selling.active` in
+`config/crm.yaml` controls API/UI
+availability, not whether the tables exist.
+
+Revision `0007` widens `ActivityEvent.entity_type` to 100 characters so the
+module's full record identifiers fit in the audit stream. It was generated
+from the MetaTable declaration and applied to the same provider on
+2026-09-24.
+
+Revision `0008` declares the backend-only `google_oauth_attempt` and
+`google_oauth_connection` MetaTables. It has been authored locally but has
+been applied to the configured local provider on 2026-09-24. A fresh process
+resolved all 26 active bindings, including both Google tables. The OAuth
+extension is gated by
+`extensions.google_workspace.active` in `config/crm.yaml`; the migration-owned tables remain part
+of the provider catalog even when the routes are off.
+
 ## Migration and runtime boundary
 
 The migration provider is `src.crm.migrations:migration`. Migrations run
 outside HTTP startup. A fresh API process queries the platform catalog
-for the 18 authored identifiers, validates active Alembic-managed bindings,
+for the 26 authored identifiers, validates active Alembic-managed bindings,
 namespace, provider, revision, physical names and one data source, then caches
 the typed bindings in memory. It must not register tables or repair schema
 during a request. No CRM bindings file, finalization hook, or path variable is

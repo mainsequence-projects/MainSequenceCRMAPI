@@ -17,27 +17,42 @@ class DealBoard(GovernedGateway):
         super().__init__(registry)
         self.reads = reads
 
-    def pipeline_board(self, pipeline_uid: uuid.UUID, page_size: int) -> dict[str, Any]:
-        pipeline = self.reads.detail("pipelines", pipeline_uid)
+    def pipeline_stages(self, pipeline_uid: uuid.UUID) -> dict[str, Any]:
+        pipeline_table = MODELS["pipeline"].__tablename__
         stage_table = MODELS["stage"].__tablename__
         result = self._operation(
             operation="select",
             sql=(
-                f'SELECT * FROM "{stage_table}" WHERE '
-                "pipeline_uid=CAST(%(pipeline_uid)s AS uuid) AND is_active=TRUE "
-                "ORDER BY position, uid LIMIT 100"
+                "SELECT p.uid AS pipeline_uid, p.board_version, "
+                "COALESCE(jsonb_agg(to_jsonb(s) ORDER BY s.position, s.uid) "
+                "FILTER (WHERE s.uid IS NOT NULL), '[]'::jsonb) AS stages "
+                f'FROM "{pipeline_table}" p LEFT JOIN LATERAL '
+                f'(SELECT * FROM "{stage_table}" WHERE pipeline_uid=p.uid '
+                "AND is_active=TRUE ORDER BY position, uid LIMIT 100) s ON TRUE "
+                "WHERE p.uid=CAST(%(pipeline_uid)s AS uuid) "
+                "GROUP BY p.uid, p.board_version"
             ),
             parameters={"pipeline_uid": str(pipeline_uid)},
             parameter_types={"pipeline_uid": "uuid"},
-            tables={"stage": "read"},
-            max_rows=100,
+            tables={"pipeline": "read", "stage": "read"},
+            max_rows=1,
         )
-        stages = result.get("rows")
-        if not isinstance(stages, list):
-            raise RuntimeError("CRM stage query returned an invalid response")
-        columns = []
+        rows = result.get("rows")
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise ResourceNotFound("Pipeline not found")
+        stages = self._json(rows[0].get("stages"), expected=list, label="pipeline stages")
         for stage in stages:
             validate_payload("Stage", stage)
+        return {
+            "pipeline_uid": str(pipeline_uid),
+            "board_version": int(rows[0]["board_version"]),
+            "stages": stages,
+        }
+
+    def pipeline_board(self, pipeline_uid: uuid.UUID, page_size: int) -> dict[str, Any]:
+        pipeline = self.pipeline_stages(pipeline_uid)
+        columns = []
+        for stage in pipeline["stages"]:
             columns.append(
                 self.board_column(
                     pipeline_uid,

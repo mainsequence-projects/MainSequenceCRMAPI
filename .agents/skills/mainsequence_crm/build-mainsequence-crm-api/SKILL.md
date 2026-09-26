@@ -20,6 +20,9 @@ Then use the installed SDK-owned skills; never edit them during application work
 - `.agents/skills/command-center/contracts/implement-resource-collection-contract/SKILL.md`
 - `.agents/skills/command-center/contracts/implement-bulk-actions-contract/SKILL.md`
 
+For optional module routes and public provider ingress, also read
+`.agents/skills/mainsequence_crm/build-mainsequence-crm-extensions/SKILL.md`.
+
 Pinned source IDs: M05, M06, C02, C16, C17, C18, C19, C20. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.
 
 ## Workflow

@@ -15,6 +15,7 @@ nav:
       - Companies: concepts/companies.md
       - Deals and pipelines: concepts/deals-pipelines.md
       - Tasks and notes: concepts/tasks-notes.md
+      - Interactions: concepts/interactions.md
       - Tags and activity: concepts/tags-activity.md
       - Transfers: concepts/transfers.md
   - API:
@@ -24,12 +25,34 @@ nav:
       - Contacts and companies: api/contacts-companies.md
       - Deals and pipelines: api/deals-pipelines.md
       - Tasks, notes, tags, and activity: api/engagement.md
+      - Interactions: api/interactions.md
+      - Solution Selling: api/solution-selling.md
+      - Google Workspace: api/google-workspace.md
       - Imports and transfers: api/transfers.md
       - Service and settings: api/service.md
   - Delivery:
       - Local development: delivery/local-development.md
       - Persistence and migrations: delivery/persistence.md
       - Verification and release: delivery/verification.md
+  - Core CRM decisions:
+      - '0001: Interaction': crm_core/adrs/0001-interaction.md
+      - '0002: Google Workspace intake (moved)': crm_core/adrs/0002-google-workspace-intake.md
+      - '0003: Tau CRM agent tools': crm_core/adrs/0003-tau-crm-agent-tools.md
+      - '0004: Single bootstrap and assistant runtime': crm_core/adrs/0004-single-bootstrap-and-assistant-runtime.md
+  - Google Workspace module:
+      - Overview: google_workspace_module/index.md
+      - Set up Google access: google_workspace_module/setup.md
+      - ADRs:
+          - '0001: User-authorized intake': google_workspace_module/adrs/0001-google-workspace-intake.md
+  - Solution Selling module:
+      - Overview: solution_selling_module/index.md
+      - ADRs:
+          - '0001: Simple assessment model': solution_selling_module/adrs/0001-simple-assessment-model.md
+          - '0002: Diagnosis matrix': solution_selling_module/adrs/0002-diagnosis-matrix.md
+          - '0003: Key players and pain chain': solution_selling_module/adrs/0003-key-players-pain-chain.md
+          - '0004: Prospecting profiles': solution_selling_module/adrs/0004-prospecting-profiles.md
+          - '0005: Lead list': solution_selling_module/adrs/0005-lead-list.md
+          - '0006: Reusable prompters': solution_selling_module/adrs/0006-reusable-prompters.md
 validation:
   nav:
     omitted_files: warn

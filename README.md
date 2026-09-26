@@ -48,13 +48,15 @@ account signed in through this repository's SDK session:
 set -a
 source .env
 set +a
-uv run uvicorn api.crm.local:app --host 127.0.0.1 --port 8001
+uv run uvicorn api.crm.local:app --host 127.0.0.1 --port 38641
 ```
 
 The deployed FastAPI entrypoint remains `api.crm.main:app`, where the platform
 injects the request user. Local mode represents the one account signed into
 this process; it cannot distinguish different browser users. Do not expose it
 through a public proxy. Vite proxies `/api/` to this loopback listener.
+The API reports enabled modules in its bootstrap response; the frontend uses
+that response to render Solution Selling, not a frontend environment variable.
 
 `/healthz` checks only the process. Protected `/api/crm/v1/readiness/` requires
 the platform-injected `request.state.user_uid` and reports `not_ready` until

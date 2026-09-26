@@ -36,6 +36,7 @@ The two expected versions fence both the deal and board view.
 
 | Method | Path | Query / behavior |
 | --- | --- | --- |
+| `GET` | `pipelines/{uid}/stages/` | Active stages for a pipeline, ordered by position; `crm.read` |
 | `GET` | `pipelines/` | Pipeline collection; `crm.read` |
 | `GET` | `pipelines/{uid}/board/` | `page_size` (default 25), optional `search` and `filters`; `crm.read` |
 | `GET` | `pipelines/{uid}/stages/{stage_uid}/cards/` | Required `expected_board_version`; optional `page_size`, `cursor`, `search`, `filters`; `crm.read` |
@@ -43,3 +44,7 @@ The two expected versions fence both the deal and board view.
 The current stage-card implementation interprets `cursor` as a nonnegative
 offset string, not an opaque keyset cursor. A changed board version returns
 `409`. Pipeline and stage write routes are not mounted in this API version.
+
+The lightweight `stages/` response is `{pipeline_uid, board_version, stages}`.
+It does not load cards or counts, so forms can offer a stage without requesting
+the entire board. An unknown pipeline returns `404`.

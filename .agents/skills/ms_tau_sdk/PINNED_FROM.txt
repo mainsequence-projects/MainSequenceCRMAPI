@@ -1,0 +1,7 @@
+schema=1
+library_name=ms-tau-sdk
+namespace=ms_tau_sdk
+pinned_version=1.2.8
+skills_path=src/ms_tau_sdk/agent_skills
+skills=tau_a2a_runtime_adapter,tau_local_development,tau_project_customization,tau_repository_integration
+command=ms-tau skills sync --path .

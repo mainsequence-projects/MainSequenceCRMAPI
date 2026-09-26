@@ -17,6 +17,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -33,6 +34,7 @@ class Deal(PlatformManagedMetaTable, Base):
     __metatable_description__ = "One sales opportunity in one pipeline stage."
     __metatable_labels__ = ["crm", "deal"]
     __table_args__ = (
+        UniqueConstraint("uid", "company_uid", name="uq_mainsequence_crm__deal_uid_company_uid"),
         ForeignKeyConstraint(
             ["company_uid"],
             ["mainsequence_crm__company.uid"],

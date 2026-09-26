@@ -60,7 +60,7 @@ class ActivityEvent(PlatformManagedMetaTable, Base):
     )
 
     entity_type: Mapped[str] = mapped_column(
-        String(30),
+        String(100),
         primary_key=False,
         nullable=False,
         info={"label": "Entity Type", "description": "entity type"},

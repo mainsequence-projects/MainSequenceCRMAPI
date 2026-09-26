@@ -1,0 +1,5 @@
+extensions:
+  solution_selling:
+    active: true
+  google_workspace:
+    active: true

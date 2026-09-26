@@ -1,4 +1,4 @@
-"""Typed semantic scopes passed from the API to CRM data access."""
+"""Typed semantic scopes shared by CRM callers and data access."""
 
 from __future__ import annotations
 

@@ -18,7 +18,9 @@ API = Path(__file__).resolve().parents[1]
 
 def test_models_are_python_classes_not_runtime_json_definitions():
     crm_root = API / "src/crm"
-    assert {path.name for path in crm_root.glob("*.py")} == {"__init__.py"}
+    assert {path.name for path in crm_root.glob("*.py")} == {
+        "__init__.py", "config.py", "assistant_runtime.py"
+    }
     for package in (
         "models",
         "contracts",
@@ -34,9 +36,16 @@ def test_models_are_python_classes_not_runtime_json_definitions():
     assert not (API / "src/crm/data_dictionary.json").exists()
     assert not (API / "src/crm/crm-domain.schema.json").exists()
     assert not (API / "src/crm/import-mapping.schema.json").exists()
-    assert len(MODELS) == 18
+    assert len(MODELS) == 26
     for logical_name, model in MODELS.items():
-        assert model.__module__ == f"src.crm.metatables.{logical_name}"
+        expected_module = (
+            "src.crm.metatables.solution_selling"
+            if logical_name.startswith("solution_selling")
+            else "src.crm.metatables.google_oauth"
+            if logical_name.startswith("google_oauth")
+            else f"src.crm.metatables.{logical_name}"
+        )
+        assert model.__module__ == expected_module
         assert logical_name in model.__tablename__
         assert len(model.__table__.columns) > 0
     for model in CONTRACT_MODELS.values():

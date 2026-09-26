@@ -1,0 +1,17 @@
+api_version: "2.3.0"
+name: crm-api
+resources:
+  - key: crm-api
+    kind: fastapi
+    spec:
+      source_path: api/crm/main.py
+      automatic_deployment: true
+      automatic_redeployment:
+        enabled: true
+        tag_regex: null
+      revision_retention_count: 3
+      public_ingress:
+        - method: GET
+          path: /extensions/google/oauth/callback/
+        - method: GET
+          path: /extensions/google/oauth/done/

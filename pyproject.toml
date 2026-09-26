@@ -4,13 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mainsequencecrmapi"
-version = "0.1.1"
+version = "0.1.2"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+  "cryptography>=50,<51",
   "fastapi>=0.110,<1",
-  "mainsequence==8.1.21",
+  "httpx>=0.28,<1",
+  "jinja2>=3.1.6,<4",
+  "mainsequence==8.1.22",
+  "ms-tau-sdk==1.2.8",
   "pydantic[email]>=2.13,<3",
+  "PyYAML>=6,<7",
+  "PyJWT>=2.10,<3",
   "uvicorn==0.52.4",
 ]
 
@@ -80,3 +86,6 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+ms-tau-sdk = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git", rev = "1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6" }

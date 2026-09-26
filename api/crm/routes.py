@@ -1,4 +1,4 @@
-"""Cross-resource CRM endpoints."""
+"""Cross-resource HTTP adapters for the shared CRM service."""
 
 from __future__ import annotations
 
@@ -6,158 +6,71 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 
-from api.crm.query import QueryError, parse_board_query
-from src.crm.contracts import validate_payload
+from api.crm.query import parse_board_query
 from src.crm.models.bootstrap import SettingsPatch
 from src.crm.models.deals import MoveDeal
 from src.crm.models.merge import MergeExecuteRequest, MergePreviewRequest
-from src.crm.platform.runtime import request_port
-from src.crm.repositories.resources.store import ResourceConflict, ResourceNotFound
+from src.crm.models.pipelines import PipelineStages
 
-from .route_support import _authorized, _domain, _store
+from .service_adapter import invoke, service_for
 
 router = APIRouter(prefix="/api/crm/v1")
 
 
 @router.get("/principals/", name="list-principals")
 def principals(request: Request):
-    context = _authorized(request, "crm.read")
-    display_name = context.directory.display_name(context.actor_uid).strip()
-    return {
-        "items": [
-            {
-                "uid": str(context.actor_uid),
-                "display_name": display_name,
-                "selectable": context.directory.is_selectable(context.actor_uid),
-            }
-        ],
-        "pageInfo": {
-            "pageIndex": 0,
-            "pageSize": 25,
-            "totalItems": 1,
-            "hasNextPage": False,
-            "hasPreviousPage": False,
-        },
-    }
+    return invoke(lambda: service_for(request).principals())
 
 
 @router.get("/settings/", name="get-settings")
 def settings(request: Request):
-    context = _authorized(request, "crm.read")
-    bootstrap = request_port(request, "crm_bootstrap")
-    if bootstrap is None:
-        raise HTTPException(status_code=503, detail="CRM settings service is unavailable")
-    return bootstrap.read(context.actor_uid)["settings"]
+    return invoke(lambda: service_for(request).settings())
 
 
 @router.patch("/settings/", name="update-settings")
-def update_settings(
-    request: Request,
-    payload: SettingsPatch,
-):
-    context = _authorized(request, "crm.configure")
-    patch = payload.model_dump(mode="json", exclude_unset=True)
-    bootstrap = request_port(request, "crm_bootstrap")
-    if bootstrap is None:
-        raise HTTPException(status_code=503, detail="CRM settings service is unavailable")
-    current = bootstrap.read(context.actor_uid)["settings"]
-    candidate = {**current, **patch["changes"]}
-    candidate["configuration_version"] = patch["expected_version"]
-    candidate = _domain(validate_payload, "Settings", candidate)
-    try:
-        _store(request).update_settings(
-            context.actor_uid,
-            patch["expected_version"],
-            candidate,
-        )
-    except ResourceConflict as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return bootstrap.read(context.actor_uid)["settings"]
+def update_settings(request: Request, payload: SettingsPatch):
+    return invoke(lambda: service_for(request).update_settings(payload))
+
+
+@router.get("/pipelines/{uid}/stages/", name="get-pipeline-stages", response_model=PipelineStages)
+def pipeline_stages(uid: uuid.UUID, request: Request):
+    service = service_for(request)
+    invoke(lambda: service.context.require("crm.read"))
+    if request.query_params:
+        raise HTTPException(status_code=422, detail="Pipeline stages do not accept query parameters")
+    return invoke(lambda: service.pipeline_stages(uid))
 
 
 @router.get("/pipelines/{uid}/board/", name="get-pipeline-board")
 def pipeline_board(uid: uuid.UUID, request: Request):
-    _authorized(request, "crm.read")
-    try:
-        query = parse_board_query(dict(request.query_params))
-        return _store(request).pipeline_board(uid, query.page_size)
-    except QueryError as exc:
-        raise HTTPException(status_code=422, detail=f"Invalid {exc.field}: {exc}") from exc
-    except ResourceNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ResourceConflict as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    service = service_for(request)
+    invoke(lambda: service.context.require("crm.read"))
+    query = invoke(lambda: parse_board_query(dict(request.query_params)))
+    return invoke(lambda: service.pipeline_board(uid, query.page_size))
 
 
 @router.get("/pipelines/{uid}/stages/{stage_uid}/cards/", name="get-pipeline-stage-cards")
 def pipeline_stage_cards(uid: uuid.UUID, stage_uid: uuid.UUID, request: Request):
-    _authorized(request, "crm.read")
-    try:
-        query = parse_board_query(dict(request.query_params), stage_cards=True)
-        return _store(request).board_column(
-            uid,
-            stage_uid,
-            query.expected_board_version,
-            query.page_size,
-            query.cursor,
+    service = service_for(request)
+    invoke(lambda: service.context.require("crm.read"))
+    query = invoke(lambda: parse_board_query(dict(request.query_params), stage_cards=True))
+    return invoke(
+        lambda: service.board_column(
+            uid, stage_uid, query.expected_board_version, query.page_size, query.cursor
         )
-    except QueryError as exc:
-        raise HTTPException(status_code=422, detail=f"Invalid {exc.field}: {exc}") from exc
-    except ResourceNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ResourceConflict as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    )
 
 
 @router.post("/deals/{uid}/move/", name="move-deal")
-def move_deal(
-    uid: uuid.UUID,
-    request: Request,
-    payload: MoveDeal,
-):
-    context = _authorized(request, "crm.edit")
-    command = payload.model_dump(mode="json", exclude_unset=True)
-    try:
-        return _store(request).move_deal(
-            context.actor_uid,
-            uid,
-            command,
-        )
-    except ResourceConflict as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+def move_deal(uid: uuid.UUID, request: Request, payload: MoveDeal):
+    return invoke(lambda: service_for(request).move_deal(uid, payload))
 
 
 @router.post("/contacts/{uid}/merge/preview/", name="preview-contact-merge")
 def preview_contact_merge(uid: uuid.UUID, request: Request, payload: MergePreviewRequest):
-    _authorized(request, "crm.merge")
-    command = payload.model_dump(mode="json", exclude_unset=True)
-    try:
-        return _store(request).merge_preview(
-            uid,
-            uuid.UUID(command["loser_uid"]),
-            command["field_resolutions"],
-        )
-    except ResourceNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (ResourceConflict, ValueError) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return invoke(lambda: service_for(request).merge_preview(uid, payload), value_status=409)
 
 
 @router.post("/contacts/{uid}/merge/", name="merge-contacts")
-def merge_contacts(
-    uid: uuid.UUID,
-    request: Request,
-    payload: MergeExecuteRequest,
-):
-    context = _authorized(request, "crm.merge")
-    command = payload.model_dump(mode="json", exclude_unset=True)
-    try:
-        return _store(request).merge_contacts(
-            context.actor_uid,
-            uid,
-            command,
-        )
-    except ResourceNotFound as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (ResourceConflict, ValueError) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+def merge_contacts(uid: uuid.UUID, request: Request, payload: MergeExecuteRequest):
+    return invoke(lambda: service_for(request).merge_contacts(uid, payload), value_status=409)

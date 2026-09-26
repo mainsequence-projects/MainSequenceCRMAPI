@@ -14,7 +14,7 @@ class SourceConnections(TransferBase):
             operation="select",
             sql=(
                 f'WITH q AS (SELECT uid, name, adapter_id, source_account_key, version FROM "{table}" '
-                "ORDER BY name, uid), "
+                "WHERE adapter_id <> 'google-workspace-v1' ORDER BY name, uid), "
                 "paged AS (SELECT *, row_number() OVER () AS __row FROM q "
                 "LIMIT %(page_size)s::integer OFFSET %(page_offset)s::integer) "
                 "SELECT COALESCE((SELECT jsonb_agg(to_jsonb(paged)-'__row' ORDER BY __row) FROM paged), "

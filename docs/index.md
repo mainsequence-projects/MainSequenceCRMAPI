@@ -1,7 +1,6 @@
 # Main Sequence CRM API
 
-This site documents the CRM service in this repository. It is organized along
-two boundaries:
+This site documents the CRM service in this repository:
 
 - [Concepts](concepts/index.md) explain what contacts, companies, deals, tasks,
   notes, tags, activity, and transfers mean. They are not endpoint instructions.
@@ -10,6 +9,11 @@ two boundaries:
   `/openapi.json` and an interactive view at `/docs`.
 - [Delivery](delivery/local-development.md) covers running, schema ownership,
   migrations, and verification for this Python API release.
+- [Module documentation](google_workspace_module/index.md) includes the
+  optional Google Workspace extension and its
+  [Google Cloud setup guide](google_workspace_module/setup.md). The
+  [Solution Selling module](solution_selling_module/index.md) has its own
+  decisions and status.
 
 The frontend is a separate Command Center application. This site does not
 describe an independent CRM login or a second user/role database: the API uses

@@ -9,9 +9,18 @@ from .contact_tag import ContactTag
 from .deal import Deal
 from .deal_contact import DealContact
 from .entity_redirect import EntityRedirect
+from .google_oauth import GoogleOAuthAttempt, GoogleOAuthConnection
+from .interaction import Interaction
 from .note import Note
 from .pipeline import Pipeline
 from .settings import Settings
+from .solution_selling import (
+    SolutionSelling,
+    SolutionSellingDiagnosis,
+    SolutionSellingLead,
+    SolutionSellingPrompter,
+    SolutionSellingProspectingProfile,
+)
 from .source_connection import SourceConnection
 from .source_identity import SourceIdentity
 from .stage import Stage
@@ -39,4 +48,12 @@ MODELS = {
     "source_identity": SourceIdentity,
     "transfer_job": TransferJob,
     "transfer_row": TransferRow,
+    "interaction": Interaction,
+    "google_oauth_attempt": GoogleOAuthAttempt,
+    "google_oauth_connection": GoogleOAuthConnection,
+    "solution_selling": SolutionSelling,
+    "solution_selling_diagnosis": SolutionSellingDiagnosis,
+    "solution_selling_prospecting_profile": SolutionSellingProspectingProfile,
+    "solution_selling_lead": SolutionSellingLead,
+    "solution_selling_prompter": SolutionSellingPrompter,
 }

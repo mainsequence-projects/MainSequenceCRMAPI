@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from api.crm.main import create_app
 from src.crm.metatables import MODELS
+from src.crm.models.pipelines import PipelineStages
 from src.crm.repositories.gateway import GovernedGateway
 
 
@@ -22,6 +23,7 @@ def test_frontend_core_routes_are_registered():
         ("patch", "/api/crm/v1/contacts/{uid}/"),
         ("get", "/api/crm/v1/activity/{uid}/"),
         ("patch", "/api/crm/v1/settings/"),
+        ("get", "/api/crm/v1/pipelines/{uid}/stages/"),
         ("get", "/api/crm/v1/pipelines/{uid}/board/"),
         ("get", "/api/crm/v1/pipelines/{uid}/stages/{stage_uid}/cards/"),
         ("post", "/api/crm/v1/deals/{uid}/move/"),
@@ -31,6 +33,63 @@ def test_frontend_core_routes_are_registered():
         ("post", "/api/crm/v1/tasks/{uid}/reopen/"),
     }
     assert expected <= routes
+
+
+def test_pipeline_stages_returns_active_stage_choices_without_board_cards(monkeypatch):
+    from src.crm.repositories.deals.board import DealBoard
+
+    pipeline_uid = uuid.UUID("00000000-0000-4000-8000-000000000001")
+    stage_uid = uuid.UUID("00000000-0000-4000-8000-000000000002")
+    stage = {
+        "uid": str(stage_uid),
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+        "created_by_uid": None,
+        "updated_by_uid": None,
+        "version": 1,
+        "pipeline_uid": str(pipeline_uid),
+        "key": "opportunity",
+        "label": "Opportunity",
+        "position": 0,
+        "outcome": "open",
+        "is_active": True,
+    }
+    observed = {}
+
+    def execute(_self, **kwargs):
+        observed.update(kwargs)
+        return {"rows": [{"board_version": 1, "stages": [stage]}]}
+
+    monkeypatch.setattr(DealBoard, "_operation", execute)
+    result = DealBoard(object(), object()).pipeline_stages(pipeline_uid)
+    assert result == {"pipeline_uid": str(pipeline_uid), "board_version": 1, "stages": [stage]}
+    assert observed["tables"] == {"pipeline": "read", "stage": "read"}
+    assert "board_column" not in observed["sql"]
+
+    app = create_app()
+
+    class Policy:
+        def capabilities(self, _actor_uid):
+            return {"crm.read"}
+
+    class Store:
+        def pipeline_stages(self, uid):
+            assert uid == pipeline_uid
+            return result
+
+    app.state.crm_policy = Policy()
+    app.state.crm_directory = object()
+    app.state.crm_resources = Store()
+
+    @app.middleware("http")
+    async def inject_identity(request, call_next):
+        request.state.user_uid = uuid.uuid4()
+        return await call_next(request)
+
+    response = TestClient(app).get(f"/api/crm/v1/pipelines/{pipeline_uid}/stages/")
+    assert response.status_code == 200
+    assert response.json() == PipelineStages.model_validate(result).model_dump(mode="json")
+    assert TestClient(app).get(f"/api/crm/v1/pipelines/{pipeline_uid}/stages/?page_size=25").status_code == 422
 
 
 def test_http_query_validation_stops_before_repository_access():

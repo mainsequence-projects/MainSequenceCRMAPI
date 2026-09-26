@@ -14,9 +14,11 @@ from typing import Any, Protocol
 
 from mainsequence.client import MetaTable
 
+from ..google_workspace.config import google_workspace_enabled
 from ..metatables import MODELS
 from ..platform.catalog import CatalogBinding, CatalogRegistry, configured_registry
 from ..platform.runtime import CAPABILITIES, DirectoryPort, PolicyPort
+from ..solution_selling.config import solution_selling_enabled
 
 
 class SettingsStorePort(Protocol):
@@ -112,6 +114,10 @@ class BootstrapService:
             "capabilities": sorted(capabilities),
             "settings": settings,
             "default_pipeline_uid": str(default_pipeline_uid),
+            "modules": {
+                "solution_selling": solution_selling_enabled(),
+                "google_workspace": google_workspace_enabled(),
+            },
             "limits": {
                 "list_page_max": 100,
                 "bulk_explicit_max": 200,

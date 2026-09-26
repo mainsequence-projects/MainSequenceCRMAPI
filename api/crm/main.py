@@ -5,17 +5,27 @@ import uuid
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
+from src.crm.assistant_runtime import resolve_assistant
+from src.crm.config import crm_config
+from src.crm.google_workspace.config import google_workspace_enabled
+from src.crm.models.bootstrap import Bootstrap
 from src.crm.platform.runtime import authenticated_actor, readiness, request_port
+from src.crm.solution_selling.config import solution_selling_enabled
 
 from .affiliation_routes import router as affiliation_router
+from .google_routes import router as google_router
+from .record_routes import core_router, module_router
 from .resource_routes import router as resource_router
 from .routes import router as crm_router
 from .transfer_routes import router as transfer_router
 
 
 def create_app() -> FastAPI:
+    crm_config()  # Fail before route mounting if the persisted configuration is invalid.
     application = FastAPI(title="Main Sequence CRM", version="0.1.0")
+    application.state.crm_local_tau_origin = None
 
     @application.middleware("http")
     async def request_uid(request: Request, call_next):
@@ -51,6 +61,11 @@ def create_app() -> FastAPI:
     application.include_router(resource_router)
     application.include_router(affiliation_router)
     application.include_router(transfer_router)
+    if google_workspace_enabled():
+        application.include_router(google_router)
+    application.include_router(core_router)
+    if solution_selling_enabled():
+        application.include_router(module_router)
     return application
 
 
@@ -74,11 +89,13 @@ def crm_readiness(request: Request, actor_uid=Depends(authenticated_actor)):
     return JSONResponse(result, status_code=200 if result["status"] == "ready" else 503)
 
 
-def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
+async def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
     result = readiness(request, actor_uid)
     if result["status"] != "ready":
+        payload = _error(request, "CRM_NOT_READY", "CRM setup is incomplete.")
+        payload["readiness"] = result
         return JSONResponse(
-            _error(request, "CRM_NOT_READY", "CRM setup is incomplete."),
+            payload,
             status_code=503,
         )
     bootstrap_port = request_port(request, "crm_bootstrap")
@@ -88,7 +105,12 @@ def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
             status_code=503,
         )
     try:
-        return bootstrap_port.read(actor_uid)
+        document = await run_in_threadpool(bootstrap_port.read, actor_uid)
+        document["readiness"] = result
+        document["assistant"] = await resolve_assistant(
+            request.app.state.crm_local_tau_origin
+        )
+        return Bootstrap.model_validate(document).model_dump(mode="json")
     except Exception:
         return JSONResponse(
             _error(request, "CRM_NOT_READY", "CRM settings are unavailable."),

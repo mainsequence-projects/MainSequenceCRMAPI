@@ -18,7 +18,7 @@ from .writes import ResourceMutations
 
 
 class GovernedResourceStore:
-    """API-facing facade; no SQL or mixin inheritance lives here."""
+    """Service-facing persistence facade; no SQL or mixin inheritance lives here."""
 
     def __init__(self, registry: CatalogRegistry | None = None):
         binding_registry = registry or configured_registry()
@@ -102,6 +102,9 @@ class GovernedResourceStore:
 
     def pipeline_board(self, pipeline_uid: uuid.UUID, page_size: int) -> dict[str, Any]:
         return self.board_repo.pipeline_board(pipeline_uid, page_size)
+
+    def pipeline_stages(self, pipeline_uid: uuid.UUID) -> dict[str, Any]:
+        return self.board_repo.pipeline_stages(pipeline_uid)
 
     def board_column(
         self,
