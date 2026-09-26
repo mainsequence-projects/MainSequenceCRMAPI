@@ -172,6 +172,12 @@ cause; the package definition now includes that file. The deployed
 frontend/API contract, public Google callback, and managed assistant
 bootstrap remain unverified until the API is active.
 
+The API retry with the packaged YAML still failed at `deploy_runtime` and
+produced no application logs. The API workflow now requests 0.5 CPU and 1 GiB
+memory explicitly, matching the resource fields used by other FastAPI
+releases. This is a deployment configuration attempt, not evidence that the
+resource request caused the earlier failure.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,

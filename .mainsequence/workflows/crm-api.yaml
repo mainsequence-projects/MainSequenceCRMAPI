@@ -5,6 +5,9 @@ resources:
     kind: fastapi
     spec:
       source_path: api/crm/main.py
+      cpu_request: "0.5"
+      memory_request: 1Gi
+      spot: false
       automatic_deployment: true
       automatic_redeployment:
         enabled: true
