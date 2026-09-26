@@ -264,6 +264,26 @@ class CapturingStore(GoogleStore):
         return {"rows": [{"entity_uid": kwargs["parameters"].get("uid")}]}
 
 
+def test_google_preview_uses_bounded_batch_reads():
+    class PreviewStore(GoogleStore):
+        def __init__(self):
+            self.calls = []
+
+        def _operation(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"rows": []}
+
+    store = PreviewStore()
+    source_uid = uuid.uuid4()
+    assert store.source_links(source_uid, "contact", ["people:1", "people:2"]) == {}
+    assert store.contact_matches_many(["one@example.com", "two@example.com"]) == {}
+    assert len(store.calls) == 2
+    assert store.calls[0]["tables"] == {"source_identity": "read", "contact": "read"}
+    assert json.loads(store.calls[0]["parameters"]["external_ids"]) == ["people:1", "people:2"]
+    assert store.calls[1]["tables"] == {"contact": "read"}
+    assert store.calls[1]["max_rows"] == 8
+
+
 def test_import_is_one_governed_record_provenance_and_activity_write():
     store = CapturingStore()
     actor = uuid.uuid4()

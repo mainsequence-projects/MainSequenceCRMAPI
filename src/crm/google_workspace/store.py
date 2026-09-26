@@ -290,6 +290,34 @@ class GoogleStore(GovernedGateway):
             raise RuntimeError("Google provenance read returned an invalid envelope")
         return rows[0] if rows else None
 
+    def source_links(self, source_connection_uid: uuid.UUID, entity_type: str, external_ids: list[str]) -> dict[str, dict[str, Any]]:
+        if not external_ids:
+            return {}
+        if entity_type not in {"contact", "interaction"}:
+            raise ValueError("Unsupported Google provenance entity")
+        table = MODELS["source_identity"].__tablename__
+        target = MODELS[entity_type].__tablename__
+        result = self._operation(
+            operation="select",
+            sql=(
+                'SELECT s.external_id, s.target_uid, t.version, t.archived_at, '
+                + ("t.company_uid" if entity_type == "interaction" else "NULL::uuid AS company_uid")
+                + f' FROM "{table}" s LEFT JOIN "{target}" t ON t.uid=s.target_uid '
+                "WHERE s.source_connection_uid=%(connection_uid)s::uuid "
+                "AND s.entity_type=%(entity_type)s "
+                "AND s.external_id IN (SELECT jsonb_array_elements_text(%(external_ids)s::jsonb))"
+            ),
+            parameters={"connection_uid": str(source_connection_uid), "entity_type": entity_type,
+                        "external_ids": json.dumps(external_ids)},
+            parameter_types={"external_ids": "jsonb"},
+            tables={"source_identity": "read", entity_type: "read"},
+            max_rows=len(external_ids),
+        )
+        rows = result.get("rows")
+        if not isinstance(rows, list):
+            raise RuntimeError("Google provenance read returned an invalid envelope")
+        return {str(row["external_id"]): row for row in rows}
+
     def contact_matches(self, email: str) -> list[dict[str, Any]]:
         table = MODELS["contact"].__tablename__
         result = self._operation(
@@ -308,6 +336,34 @@ class GoogleStore(GovernedGateway):
         if not isinstance(rows, list):
             raise RuntimeError("Google contact match returned an invalid envelope")
         return rows
+
+    def contact_matches_many(self, emails: list[str]) -> dict[str, list[dict[str, Any]]]:
+        if not emails:
+            return {}
+        table = MODELS["contact"].__tablename__
+        result = self._operation(
+            operation="select",
+            sql=(
+                "SELECT email, uid, version, first_name, last_name FROM ("
+                "SELECT lower(e->>'email') AS email, c.uid, c.version, c.first_name, c.last_name, "
+                "row_number() OVER (PARTITION BY lower(e->>'email') ORDER BY c.uid) AS rank "
+                f'FROM "{table}" c CROSS JOIN LATERAL jsonb_array_elements(c.emails) e '
+                "WHERE c.archived_at IS NULL AND lower(e->>'email') IN "
+                "(SELECT jsonb_array_elements_text(%(emails)s::jsonb))"
+                ") matches WHERE rank <= 4 ORDER BY email, uid"
+            ),
+            parameters={"emails": json.dumps(sorted(set(emails)))},
+            parameter_types={"emails": "jsonb"},
+            tables={"contact": "read"},
+            max_rows=4 * len(set(emails)),
+        )
+        rows = result.get("rows")
+        if not isinstance(rows, list):
+            raise RuntimeError("Google contact match returned an invalid envelope")
+        matches: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            matches.setdefault(str(row["email"]), []).append(row)
+        return matches
 
     def import_candidate(
         self,

@@ -25,6 +25,11 @@ correspondents**, and **Calendar meetings** destinations for connection,
 preview, and review. It can show connection state before Google operator
 credentials have been configured; starting consent then reports the missing
 configuration.
+Opening a destination reads the current connection so the page can show the
+connected account. A still-pending OAuth attempt may also poll its status.
+Google source data is read only after **Preview selected source** is pressed;
+Calendar lists are loaded by a separate button. Preview checks existing CRM
+links and matches in bounded batches and does not create records.
 
 ## Module documents
 

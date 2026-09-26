@@ -126,11 +126,19 @@ class GoogleImports:
             candidates = self._events(body, query.calendar_id)
         source_uid = _uid(connection["source_connection_uid"])
         output = []
+        entity_type = "interaction" if query.source == "calendar" else "contact"
+        existing_by_id = self.oauth.store.source_links(
+            source_uid, entity_type, [candidate["external_id"] for candidate in candidates]
+        )
+        matches_by_email = self.oauth.store.contact_matches_many([
+            candidate["email"] for candidate in candidates
+            if entity_type == "contact" and candidate.get("email")
+            and candidate["external_id"] not in existing_by_id
+        ])
         for candidate in candidates:
-            entity_type = "interaction" if query.source == "calendar" else "contact"
-            existing = self.oauth.store.source_link(source_uid, entity_type, candidate["external_id"])
+            existing = existing_by_id.get(candidate["external_id"])
             matches = (
-                self.oauth.store.contact_matches(candidate["email"])
+                matches_by_email.get(candidate["email"], [])
                 if entity_type == "contact" and candidate.get("email") and not existing else []
             )
             sealed = self.oauth.sealer.seal(

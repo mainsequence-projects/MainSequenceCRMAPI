@@ -246,6 +246,7 @@ defines the implementation tests and live release gates.
 | Workspace admin blocks access | Ask the admin to review the OAuth client ID under **API controls → Manage App Access**. |
 | `invalid_grant` after a prior connection | The grant or refresh token may have expired or been revoked; reconnect the account. |
 | Local **Connect** stays at “Preparing Google authorization” | Check the protected CRM bootstrap and Main Sequence `/api/v1/users/me/` first. OAuth start reads three platform Secrets and uses governed table operations; a slow Main Sequence backend delays the Google URL. The CRM waits for the API response before opening Google's consent page. |
+| **Preview selected source** appears to do nothing | The button shows a loading status while the API reads Google and checks CRM matches. Any error appears above the account card. Local mode needs a responsive Main Sequence signed-user lookup before a protected preview can start; a timeout returns HTTP `503` with the failed stage. |
 
 External apps in **Testing** issue refresh tokens that normally expire after
 seven days for these nonidentity scopes. Internal apps do not need Google's

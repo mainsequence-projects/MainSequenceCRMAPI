@@ -37,7 +37,7 @@ proxies `/api/` and `/extensions/` to the local loopback listener during
 frontend development. Core CRM routes use `/api/crm/v1/`; optional module API
 routes use `/extensions/<module>/`.
 The local launcher shares a verified SDK user lookup across requests for at
-most 30 seconds, then revalidates it. Concurrent requests share the lookup;
+most five minutes, then revalidates it. Concurrent requests share the lookup;
 failed lookups are never cached. A responsive `/healthz` only proves the API
 process is running. If protected routes stall, check the Main Sequence
 `/api/v1/users/me/` response and the SDK sign-in; Google authorization cannot
@@ -64,7 +64,7 @@ attempts platform Agent resolution or reports the assistant unavailable.
 has additional dependencies described in [service and settings API](../api/service.md).
 Bootstrap runs its synchronous platform readiness work in the API worker pool,
 so a slow catalog read does not block the event loop or `/healthz`. The local
-signed-user lookup has a 10-second response deadline; readiness and settings
+signed-user lookup has a 20-second response deadline; readiness and settings
 reads have 75-second deadlines. When one expires, the protected API returns
 HTTP `503` with the failed stage. The frontend shows the bootstrap path,
 HTTP status, and the failed readiness check. A process-only `/healthz` success

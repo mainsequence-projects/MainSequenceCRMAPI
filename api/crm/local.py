@@ -24,7 +24,8 @@ from src.crm.platform.local_runtime import build_local_services
 
 from .main import create_app as create_crm_app
 
-LOCAL_SIGN_IN_TIMEOUT_SECONDS = 10
+LOCAL_SIGN_IN_TIMEOUT_SECONDS = 20
+LOCAL_SIGN_IN_CACHE_SECONDS = 300
 
 
 def _is_loopback(request: Request) -> bool:
@@ -57,7 +58,7 @@ def create_app() -> FastAPI:
         )
         with signed_user_lock:
             signed_user_cache = signed_user
-            signed_user_expires_at = time.monotonic() + 30
+            signed_user_expires_at = time.monotonic() + LOCAL_SIGN_IN_CACHE_SECONDS
             return signed_user
 
     @application.on_event("shutdown")
@@ -100,7 +101,7 @@ def create_app() -> FastAPI:
         except TimeoutError:
             return JSONResponse(
                 {"error": {"code": "LOCAL_SIGN_IN_TIMEOUT", "message":
-                    "Main Sequence signed-in user lookup did not respond within 10 seconds. Check the local Main Sequence backend and SDK session."}},
+                    f"Main Sequence signed-in user lookup did not respond within {LOCAL_SIGN_IN_TIMEOUT_SECONDS} seconds. Check the local Main Sequence backend and SDK session."}},
                 status_code=503,
             )
         except Exception:

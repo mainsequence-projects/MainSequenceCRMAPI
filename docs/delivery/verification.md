@@ -103,8 +103,9 @@ The managed Agent release was deployed on 2026-09-26; provider, identity, and
 deployed-catalog behavior remain unverified through a live CRM conversation.
 
 The Google Workspace extension is implemented in source and enabled by
-`extensions.google_workspace.active: true` in `config/crm.yaml`. Its real Google consent flow and
-deployed frontend/API handoff are **not yet verified**. The CRM API workflow
+`extensions.google_workspace.active: true` in `config/crm.yaml`. Local Google
+Contacts consent and preview were verified as described below; the deployed
+frontend/API handoff remains **unverified**. The CRM API workflow
 declares exact FastAPI `public_ingress` for
 `GET /extensions/google/oauth/callback/` and
 `GET /extensions/google/oauth/done/`. The exact branch's Main Sequence
@@ -137,6 +138,19 @@ local UI evidence, not a real Google grant or deployed Command Center check.
 The Google Cloud app also needs the audience and scope review described in the
 [setup guide](../google_workspace_module/setup.md) before production use.
 Local tests of OAuth and source parsing are not evidence of those live gates.
+
+On 2026-09-26, a local Chrome session completed Google Contacts consent for the
+signed-in user and the CRM showed the connected account. A prior preview click
+returned HTTP `503` because the loopback API's SDK signed-user revalidation
+exceeded its 10-second deadline; the UI placed the error below the cards. The
+local launcher now revalidates at most every five minutes with a 20-second
+deadline. The preview button now displays loading progress and errors appear
+above the account card. Calendar and Company reads no longer start when the
+Calendar destination opens. Contact source links and matches are resolved in
+bounded batch reads. After restarting the full local stack, the live Google
+Contacts preview returned HTTP 200 and rendered four candidates, all defaulted
+to Skip. No import was committed. This is a verified local Google read, not a
+deployed release, Gmail, Calendar, or import verification.
 
 Earlier on 2026-09-26, the local stack was relaunched with
 `INCLUDE_SOLUTION_SELLING=true` and

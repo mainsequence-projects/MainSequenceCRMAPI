@@ -60,7 +60,7 @@ def test_local_signin_cache_expires_and_revalidates(monkeypatch):
     monkeypatch.setattr("api.crm.local.configured_registry", UnavailableRegistry)
     client = TestClient(create_app(), client=("127.0.0.1", 50000))
     assert client.get("/api/crm/v1/readiness/").status_code == 503
-    now[0] = 131.0
+    now[0] = 401.0
     assert client.get("/api/crm/v1/readiness/").status_code == 503
     assert calls == [True, True]
 
