@@ -255,7 +255,7 @@ The frontend makes one initialization request and routes local chat through
 Tau's A2A Message endpoint. A live local bootstrap selected Tau and reported
 both extensions active. A live A2A request reached inference, where this
 machine's provider TLS certificate validation failed; a chat reply remains
-unverified. The Agent Card is present. A managed Agent and
-runtime release have not been deployed, so the platform branch
-has not been verified live. Local chat does not grant CRM tool authorization;
+unverified. The Agent Card and automatic `harness_agent` workflow are declared.
+The platform branch has not been verified with a live managed Agent in this
+source change. Local chat does not grant CRM tool authorization;
 the caller, policy, and directory binding gap in ADR 0003 remains.
