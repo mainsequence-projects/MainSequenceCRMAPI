@@ -1,11 +1,11 @@
 # ADR 0003: A Tau agent uses the CRM's governed operations
 
-- **Status:** In progress; typed project tools registered, trusted caller binding and deployment pending
+- **Status:** In progress; managed Agent deployed, trusted caller binding and live tool verification pending
 - **Date:** 2026-09-24
 - **Scope:** Optional CRM agent runtime and its business tools
 - **Sources:** Sibling project's
   `engineering/crm-handoff/specs/09_tau_optional.md` and source lock;
-  `ms-tau-sdk` 1.2.8 at latest release commit
+  `ms-tau-sdk` 1.2.8 at pinned release commit
   `1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6`;
   upstream [ADR 0011](https://github.com/mainsequence-sdk/ms-tau-sdk/blob/1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6/docs/adrs/0011-independent-base-tool-and-main-sequence-mcp-exclusion.md)
 
@@ -233,7 +233,8 @@ implemented and tested locally. The project tools are registered but do not
 make an operational CRM agent: the installed Tau extension API exposes session
 details but no validated per-turn CRM actor and policy context to project
 tools. Each call therefore fails closed in the current entrypoint. Confirmation flow, missing
-CRM lifecycle operations, and managed deployment also need implementation and
-verification. The two A2A Task controls remain present even with both tool
+CRM lifecycle operations also need implementation and verification. A managed
+Agent release deployed on 2026-09-26, but its CRM tool context and a live
+conversation remain unverified. The two A2A Task controls remain present even with both tool
 exclusions. This decision avoids a second CRM backend and preserves the
 platform's identity and policy authority.

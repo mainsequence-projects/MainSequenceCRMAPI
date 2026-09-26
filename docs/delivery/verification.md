@@ -89,7 +89,7 @@ full local test suite, Ruff, and strict MkDocs build passed. These tests use
 fakes for the parity cases; they do not prove a live Tau tool, a new governed
 mutation path, or a deployed release.
 
-The optional Tau dependency was updated to the latest `ms-tau-sdk` 1.2.8
+The optional Tau dependency was updated to the pinned `ms-tau-sdk` 1.2.8
 release commit. The ASGI entrypoint reads process settings; local tests verify
 that setting both exclusion variables removes the optional SDK tool sources
 from its configuration, while unset exclusions retain the SDK defaults. SDK
@@ -99,17 +99,18 @@ disabled, or 66 when enabled. Local fake-store tests verify the tool and HTTP
 Contact commands reach the same shared service behavior, deny unauthorized
 calls, reject model-supplied actor arguments, and fail closed without a trusted
 runtime context. They do not establish a live principal or policy binding.
-No managed Agent has been deployed; provider, identity, and deployed-catalog
-behavior remain unverified.
+The managed Agent release was deployed on 2026-09-26; provider, identity, and
+deployed-catalog behavior remain unverified through a live CRM conversation.
 
-The Google Workspace extension is implemented in source behind
-`INCLUDE_GOOGLE_WORKSPACE_EXTENSION=true`. Its real Google consent flow and
+The Google Workspace extension is implemented in source and enabled by
+`extensions.google_workspace.active: true` in `config/crm.yaml`. Its real Google consent flow and
 deployed frontend/API handoff are **not yet verified**. The CRM API workflow
 declares exact FastAPI `public_ingress` for
 `GET /extensions/google/oauth/callback/` and
 `GET /extensions/google/oauth/done/`. The exact branch's Main Sequence
 `validate-workflow/` endpoint accepted the API 2.3.0 declaration with no
-errors or warnings. It has not yet been deployed or externally probed. Confirm the release's
+errors or warnings. The API release deployment failed during runtime activation,
+so its public ingress has not been externally probed. Confirm the release's
 `effective_public_ingress` and backend-issued `public_url` before registering
 the Google redirect URI; see the
 [setup procedure](../google_workspace_module/setup.md#configure-public-callback-routes-on-main-sequence).
@@ -154,8 +155,19 @@ A2A Messages through the Vite `/tau` proxy. A live local bootstrap returned
 HTTP 200 with readiness `ready`, both extensions active, and assistant runtime
 `local`. Tau accepted the A2A Message shape and reached model inference, but
 the model provider request failed with `CERTIFICATE_VERIFY_FAILED` on this
-machine. An end-to-end chat reply and a managed Agent deployment remain
-unverified. Repository tests and a frontend build verify the source behavior.
+machine. An end-to-end chat reply remains unverified. Repository tests and a
+frontend build verify the source behavior.
+
+On 2026-09-26, CodeRepository sync published API commit `5f639dc5` and
+frontend commit `a6506358`. The managed CRM assistant DeploymentRun succeeded
+and bound Agent `CRM assistant` to its active runtime release. The Static Site
+DeploymentRun also succeeded and published the protected frontend. The CRM
+FastAPI DeploymentRun passed workflow validation and image build, then failed
+at `deploy_runtime` with `runtime_deployment_failed`; it has no active revision.
+Local import and `/healthz` checks passed in a stripped environment. The
+platform exposed no more specific failure in that run or its available
+application logs. The deployed frontend/API contract, public Google callback,
+and managed assistant bootstrap remain unverified until the API is active.
 
 ## Keeping this site current
 
