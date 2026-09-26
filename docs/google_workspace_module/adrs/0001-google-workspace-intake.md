@@ -220,6 +220,11 @@ ambiguous address never triggers an automatic merge. Do not infer Company,
 owner, newsletter consent, or a completed Interaction from an email alone.
 Creating a contact uses the existing versioned, governed CRM command and
 platform actor. If the user edits a matched contact, use its expected version.
+For a new Contact, open a review form prefilled with the selected Google
+candidate's name and contact methods. Saving passes only the reviewed Contact
+fields with the sealed preview token; the backend validates them as a CRM
+Contact and writes the Contact and source provenance in one governed command.
+Opening the form or skipping a candidate never writes a CRM record.
 When the same address appears in Google Contacts and Gmail, show a possible
 match for review and retain both source references only if the user confirms
 they identify the same person.

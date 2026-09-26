@@ -12,12 +12,22 @@ from urllib.parse import quote
 import httpx
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from src.crm.models.common import Email, Phone
 from src.crm.models.contacts import ContactCreate
 from src.crm.models.interactions import InteractionCreate
 from src.crm.repositories.errors import ResourceConflict
 
 from .security import CALENDAR_PICKER_SCOPE, SCOPES, digest
 from .service import GoogleWorkspaceService, _scopes, _uid
+
+
+class ContactProposal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    first_name: str | None = Field(default=None, max_length=255)
+    last_name: str | None = Field(default=None, max_length=255)
+    title: str | None = Field(default=None, max_length=255)
+    emails: list[Email] = Field(default_factory=list, max_length=20)
+    phones: list[Phone] = Field(default_factory=list, max_length=20)
 
 
 class ImportDecision(BaseModel):
@@ -31,6 +41,7 @@ class ImportDecision(BaseModel):
     deal_uid: uuid.UUID | None = None
     subject: str | None = Field(default=None, min_length=1, max_length=255)
     status: Literal["planned", "completed", "cancelled"] | None = None
+    contact_fields: ContactProposal | None = None
 
 
 class PreviewQuery(BaseModel):
@@ -255,6 +266,8 @@ class GoogleImports:
         if decision.action == "skip":
             return {"status": "skipped"}
         entity_type = "interaction" if source == "calendar" else "contact"
+        if decision.contact_fields is not None and (entity_type != "contact" or decision.action != "create"):
+            raise ValueError("Contact fields are accepted only when creating a Contact")
         source_uid = _uid(connection["source_connection_uid"])
         external_id = candidate["external_id"]
         existing = self.oauth.store.source_link(source_uid, entity_type, external_id)
@@ -265,12 +278,13 @@ class GoogleImports:
         if entity_type == "contact":
             if decision.action == "update":
                 raise ValueError("Edit linked contacts in the CRM contact editor")
-            data = ContactCreate.model_validate({
+            proposed = decision.contact_fields.model_dump(mode="json") if decision.contact_fields is not None else {
                 "first_name": candidate.get("first_name"),
                 "last_name": candidate.get("last_name"),
                 "emails": [{"email": email, "type": "other"} for email in candidate.get("emails", [])],
                 "phones": [{"number": number, "type": "other"} for number in candidate.get("phones", [])],
-            }).model_dump(mode="json")
+            }
+            data = ContactCreate.model_validate(proposed).model_dump(mode="json")
         else:
             if decision.action == "create" and decision.company_uid is None:
                 raise ValueError("Choose a CRM Company for this meeting")

@@ -219,11 +219,13 @@ or this documentation. See the [Main Sequence Secret guidance](https://mainseque
 3. Grant the requested source scope. Google's callback opens a token-free
    completion page. Return to the original CRM window; it polls the one-time
    attempt through the authenticated API and finalizes the grant for the
-   same CRM user. Confirm that it shows
+   same CRM user. Return to the original tab or press **Check connection** to
+   read the attempt status; CRM does not repeatedly poll while idle. Confirm that it shows
    the connected account email and granted sources without exposing tokens.
 4. Preview one saved Google Contact, one Gmail correspondent in a selected
    query and date range if Gmail access is enabled, and one Calendar meeting.
-   Commit only the chosen items
+   Click a Contact candidate to review its prefilled create form, then press
+   **Create Contact** to save it. Commit only the chosen items
    and confirm their CRM records and source links.
 5. Disconnect and confirm that future Google reads require reconnection. The
    CRM records already imported remain governed by CRM retention and access.

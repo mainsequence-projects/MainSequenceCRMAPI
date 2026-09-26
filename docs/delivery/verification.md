@@ -152,6 +152,18 @@ Contacts preview returned HTTP 200 and rendered four candidates, all defaulted
 to Skip. No import was committed. This is a verified local Google read, not a
 deployed release, Gmail, Calendar, or import verification.
 
+The follow-up source-navigation fix shares the connection read across Google
+destinations for one signed-in CRM session and checks a pending OAuth attempt
+on tab return or explicit **Check connection**, rather than continuous
+background polling. The Contact candidate now opens a prefilled create modal;
+the reviewed fields are accepted only by the Contact-create import path.
+In the local Chrome session, switching from Contacts to Gmail and back caused
+no additional Google extension request after the first connection read.
+Clicking a Contact name opened a modal with its Google name and email, and
+Cancel produced no import request. The edited-field import contract passed a
+fake-store test. A live save through the modal and a deployed OAuth flow
+remain unverified.
+
 Earlier on 2026-09-26, the local stack was relaunched with
 `INCLUDE_SOLUTION_SELLING=true` and
 `INCLUDE_GOOGLE_WORKSPACE_EXTENSION=true`. Its protected bootstrap returned

@@ -17,7 +17,7 @@ from pydantic import SecretStr
 import src.crm.config as deployment_config
 from api.crm.main import create_app
 from src.crm.config import crm_config
-from src.crm.google_workspace.imports import GoogleImports
+from src.crm.google_workspace.imports import GoogleImports, ImportDecision
 from src.crm.google_workspace.security import SCOPES, GoogleConfig, Sealer, _configured_url, digest
 from src.crm.google_workspace.service import GoogleWorkspaceService
 from src.crm.google_workspace.store import GoogleStore
@@ -282,6 +282,51 @@ def test_google_preview_uses_bounded_batch_reads():
     assert json.loads(store.calls[0]["parameters"]["external_ids"]) == ["people:1", "people:2"]
     assert store.calls[1]["tables"] == {"contact": "read"}
     assert store.calls[1]["max_rows"] == 8
+
+
+def test_reviewed_contact_fields_are_used_in_governed_import():
+    actor, connection_uid, source_uid, target_uid = (uuid.uuid4() for _ in range(4))
+    captured = {}
+
+    class Store:
+        def connection(self, actor_uid):
+            assert actor_uid == actor
+            return {
+                "uid": connection_uid, "source_connection_uid": source_uid,
+                "status": "connected", "granted_scopes": [SCOPES["contacts"][0]],
+                "google_sub": "google-user",
+            }
+
+        def source_link(self, *_):
+            return None
+
+        def import_candidate(self, **kwargs):
+            captured.update(kwargs)
+            return target_uid
+
+    candidate = {
+        "external_id": "people:people/123", "source": "contacts",
+        "first_name": "Source", "last_name": "Name",
+        "email": "source@example.com", "emails": ["source@example.com"], "phones": [],
+    }
+    sealed = {
+        "expires_at": 4102444800, "source": "contacts", "google_sub": "google-user",
+        "candidate": candidate,
+    }
+    oauth = SimpleNamespace(store=Store(), sealer=SimpleNamespace(open=lambda *_args, **_kwargs: sealed))
+    decision = ImportDecision.model_validate({
+        "preview_token": "p" * 32, "action": "create",
+        "contact_fields": {
+            "first_name": "Reviewed", "last_name": "Person", "title": "Director",
+            "emails": [{"email": "reviewed@example.com", "type": "other"}],
+            "phones": [{"number": "+43 123", "type": "other"}],
+        },
+    })
+    result = GoogleImports(oauth).commit(actor, decision)
+    assert result["target_uid"] == str(target_uid)
+    assert captured["values"]["first_name"] == "Reviewed"
+    assert captured["values"]["emails"] == [{"email": "reviewed@example.com", "type": "other"}]
+    assert captured["values"]["owner_uid"] is None
 
 
 def test_import_is_one_governed_record_provenance_and_activity_write():
