@@ -64,7 +64,11 @@ def create_app() -> FastAPI:
             return JSONResponse(
                 {"detail": "Local CRM accepts loopback requests only."}, status_code=403
             )
-        if request.url.path == "/healthz":
+        if request.url.path in {
+            "/healthz",
+            "/extensions/google/oauth/callback/",
+            "/extensions/google/oauth/done/",
+        }:
             return await call_next(request)
         # A direct caller cannot claim a different identity. The only user in
         # this explicit local mode is the account signed into the SDK process.

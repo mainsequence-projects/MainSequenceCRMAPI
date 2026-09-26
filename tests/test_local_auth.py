@@ -70,8 +70,14 @@ def test_local_launcher_rejects_remote_and_invalid_signin(monkeypatch):
 
     monkeypatch.setattr("api.crm.local.User.get_authenticated_user_details", invalid)
     app = create_app()
+    app.state.crm_google_service = SimpleNamespace(
+        callback=lambda **_: "/extensions/google/oauth/done/?google_status=failed"
+    )
     assert TestClient(app, client=("198.51.100.1", 50000)).get("/healthz").status_code == 403
+    local_client = TestClient(app, client=("127.0.0.1", 50000))
+    assert local_client.get("/extensions/google/oauth/done/").status_code == 200
+    assert local_client.get("/extensions/google/oauth/callback/", follow_redirects=False).status_code == 303
     assert (
-        TestClient(app, client=("127.0.0.1", 50000)).get("/api/crm/v1/readiness/").status_code
+        local_client.get("/api/crm/v1/readiness/").status_code
         == 401
     )

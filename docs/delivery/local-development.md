@@ -42,6 +42,9 @@ failed lookups are never cached. A responsive `/healthz` only proves the API
 process is running. If protected routes stall, check the Main Sequence
 `/api/v1/users/me/` response and the SDK sign-in; Google authorization cannot
 start until that identity check succeeds.
+The exact Google callback and completion-page routes bypass this local user
+lookup, matching their public ingress behavior in the deployed API; OAuth
+state and the provider exchange still validate the callback.
 The backend mounts optional modules from the strict, persisted
 `config/crm.yaml` and reports those same values in bootstrap. Both
 `extensions.solution_selling.active` and `extensions.google_workspace.active`
