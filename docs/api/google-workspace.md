@@ -14,7 +14,7 @@ the [public callback setup](../google_workspace_module/setup.md#configure-public
 
 | Method | Path | Request and result |
 | --- | --- | --- |
-| `POST` | `/extensions/google/oauth/start/` | `{ "source": "contacts" \| "gmail" \| "calendar" }` returns an `authorization_url`, `attempt_uid`, and 600-second lifetime. The URL opens in a separate browser tab. |
+| `POST` | `/extensions/google/oauth/start/` | No request body. Starts one Google consent for Contacts, Gmail, Calendar events, and the calendar picker. Returns an `authorization_url`, `attempt_uid`, and 600-second lifetime. The URL opens in a separate browser tab. |
 | `GET` | `/extensions/google/oauth/callback/` | Google sends `code` and `state`, or `error` and `state`. The backend consumes state once, exchanges the code with PKCE, validates the ID token, and redirects to the fixed completion page. The handler has no CRM bearer dependency; deployed public ingress is not yet verified. |
 | `GET` | `/extensions/google/oauth/done/` | Token-free browser page telling the user to return to CRM; the status query contains no credential or completion handle. |
 | `GET` | `/extensions/google/oauth/attempts/{uid}/` | Only the actor who started this attempt can read `waiting`, `ready`, `completed`, `failed`, or `expired`. `ready` returns a short-lived `completion_handle` through the authenticated CRM transport. A denial or failed exchange returns `failed` promptly. |
@@ -31,6 +31,9 @@ these responses. A preview token is encrypted for the actor and connection and
 expires after 15 minutes. A repeated source item is recognized through its
 source identity; a new create or link then returns a conflict rather than a
 duplicate. Gmail preview reads selected message headers only.
+The connection summary lists only sources whose required scopes Google actually
+granted. A partial grant permits those sources and keeps the others unavailable;
+another explicit Connect action can request the missing permissions.
 The Contact form is prefilled from the candidate, but nothing is saved until
 the user presses **Create Contact**. A successful response gives the CRM
 record UID for an **Open in CRM** link.

@@ -31,7 +31,7 @@ class GoogleOAuthAttempt(PlatformManagedMetaTable, Base):
     state_hash: Mapped[str] = mapped_column(String(64), nullable=False, info=column_info("State hash", "SHA-256 of OAuth state."))
     actor_uid: Mapped[uuid.UUID] = mapped_column(Uuid(), nullable=False, info=column_info("Actor", "Initiating platform principal."))
     connection_uid: Mapped[uuid.UUID] = mapped_column(Uuid(), nullable=False, info=column_info("Connection", "Proposed or existing connection UID."))
-    source: Mapped[str] = mapped_column(String(20), nullable=False, info=column_info("Source", "Requested Google source."))
+    source: Mapped[str] = mapped_column(String(20), nullable=False, info=column_info("Source", "Google authorization scope bundle."))
     verifier_ciphertext: Mapped[str] = mapped_column(Text(), nullable=False, info=column_info("PKCE verifier", "Encrypted PKCE verifier."))
     nonce: Mapped[str] = mapped_column(String(128), nullable=False, info=column_info("OIDC nonce", "Expected ID-token nonce."))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, info=column_info("Expires", "Start deadline."))

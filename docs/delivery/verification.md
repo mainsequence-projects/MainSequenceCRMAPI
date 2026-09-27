@@ -138,6 +138,10 @@ local UI evidence, not a real Google grant or deployed Command Center check.
 The Google Cloud app also needs the audience and scope review described in the
 [setup guide](../google_workspace_module/setup.md) before production use.
 Local tests of OAuth and source parsing are not evidence of those live gates.
+The later unified consent change requests Contacts, Gmail, and Calendar read
+permissions in one authorization. Its local scope and partial-grant tests do
+not establish that a live Google account granted all three or that the
+updated API and frontend are active in a deployed release.
 
 On 2026-09-26, a local Chrome session completed Google Contacts consent for the
 signed-in user and the CRM showed the connected account. A prior preview click

@@ -25,6 +25,8 @@ SCOPES = {
     "calendar": ("https://www.googleapis.com/auth/calendar.events.readonly",),
 }
 CALENDAR_PICKER_SCOPE = "https://www.googleapis.com/auth/calendar.calendarlist.readonly"
+GOOGLE_REQUIRED_SCOPES = tuple(scope for group in SCOPES.values() for scope in group)
+GOOGLE_WORKSPACE_SCOPES = (*GOOGLE_REQUIRED_SCOPES, CALENDAR_PICKER_SCOPE)
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
@@ -101,14 +103,12 @@ class GoogleConfig:
             token_key=key,
         )
 
-    def authorization_url(self, source: str, state: str, verifier: str, nonce: str, *, prompt: bool) -> str:
-        if source not in SCOPES:
-            raise ValueError("Unsupported Google source")
+    def authorization_url(self, state: str, verifier: str, nonce: str, *, prompt: bool) -> str:
         query = {
             "response_type": "code",
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
-            "scope": " ".join(("openid", "email", *SCOPES[source], *((CALENDAR_PICKER_SCOPE,) if source == "calendar" else ()))),
+            "scope": " ".join(("openid", "email", *GOOGLE_WORKSPACE_SCOPES)),
             "state": state,
             "nonce": nonce,
             "code_challenge": _b64url(hashlib.sha256(verifier.encode("ascii")).digest()),

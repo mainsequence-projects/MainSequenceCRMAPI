@@ -10,6 +10,7 @@ import jwt
 from src.crm.repositories.errors import ResourceConflict, ResourceNotFound
 
 from .security import (
+    GOOGLE_REQUIRED_SCOPES,
     GOOGLE_REVOKE_URL,
     GOOGLE_TOKEN_URL,
     SCOPES,
@@ -69,10 +70,15 @@ class GoogleWorkspaceService:
         row = GoogleStore().connection(actor_uid)
         return cls.summary(row) if row else None
 
-    def start(self, actor_uid: uuid.UUID, source: str) -> dict:
-        if source not in SCOPES:
-            raise ValueError("Unsupported Google source")
+    def start(self, actor_uid: uuid.UUID) -> dict:
         existing = self.store.connection(actor_uid)
+        granted = set(_scopes(existing.get("granted_scopes"))) if existing else set()
+        require_consent = (
+            existing is None
+            or existing.get("status") != "connected"
+            or not existing.get("refresh_ciphertext")
+            or not set(GOOGLE_REQUIRED_SCOPES).issubset(granted)
+        )
         attempt_uid = uuid.uuid4()
         connection_uid = _uid(existing["uid"]) if existing else uuid.uuid4()
         state, verifier, nonce = random_handle(), random_handle(), random_handle()
@@ -84,14 +90,14 @@ class GoogleWorkspaceService:
             actor_uid=actor_uid,
             connection_uid=connection_uid,
             state_hash=digest(state),
-            source=source,
+            source="workspace",
             verifier_ciphertext=encrypted,
             nonce=nonce,
         )
         return {
             "authorization_url": self.config.authorization_url(
-                source, state, verifier, nonce,
-                prompt=existing is None or existing.get("status") != "connected" or not existing.get("refresh_ciphertext"),
+                state, verifier, nonce,
+                prompt=require_consent,
             ),
             "attempt_uid": str(attempt_uid),
             "expires_in_seconds": 600,

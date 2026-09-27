@@ -106,8 +106,10 @@ through `api/crm/local.py` is separate from deployed gateway admission.
 
 4. **Declare data access.** For an External app, open **Google Auth Platform →
    Data Access → Add or Remove Scopes** and add the scopes for the features you
-   intend to enable. The CRM asks for them incrementally when the user opens a
-   feature; configuring them in Google does not grant them to the CRM.
+   intend to enable. The CRM requests all four Google read scopes in one
+   **Connect Google Workspace** flow; configuring them in Google does not
+   grant them to the CRM. The user can decline individual permissions, and
+   the CRM will enable only the sources actually granted.
 
    | Feature | Scope |
    | --- | --- |

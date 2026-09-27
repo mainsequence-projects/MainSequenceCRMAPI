@@ -89,17 +89,27 @@ and PKCE verifier. The full [setup procedure](../setup.md#configure-public-callb
 includes workflow validation and unauthenticated probes. No public ingress
 declaration or deployed callback result has yet been verified for this CRM.
 
-The user grants each source when they open that import feature:
+One **Connect Google Workspace** action requests all read permissions together.
+The consent screen explains the three features before redirecting to Google.
+The same actor-owned connection is then used on every source page. This favors
+one authorization step for this CRM even though [Google generally recommends
+requesting scopes incrementally](https://developers.google.com/identity/protocols/oauth2/resources/best-practices).
+Gmail's restricted scope is consequently part
+of the initial request and may require app verification before broad use.
+
+The single request contains:
 
 | Source | Google API scope requested with `openid email` | Purpose |
 | --- | --- | --- |
 | Saved Google Contacts | `https://www.googleapis.com/auth/contacts.readonly` | Read selected address-book people through the People API. |
 | Gmail correspondents | `https://www.googleapis.com/auth/gmail.readonly` | Search selected messages and read the headers needed to propose contacts. |
 | Calendar meetings | `https://www.googleapis.com/auth/calendar.events.readonly` | Read events from a selected calendar. |
-| Calendar picker | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | List calendars; requested with Calendar authorization, while a manual calendar ID still works if this optional scope is declined. |
+| Calendar picker | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | List calendars; a manual calendar ID still works if this optional scope is declined. |
 
 Do not request write scopes. The backend checks the scopes actually granted
-after each consent; a declined scope leaves only that source unavailable.
+after consent; a declined scope leaves only that source unavailable. The UI
+shows available and missing features and offers another user-initiated
+**Complete Google permissions** action for a partial grant.
 Gmail read-only is a **restricted** scope even if the application fetches only
 headers. Before production, determine the consent-screen verification and
 security-assessment requirements for the chosen Internal or External Google
@@ -111,7 +121,7 @@ The following paths are mounted when the extension flag is enabled:
 
 | Step | Owner and behavior |
 | --- | --- |
-| `POST /extensions/google/oauth/start/` | Authenticated CRM request with `{ "source": "contacts" | "gmail" | "calendar" }`; require the current platform actor and `crm.transfer.import`. Return an `authorization_url`, opaque `attempt_uid`, and 600-second lifetime, never a Google token. |
+| `POST /extensions/google/oauth/start/` | Authenticated CRM request without a body; require the current platform actor and `crm.transfer.import`. Request all four read scopes together and return an `authorization_url`, opaque `attempt_uid`, and 600-second lifetime, never a Google token. |
 | Browser redirect | Open Google's consent page in a top-level browser navigation. Do not use an embedded webview. |
 | `GET /extensions/google/oauth/callback/` | Google redirects with `code` and `state` or an error. This endpoint consumes one pending attempt and exchanges the code server-side. It must not require a browser bearer token or create CRM contacts; configure exact public ingress for deployment. |
 | `GET /extensions/google/oauth/done/` | Fixed token-free completion page in the new tab; configure exact public ingress for deployment. |
@@ -125,19 +135,20 @@ The following paths are mounted when the extension flag is enabled:
 
 At `start`, generate a cryptographically random 256-bit `state`, PKCE verifier
 and `S256` challenge, and an OIDC `nonce`. Persist only a hash of `state`, the
-encrypted verifier, nonce, initiating platform actor UID, requested scopes,
-and expiry in a backend-only MetaTable attempt record shared by API replicas.
+encrypted verifier, nonce, initiating platform actor UID, `workspace` bundle
+marker, and expiry in a backend-only MetaTable attempt record shared by API replicas.
 The attempt expires after ten minutes and can be consumed once. After consent,
 use a fixed API completion page. No redirect target comes from the callback
 query.
 
 Redirect to `https://accounts.google.com/o/oauth2/v2/auth` with
 `response_type=code`, the configured `client_id`, the exact registered
-`redirect_uri`, `scope=openid email` plus the selected source scopes,
+`redirect_uri`, `scope=openid email` plus all four Google read scopes,
 `state`, `nonce`, `code_challenge`, `code_challenge_method=S256`,
 `access_type=offline`, and `include_granted_scopes=true`. Request
-`prompt=consent` for a first connection or when a replacement refresh token
-is needed; do not force it on every import.
+`prompt=consent` for a first connection, when a required source scope is
+missing, or when a replacement refresh token is needed; do not force it on
+every import.
 
 At the callback, reject missing, expired, or already consumed `state`. On
 `access_denied`, consume the attempt and return to the fixed completion page with a
@@ -161,7 +172,7 @@ access token, refresh token, ID token, or raw Google error appears in a URL.
 The pending result expires after five minutes. `complete` rechecks the
 platform actor and `crm.transfer.import`, then atomically activates the
 connection and consumes the handle. An actor mismatch or expired handle
-cannot activate it. A later incremental consent
+cannot activate it. A later consent to complete missing permissions
 may omit a refresh token; keep the existing encrypted token in that case, and
 fail connection setup if neither an existing nor a new refresh token exists.
 

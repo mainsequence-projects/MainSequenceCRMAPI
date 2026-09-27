@@ -25,6 +25,10 @@ correspondents**, and **Calendar meetings** destinations for connection,
 preview, and review. It can show connection state before Google operator
 credentials have been configured; starting consent then reports the missing
 configuration.
+One **Connect Google Workspace** action requests read permissions for all
+three destinations together. The connection summary shows which permissions
+Google granted; a declined source remains unavailable until the user chooses
+**Complete Google permissions**. No Google data is imported at consent time.
 Opening the module reads the current connection once per CRM session so the
 page can show the connected account. An unfinished OAuth attempt is checked
 when the user returns to the tab or presses **Check connection**; the page

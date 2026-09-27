@@ -18,7 +18,10 @@ import src.crm.config as deployment_config
 from api.crm.main import create_app
 from src.crm.config import crm_config
 from src.crm.google_workspace.imports import GoogleImports, ImportDecision
-from src.crm.google_workspace.security import SCOPES, GoogleConfig, Sealer, _configured_url, digest
+from src.crm.google_workspace.security import (
+    CALENDAR_PICKER_SCOPE, GOOGLE_REQUIRED_SCOPES, SCOPES, GoogleConfig, Sealer,
+    _configured_url, digest,
+)
 from src.crm.google_workspace.service import GoogleWorkspaceService
 from src.crm.google_workspace.store import GoogleStore
 from src.crm.repositories.errors import ResourceConflict, ResourceNotFound
@@ -40,6 +43,7 @@ def test_extension_routes_follow_persisted_configuration(config_file):
     config_file(google_workspace=True)
     paths = create_app().openapi()["paths"]
     assert "/extensions/google/oauth/start/" in paths
+    assert "requestBody" not in paths["/extensions/google/oauth/start/"]["post"]
     assert "/extensions/google/preview/" in paths
     assert "/extensions/google/imports/" in paths
     assert "/api/crm/v1/google/oauth/callback/" not in paths
@@ -51,12 +55,12 @@ def test_extension_routes_follow_persisted_configuration(config_file):
 
 def test_pkce_url_and_actor_bound_encryption():
     actor, other, attempt = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    url = urlsplit(config().authorization_url("contacts", "state", "verifier", "nonce", prompt=True))
+    url = urlsplit(config().authorization_url("state", "verifier", "nonce", prompt=True))
     query = parse_qs(url.query)
     assert query["code_challenge_method"] == ["S256"]
     assert query["access_type"] == ["offline"]
     assert query["prompt"] == ["consent"]
-    assert SCOPES["contacts"][0] in query["scope"][0]
+    assert set(query["scope"][0].split()) == {"openid", "email", *GOOGLE_REQUIRED_SCOPES, CALENDAR_PICKER_SCOPE}
     assert "test-secret" not in url.geturl()
     sealed = Sealer(config().token_key).seal("refresh-token", purpose="refresh", uid=attempt, actor_uid=actor)
     assert "refresh-token" not in sealed
@@ -156,6 +160,28 @@ class MemoryStore:
         return ciphertext
 
 
+def test_google_connection_requests_all_sources_once_and_retries_missing_permissions():
+    actor = uuid.uuid4()
+    store = MemoryStore()
+    service = GoogleWorkspaceService(store=store, config=config())
+
+    first = parse_qs(urlsplit(service.start(actor)["authorization_url"]).query)
+    assert store.attempt["source"] == "workspace"
+    assert first["prompt"] == ["consent"]
+    assert set(first["scope"][0].split()) == {"openid", "email", *GOOGLE_REQUIRED_SCOPES, CALENDAR_PICKER_SCOPE}
+
+    store.connection_row = {
+        "uid": uuid.uuid4(), "actor_uid": actor, "status": "connected",
+        "refresh_ciphertext": "sealed-refresh", "granted_scopes": list(GOOGLE_REQUIRED_SCOPES),
+    }
+    complete = parse_qs(urlsplit(service.start(actor)["authorization_url"]).query)
+    assert "prompt" not in complete
+
+    store.connection_row["granted_scopes"] = [SCOPES["contacts"][0]]
+    partial = parse_qs(urlsplit(service.start(actor)["authorization_url"]).query)
+    assert partial["prompt"] == ["consent"]
+
+
 def test_oauth_state_replay_completion_actor_and_no_url_secret(monkeypatch):
     store = MemoryStore()
     seen = []
@@ -177,7 +203,7 @@ def test_oauth_state_replay_completion_actor_and_no_url_secret(monkeypatch):
         lambda token, audience, nonce: {"sub": "stable-sub", "email": "owner@example.com", "nonce": nonce},
     )
     actor, other = uuid.uuid4(), uuid.uuid4()
-    started = service.start(actor, "contacts")
+    started = service.start(actor)
     state = parse_qs(urlsplit(started["authorization_url"]).query)["state"][0]
     assert store.attempt["state_hash"] == digest(state)
     assert state not in store.attempt["verifier_ciphertext"]
@@ -215,7 +241,7 @@ def test_denied_google_consent_finishes_attempt_without_exchanging_code():
     store = MemoryStore()
     service = GoogleWorkspaceService(store=store, config=config())
     actor = uuid.uuid4()
-    started = service.start(actor, "contacts")
+    started = service.start(actor)
     state = parse_qs(urlsplit(started["authorization_url"]).query)["state"][0]
     assert service.callback(code=None, state=state, error="access_denied").endswith("google_status=denied")
     assert service.attempt_status(actor, uuid.UUID(started["attempt_uid"])) == {"status": "failed"}

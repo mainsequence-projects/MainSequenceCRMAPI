@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import uuid
 from functools import lru_cache
-from typing import Literal
-
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,11 +14,6 @@ from src.crm.google_workspace.service import GoogleWorkspaceService
 from .service_adapter import context_for, invoke
 
 router = APIRouter(prefix="/extensions/google")
-
-
-class OAuthStart(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    source: Literal["contacts", "gmail", "calendar"]
 
 
 class OAuthComplete(BaseModel):
@@ -50,9 +43,9 @@ def _configured_service() -> GoogleWorkspaceService:
 
 
 @router.post("/oauth/start/")
-def oauth_start(request: Request, payload: OAuthStart):
+def oauth_start(request: Request):
     actor = _actor(request)
-    return invoke(lambda: _service(request).start(actor, payload.source))
+    return invoke(lambda: _service(request).start(actor))
 
 
 @router.get("/oauth/callback/", include_in_schema=True)
