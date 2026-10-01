@@ -13,9 +13,9 @@ Read repository AGENTS.md and `engineering/crm-handoff/START_HERE.md`. Read thes
 - `engineering/crm-handoff/specs/05_import_export.md`
 - `engineering/crm-handoff/specs/08_test_acceptance.md`
 
-Then use the installed SDK-owned skills; never edit them during application work:
+Then use the installed MetaTables client and SDK-owned skills; never edit them during application work:
 
-- `.agents/skills/mainsequence/data_publishing/meta_tables/SKILL.md`
+- `.agents/skills/metatables/metatables-meta-tables/SKILL.md`
 - `.agents/skills/mainsequence/application_surfaces/api_surfaces/SKILL.md`
 
 Pinned source IDs: A08, A09, A10, A12, A13, M02, M04. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.

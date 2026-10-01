@@ -2,7 +2,7 @@
 
 CRM source authority, specifications and test gates live at `engineering/crm-handoff/START_HERE.md` and `engineering/crm-handoff/sources.lock.json`. Preserve existing repository/platform instructions and scaffold markers.
 
-Use `.agents/skills/mainsequence_crm/` for CRM work, with the appropriate installed `.agents/skills/mainsequence/`, `.agents/skills/command-center/` or optional `.agents/skills/ms_tau_sdk/` guidance. Project skills must remain outside SDK-managed/pruned namespaces.
+Use `.agents/skills/mainsequence_crm/` for CRM work, with the appropriate installed `.agents/skills/mainsequence/`, `.agents/skills/metatables/`, `.agents/skills/command-center/` or optional `.agents/skills/ms_tau_sdk/` guidance. Project skills must remain outside SDK-managed/pruned namespaces.
 
 Target: Python FastAPI, Main Sequence MetaTables, Vite React/TypeScript and the Command Center SDK. Reuse platform-injected identity; do not rebuild login/users/roles or adopt Supabase/Django/Frappe/Node business backends. Atomic is the pinned behavioral reference, not the retained application architecture. Tau is not required for deterministic tracking or data transfers.
 
