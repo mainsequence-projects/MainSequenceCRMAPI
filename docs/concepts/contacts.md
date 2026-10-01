@@ -43,5 +43,8 @@ cannot retire another contact. Social profiles merge per platform: the
 survivor's link wins a conflict by default, missing platforms are filled from
 the loser, and an explicit `socials.<platform>` resolution can choose either
 side for one platform.
+Linked Interaction participants are moved to the survivor in the same governed
+merge; if both Contacts attended the same Interaction, the duplicate loser
+entry is removed.
 
 See the [contact API](../api/contacts-companies.md) for paths and request bodies.

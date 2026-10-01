@@ -89,6 +89,7 @@ RECORDS: dict[str, RecordSpec] = {
 }
 
 JSON_FIELDS = {
+    "participants",
     "key_players",
     "pain_chain",
     "matrix",
@@ -98,7 +99,7 @@ JSON_FIELDS = {
 }
 TIMESTAMP_FIELDS = {"scheduled_at", "occurred_at"}
 REFERENCE_FIELDS = {
-    "interactions": {"company_uid": "company", "contact_uid": "contact", "deal_uid": "deal"},
+    "interactions": {"company_uid": "company", "deal_uid": "deal"},
     "assessments": {
         "company_uid": "company", "deal_uid": "deal", "pain_contact_uid": "contact",
         "power_contact_uid": "contact", "sponsor_contact_uid": "contact",
@@ -134,6 +135,10 @@ class VersionedRecordStore(GovernedGateway):
         params: dict[str, Any] = {"limit": page_size, "offset": page_index * page_size}
         for name, value in filters.items():
             params[f"f_{name}"] = value
+            if resource == "interactions" and name == "contact_uid":
+                conditions.append("EXISTS (SELECT 1 FROM jsonb_array_elements(t.participants) p "
+                                  "WHERE p->>'contact_uid'=%(f_contact_uid)s)")
+                continue
             cast = "::uuid" if name.endswith("_uid") else ""
             conditions.append(f"t.{name}=%(f_{name})s{cast}")
         if search:
@@ -242,6 +247,19 @@ class VersionedRecordStore(GovernedGateway):
                 "WHERE c.uid IS NULL OR c.archived_at IS NOT NULL)"
             )
             refs["contact"] = "read"
+        if resource == "interactions" and data.get("participants"):
+            contact = MODELS["contact"].__tablename__
+            clauses.append(
+                "NOT EXISTS (SELECT 1 FROM jsonb_array_elements(%(participants)s::jsonb) p "
+                f'LEFT JOIN "{contact}" c ON c.uid=(p->>\'contact_uid\')::uuid '
+                "WHERE p->>'contact_uid' IS NOT NULL AND (c.uid IS NULL OR c.archived_at IS NOT NULL))"
+            )
+            refs["contact"] = "read"
+        if resource == "interactions" and data.get("deal_uid"):
+            deal = MODELS["deal"].__tablename__
+            clauses.append(f'EXISTS (SELECT 1 FROM "{deal}" d WHERE d.uid=%(deal_uid)s::uuid '
+                           "AND d.company_uid=%(company_uid)s::uuid AND d.archived_at IS NULL)")
+            refs["deal"] = "read"
         if resource == "leads" and data.get("next_task_uid"):
             task = MODELS["task"].__tablename__
             clauses.append(

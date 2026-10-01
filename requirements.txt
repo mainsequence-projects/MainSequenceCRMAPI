@@ -116,7 +116,7 @@ mdit-py-plugins==0.6.1
     # via textual
 mdurl==0.1.2
     # via markdown-it-py
-ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6
+ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@16fe00bd641e6a35b74c48e0157459d3d22f9987
     # via mainsequencecrmapi
 numpy==2.5.3
     # via

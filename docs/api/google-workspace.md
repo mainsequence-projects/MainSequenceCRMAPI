@@ -6,7 +6,7 @@ The module also needs the [Google Cloud and CRM setup](../google_workspace_modul
 and migration `0008`. All routes except the Google callback and its completion
 page use the existing platform-injected CRM identity and require
 `crm.transfer.import`. Creating a CRM record additionally requires
-`crm.create`; updating a linked meeting requires `crm.edit`.
+`crm.create`; updating a linked Interaction requires `crm.edit`.
 The callback and completion handlers have no CRM bearer dependency. Deployed
 OAuth additionally needs exact `GET` `public_ingress` pairs on the FastAPI
 release, an active revision with that policy, and external verification. See
@@ -22,8 +22,11 @@ the [public callback setup](../google_workspace_module/setup.md#configure-public
 | `GET` | `/extensions/google/connections/` | `{ "items": [...] }`, containing at most the actor's own connection: UID, display email, granted source names, status, and version. This read works while Google operator credentials are not yet configured, so the module can show its setup state. |
 | `POST` | `/extensions/google/connections/{uid}/disconnect/` | Removes local token access, then attempts Google revocation; returns `google_revoked`. Imported CRM records remain. |
 | `GET` | `/extensions/google/calendars/` | Lists up to 100 calendars when calendar-list permission was granted. |
-| `POST` | `/extensions/google/preview/` | Source selection and optional `page_token`; Gmail also needs `gmail_query`, `time_min`, and `time_max`; Calendar needs `calendar_id`, `time_min`, and `time_max`. Date ranges are limited to 90 days. Returns bounded candidates, matches/links, opaque preview tokens, and a next page token. Source links and Contact matches use up to two governed batch reads per page after the Google read. |
-| `POST` | `/extensions/google/imports/` | One reviewed decision: `preview_token`, `action` (`create`, `link`, `update`, `skip`), and selected CRM references. Contact creation may include `contact_fields` with reviewed `first_name`, `last_name`, `title`, `emails`, and `phones`; the API validates this through `ContactCreate` and accepts it only for Contact creation. Meeting creation requires `company_uid`; update requires linked `target_uid` and `expected_version`. Returns the imported target UID or `skipped`. |
+| `POST` | `/extensions/google/preview/` | Source selection and optional `page_token`; Gmail also needs `gmail_query`, `time_min`, and `time_max` with a range of at most 90 days; Calendar needs `calendar_id`, `time_min`, and `time_max` with a range of at most 365 days. Calendar events are requested from Google in ascending start-time order, including across pages. Returns bounded candidates, matches/links, opaque preview tokens, and a next page token. Source links and Contact matches use up to two governed batch reads per page after the Google read. |
+| `POST` | `/extensions/google/imports/` | One reviewed decision: `preview_token`, `action` (`create`, `link`, `update`, `skip`), and selected CRM references. Contact creation may include `contact_fields` with reviewed `first_name`, `last_name`, `title`, `emails`, and `phones`; the API validates this through `ContactCreate` and accepts it only for Contact creation. Calendar create/update requires a nonempty reviewed `participants` array; each person may have a CRM `contact_uid`, email, or name. `company_uid` is optional. Update requires the linked `target_uid`, unchanged Company context, and `expected_version`. Returns the imported target UID or `skipped`. |
+
+Calendar participant writes require schema revision `0009` on the active CRM
+provider. A process bound to the earlier `0008` schema cannot serve this import.
 
 The frontend sends Google preview and import requests through the normal
 delegated FastAPI transport. Google access and refresh tokens never appear in

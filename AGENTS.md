@@ -13,3 +13,18 @@ Current repository decision (2026-09-23): Alembic `0003` removes `command_receip
 Current repository decision (2026-09-23): Alembic `0004` removes the CRM application workspace table and every `workspace_uid` column. The CRM has singleton settings and direct record foreign keys; platform-injected identity/policy remain authoritative. Older handoff instructions for workspace-scoped keys, a workspace UID resolver, or a workspace mutation epoch are superseded. Do not reintroduce them.
 
 For every material change to a CRM model, business rule, mounted API behavior, persistence, transfer workflow, or delivery status, use `.agents/skills/mainsequence_crm/maintain-crm-documentation/SKILL.md` and update the relevant MkDocs concept and API/delivery pages in the same change. Run `mkdocs build --strict` and report its result; keep planned or unverified behavior labeled.
+
+## CodeRepository-Specific Instructions
+
+This file routes coding work in the repository. The separately deployed CRM
+assistant uses `.tau/SYSTEM.md` for its conversation role and `.tau/extensions/`
+for its CRM tools. Tau also loads this file as project context, but these coding
+instructions do not grant that runtime file editing, shell access, platform
+MCP access, or CRM permissions. In CRM chat, follow the runtime directives and
+describe only actions supported by the effective tool catalogue and verified
+tool results. The Agent Card supplies the display name, not executable
+capabilities.
+
+The managed CRM assistant intentionally excludes Tau's base coding tools and
+Main Sequence MCP. Treat that as its chosen runtime profile, not a capability
+defect. Customize its conversational behavior in `.tau/SYSTEM.md`.

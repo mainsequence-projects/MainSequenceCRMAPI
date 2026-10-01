@@ -108,7 +108,7 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 1.2.8 is locked to the latest release commit in `pyproject.toml` and
+`ms-tau-sdk` 1.2.12 is locked to its release tag in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
@@ -119,6 +119,15 @@ TAU_EXCLUDE_BASE_TOOLS=true TAU_EXCLUDE_MAINSEQUENCE_MCP=true \
   uv run uvicorn api.tau.main:app --host 127.0.0.1 --port 38642
 ```
 
+The local Tau process exposes `GET /api/local/v1/conversations` and
+`GET /api/local/v1/conversations/{contextId}/messages` for its own direct A2A
+Message history. Vite serves these under `/tau/api/local/v1/`. The SDK scopes
+the list to its authenticated process user and workspace; its canonical
+`contextId` resumes a conversation through `message:send`. The SDK does not
+reconstruct conversations that predate its new public transcript projection.
+These local records are separate from deployed platform AgentSessions and A2A
+Task history.
+
 The same variables apply to the `ms-tau` command. Both default to `false`,
 so the exclusion depends on how the agent process is launched.
 
@@ -127,7 +136,12 @@ The version-matched coding guidance is synchronized with
 Project-owned runtime behavior belongs under `.tau/`. The typed CRM
 tools and their authorization requirements are in
 [ADR 0003](../crm_core/adrs/0003-tau-crm-agent-tools.md). The
-`.tau/extensions/crm.py` project extension registers tools for the shared
+project `.tau/SYSTEM.md` replaces Tau's packaged general prompt so the chat
+speaks as a CRM application assistant. Restart Tau or start a new session after
+changing it, then inspect the effective session prompt. The Agent Card controls
+the display name; the process settings intentionally exclude general coding
+and Main Sequence MCP tools. Those settings are independent of the prompt.
+The `.tau/extensions/crm.py` project extension registers tools for the shared
 operations that currently exist. Mounted HTTP routes call those operations in
 `src/crm/services/operations.py` and `src/crm/services/transfers.py` for
 business validation, policy, and governed persistence. The installed Tau
@@ -135,15 +149,17 @@ extension API does not expose its validated caller to project tools, and this
 entrypoint does not supply CRM policy or directory ports. Valid CRM tool calls
 therefore return `unavailable`; they cannot use the process SDK credential as
 the human caller. This is a fail-closed catalogue, not an operational CRM
-agent. No agent deployment or live provider check is claimed here.
+agent. The managed Agent release succeeded on 2026-09-26. This prompt change
+still requires deployment and verification; the separate trusted caller
+binding work is not part of a prompt overlay.
 
 With both exclusions, the agent's business tools are those registered under
 `.tau/extensions/`. Tau also retains its required A2A Task controls. There
 are currently 46 CRM project tools with Solution Selling disabled, or 66 with
 it enabled. Managed deployments set the two values
 in `harness_agent.spec.env_vars`, regardless of whether they launch the CLI
-or the ASGI entrypoint. The entrypoint has not been deployed as a platform
-Agent.
+or the ASGI entrypoint. The entrypoint has been deployed as a platform Agent;
+its trusted CRM caller binding remains unimplemented.
 
 Running `ms-tau` locally needs the SDK's documented authenticated user token
 handoff, explicit provider/model, and `TAU_LOCAL_MODE=true`. Do not put those

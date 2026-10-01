@@ -10,7 +10,7 @@ the application does not define a workspace or tenant record.
 | [Company](companies.md) | May have contacts and deals | An organization record, not an account or login |
 | [Deal](deals-pipelines.md) | Belongs to a pipeline and stage; may link a company and contacts | A currency-specific opportunity |
 | [Task](tasks-notes.md) | Belongs to a contact | Follow-up work with explicit completion state |
-| [Interaction](interactions.md) | Belongs to one company; may reference a primary contact or deal | Preparation and outcome of one conversation |
+| [Interaction](interactions.md) | Records participants; may reference a company and deal | Preparation and outcome of one conversation |
 | [Note](tasks-notes.md) | Belongs to exactly one contact or deal | Time-stamped narrative with server-owned authorship |
 | [Tag](tags-activity.md) | May label contacts | Reusable classification with a semantic tone |
 | [Activity event](tags-activity.md) | Refers to an entity and command | Read-only audit history |
@@ -40,6 +40,9 @@ Mounted HTTP routes now use that source; Tau CRM calls return `unavailable`
 until the runtime supplies a trusted principal, policy, and directory. A CRM agent deployment can exclude Tau's coding
 tools and Main Sequence MCP through runtime settings, leaving project-declared
 business tools and the SDK's A2A Task controls.
+The runtime's [CRM conversation directives](../crm_core/adrs/0003-tau-crm-agent-tools.md#runtime-answer-and-prompt-boundary)
+are in `.tau/SYSTEM.md`. They define the assistant's CRM role and response
+style independently of the intentionally restricted tool profile.
 
 [ADR 0004](../crm_core/adrs/0004-single-bootstrap-and-assistant-runtime.md)
 defines one CRM initialization snapshot that reports active modules and the

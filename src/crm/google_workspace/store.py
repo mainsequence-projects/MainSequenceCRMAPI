@@ -417,25 +417,28 @@ class GoogleStore(GovernedGateway):
                 scopes = {"contact": "write"}
             else:
                 parameters.update({
-                    "company_uid": str(values["company_uid"]),
-                    "contact_uid": str(values["contact_uid"]) if values.get("contact_uid") else None,
+                    "company_uid": str(values["company_uid"]) if values.get("company_uid") else None,
+                    "participants": json.dumps(values["participants"]),
                     "deal_uid": str(values["deal_uid"]) if values.get("deal_uid") else None,
                     "subject": values["subject"], "status": values["status"],
                     "scheduled_at": values["scheduled_at"],
                 })
+                types["participants"] = "jsonb"
                 company = MODELS["company"].__tablename__
                 contact = MODELS["contact"].__tablename__
                 deal = MODELS["deal"].__tablename__
                 changed = (
                     f'INSERT INTO "{target}" (uid, created_at, updated_at, created_by_uid, '
-                    "updated_by_uid, version, archived_at, company_uid, contact_uid, deal_uid, "
+                    "updated_by_uid, version, archived_at, company_uid, participants, deal_uid, "
                     "subject, kind, status, scheduled_at, occurred_at) "
                     "SELECT %(uid)s::uuid, NOW(), NOW(), %(actor_uid)s::uuid, %(actor_uid)s::uuid, "
-                    "1, NULL, %(company_uid)s::uuid, %(contact_uid)s::uuid, %(deal_uid)s::uuid, "
+                    "1, NULL, %(company_uid)s::uuid, %(participants)s::jsonb, %(deal_uid)s::uuid, "
                     "%(subject)s, 'meeting', %(status)s, %(scheduled_at)s::timestamptz, NULL FROM gate "
-                    f'WHERE EXISTS (SELECT 1 FROM "{company}" c WHERE c.uid=%(company_uid)s::uuid AND c.archived_at IS NULL) '
-                    f'AND (%(contact_uid)s::uuid IS NULL OR EXISTS (SELECT 1 FROM "{contact}" c '
-                    "WHERE c.uid=%(contact_uid)s::uuid AND c.archived_at IS NULL)) "
+                    f'WHERE (%(company_uid)s::uuid IS NULL OR EXISTS (SELECT 1 FROM "{company}" c WHERE c.uid=%(company_uid)s::uuid AND c.archived_at IS NULL)) '
+                    "AND jsonb_array_length(%(participants)s::jsonb)>0 "
+                    "AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(%(participants)s::jsonb) p "
+                    f'LEFT JOIN "{contact}" c ON c.uid=(p->>\'contact_uid\')::uuid '
+                    "WHERE p->>'contact_uid' IS NOT NULL AND (c.uid IS NULL OR c.archived_at IS NOT NULL)) "
                     f'AND (%(deal_uid)s::uuid IS NULL OR EXISTS (SELECT 1 FROM "{deal}" d '
                     "WHERE d.uid=%(deal_uid)s::uuid AND d.company_uid=%(company_uid)s::uuid AND d.archived_at IS NULL)) "
                     "RETURNING uid, version"
@@ -455,16 +458,23 @@ class GoogleStore(GovernedGateway):
             if entity_type == "contact":
                 raise ValueError("Contact updates require the CRM contact editor")
             parameters.update({
-                "company_uid": str(values["company_uid"]),
+                "company_uid": str(values["company_uid"]) if values.get("company_uid") else None,
+                "participants": json.dumps(values["participants"]),
                 "subject": values["subject"], "status": values["status"],
                 "scheduled_at": values["scheduled_at"],
             })
+            types["participants"] = "jsonb"
+            contact = MODELS["contact"].__tablename__
             changed = (
-                f'UPDATE "{target}" t SET subject=%(subject)s, status=%(status)s, '
+                f'UPDATE "{target}" t SET subject=%(subject)s, status=%(status)s, participants=%(participants)s::jsonb, '
                 "scheduled_at=%(scheduled_at)s::timestamptz, updated_at=NOW(), "
                 "updated_by_uid=%(actor_uid)s::uuid, version=t.version+1 "
                 "WHERE t.uid=%(uid)s::uuid AND t.version=%(expected_version)s::bigint "
-                "AND t.company_uid=%(company_uid)s::uuid AND t.archived_at IS NULL "
+                "AND t.company_uid IS NOT DISTINCT FROM %(company_uid)s::uuid AND t.archived_at IS NULL "
+                "AND jsonb_array_length(%(participants)s::jsonb)>0 "
+                "AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(%(participants)s::jsonb) p "
+                f'LEFT JOIN "{contact}" c ON c.uid=(p->>\'contact_uid\')::uuid '
+                "WHERE p->>'contact_uid' IS NOT NULL AND (c.uid IS NULL OR c.archived_at IS NOT NULL)) "
                 "AND EXISTS (SELECT 1 FROM gate) "
                 f'AND EXISTS (SELECT 1 FROM "{identity}" s WHERE '
                 "s.source_connection_uid=%(source_connection_uid)s::uuid "
@@ -472,7 +482,7 @@ class GoogleStore(GovernedGateway):
                 "AND s.target_uid=t.uid) "
                 "RETURNING t.uid, t.version"
             )
-            scopes = {"interaction": "write"}
+            scopes = {"interaction": "write", "contact": "read"}
         if action == "update":
             identity_write = (
                 f'UPDATE "{identity}" s SET source_payload_hash=%(payload_hash)s, '

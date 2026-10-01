@@ -227,6 +227,7 @@ class ContactMerge(GovernedGateway):
         task = MODELS["task"].__tablename__
         source_identity = MODELS["source_identity"].__tablename__
         affiliation = MODELS["contact_company_affiliation"].__tablename__
+        interaction = MODELS["interaction"].__tablename__
         redirect = MODELS["entity_redirect"].__tablename__
         activity = MODELS["activity_event"].__tablename__
         proposed = preview["proposed_contact"]
@@ -303,6 +304,16 @@ class ContactMerge(GovernedGateway):
             f'tasks_changed AS (UPDATE "{task}" t SET contact_uid=s.uid, updated_at=NOW(), '
             "updated_by_uid=CAST(%(actor_uid)s AS uuid), version=t.version+1 FROM survivor s "
             "WHERE t.contact_uid=CAST(%(loser_uid)s AS uuid) RETURNING t.uid), "
+            f'interactions_changed AS (UPDATE "{interaction}" i SET participants=('
+            "SELECT COALESCE(jsonb_agg(CASE WHEN p->>'contact_uid'=%(loser_uid)s "
+            "THEN jsonb_set(p, '{contact_uid}', to_jsonb(s.uid::text)) ELSE p END ORDER BY ord) "
+            "FILTER (WHERE NOT (p->>'contact_uid'=%(loser_uid)s AND EXISTS ("
+            "SELECT 1 FROM jsonb_array_elements(i.participants) existing "
+            "WHERE existing->>'contact_uid'=s.uid::text))), '[]'::jsonb) "
+            "FROM jsonb_array_elements(i.participants) WITH ORDINALITY AS people(p, ord)), "
+            "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=i.version+1 "
+            "FROM survivor s WHERE i.participants @> jsonb_build_array(jsonb_build_object("
+            "'contact_uid', %(loser_uid)s)) RETURNING i.uid), "
             f'sources_changed AS (UPDATE "{source_identity}" si SET target_uid=s.uid, '
             "updated_at=NOW() FROM survivor s WHERE si.entity_type='contact' "
             "AND si.target_uid=CAST(%(loser_uid)s AS uuid) RETURNING si.uid), "
@@ -320,7 +331,8 @@ class ContactMerge(GovernedGateway):
             "CROSS JOIN (SELECT count(*) FROM affiliations_demoted) demoted "
             "WHERE a.contact_uid=CAST(%(loser_uid)s AS uuid) RETURNING a.uid), "
             f'retired AS (DELETE FROM "{contact}" l USING survivor s, '
-            "(SELECT count(*) FROM affiliations_moved) moved "
+            "(SELECT count(*) FROM affiliations_moved) moved, "
+            "(SELECT count(*) FROM interactions_changed) people_moved "
             "WHERE l.uid=CAST(%(loser_uid)s AS uuid) "
             "AND l.version=CAST(%(loser_expected_version)s AS bigint) RETURNING l.uid), "
             f'redirected AS (INSERT INTO "{redirect}" '
@@ -347,6 +359,7 @@ class ContactMerge(GovernedGateway):
                 "deal_contact": "write",
                 "note": "write",
                 "task": "write",
+                "interaction": "write",
                 "source_identity": "write",
                 "contact_company_affiliation": "write",
                 "entity_redirect": "write",

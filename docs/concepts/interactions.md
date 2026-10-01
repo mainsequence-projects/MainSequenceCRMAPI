@@ -1,16 +1,18 @@
 # Interactions
 
 An Interaction records one planned or completed call, meeting, workshop, or
-email exchange. It belongs to a Company, may identify one primary Contact,
-and may refer to a Deal. It can exist before a Deal. If a Deal is selected,
-its Company must match the Interaction's Company; migration `0006` enforces
-this with a composite foreign key.
+email exchange **between people**. It has one or more participants; each may
+link to a CRM Contact or be identified by an email or name. An imported
+Calendar attendee does not automatically become a Contact.
 
-`objective`, `research_notes`, and `discussion_plan` capture preparation.
-`outcome_notes` and `next_steps` capture what happened and what was agreed.
-`scheduled_at` and `occurred_at` distinguish a plan from the actual event.
-The record is core CRM, even when Solution Selling is disabled.
+Company is optional context. A Deal is optional, but requires its Company
+when selected. Neither Company nor Contact affiliation is inferred from the
+participants. `objective`, `research_notes`, and `discussion_plan` capture
+preparation; `outcome_notes` and `next_steps` capture what happened and what
+was agreed. `scheduled_at` does not imply completion.
 
-A [Solution Selling diagnosis](../solution_selling_module/adrs/0002-diagnosis-matrix.md)
-may later reference an Interaction. Its methodology-specific questions do not
-appear on the Interaction itself. See the [Interactions API](../api/interactions.md).
+Migration `0009` moves the previous single `contact_uid` into the participant
+list and makes `company_uid` nullable. The record remains core CRM when
+Solution Selling is disabled. A [Solution Selling diagnosis](../solution_selling_module/adrs/0002-diagnosis-matrix.md)
+may reference an Interaction. See the [ADR](../crm_core/adrs/0001-interaction.md)
+and [Interactions API](../api/interactions.md).

@@ -17,7 +17,7 @@ from pydantic import SecretStr
 import src.crm.config as deployment_config
 from api.crm.main import create_app
 from src.crm.config import crm_config
-from src.crm.google_workspace.imports import GoogleImports, ImportDecision
+from src.crm.google_workspace.imports import GoogleImports, ImportDecision, PreviewQuery
 from src.crm.google_workspace.security import (
     CALENDAR_PICKER_SCOPE, GOOGLE_REQUIRED_SCOPES, SCOPES, GoogleConfig, Sealer,
     _configured_url, digest,
@@ -308,6 +308,43 @@ def test_google_preview_uses_bounded_batch_reads():
     assert json.loads(store.calls[0]["parameters"]["external_ids"]) == ["people:1", "people:2"]
     assert store.calls[1]["tables"] == {"contact": "read"}
     assert store.calls[1]["max_rows"] == 8
+
+
+def test_calendar_preview_requests_nearest_events_first_across_pages():
+    seen = []
+
+    def transport(request):
+        seen.append(request)
+        return httpx.Response(200, json={"items": [{
+            "id": "event-1", "summary": "Upcoming review",
+            "start": {"dateTime": "2026-10-01T09:00:00+02:00"},
+        }], "nextPageToken": "next-page"})
+
+    class PreviewStore:
+        def source_links(self, *_):
+            return {}
+
+        def contact_matches_many(self, *_):
+            return {}
+
+    service = GoogleWorkspaceService(store=PreviewStore(), config=config(), http=httpx.Client(transport=httpx.MockTransport(transport)))
+    service.access_token = lambda actor, source: ("access", {
+        "uid": uuid.uuid4(), "source_connection_uid": uuid.uuid4(), "google_sub": "google-user",
+    })
+    result = GoogleImports(service).preview(uuid.uuid4(), PreviewQuery(
+        source="calendar", calendar_id="primary", page_token="page-1",
+        time_min="2026-09-27T00:00:00+00:00", time_max="2027-09-27T00:00:00+00:00",
+    ))
+    assert result["items"][0]["candidate"]["subject"] == "Upcoming review"
+    assert result["next_page_token"] == "next-page"
+    assert seen[0].url.params["singleEvents"] == "true"
+    assert seen[0].url.params["orderBy"] == "startTime"
+    assert seen[0].url.params["pageToken"] == "page-1"
+    with pytest.raises(ValueError, match="at most 365 days"):
+        GoogleImports(service).preview(uuid.uuid4(), PreviewQuery(
+            source="calendar", calendar_id="primary",
+            time_min="2026-09-27T00:00:00+00:00", time_max="2027-09-28T00:00:00+00:00",
+        ))
 
 
 def test_reviewed_contact_fields_are_used_in_governed_import():

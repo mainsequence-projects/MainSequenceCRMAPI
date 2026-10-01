@@ -17,6 +17,13 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+Revision `0009` changes Interactions to a participant list and optional Company.
+It is authored in source but has not been applied or finalized on the local
+provider in this change. Before using the new Calendar import against a live
+API, apply the provider-scoped migration outside API startup, verify fresh-process
+catalog binding, and exercise governed create/update plus rollback on a
+disposable provider. A running API still on `0008` does not serve this contract.
+
 | Gate | Evidence needed |
 | --- | --- |
 | Local unit and route checks | Passing test output for the changed code |
@@ -132,7 +139,7 @@ production deployment. With the ignored local API `.env` flag set to `true`,
 a loopback FastAPI process returned ready status, bootstrap
 `modules.google_workspace=true`, the signed-in user's import capability, and
 an empty Google connection list. A local Chrome session displayed the
-**Google Contacts**, **Gmail correspondents**, and **Calendar meetings**
+**Google Contacts**, **Gmail correspondents**, and **Calendar events**
 destinations and the setup guidance when the OAuth client was absent. This is
 local UI evidence, not a real Google grant or deployed Command Center check.
 The Google Cloud app also needs the audience and scope review described in the
@@ -215,6 +222,24 @@ relative imports. The entrypoint now uses package-absolute route imports and
 loads both by module name and by file path. The platform's loader behavior
 is not exposed in the public error, so this check identifies a possible
 startup cause rather than proving the prior failure's root cause.
+
+On 2026-09-27, the optional Tau dependency was updated to `ms-tau-sdk`
+1.2.11 and its version-matched skills were synchronized. `uv sync --locked`
+installed the tagged release, `api.tau.main:app` exposed both new local
+conversation-history routes in its OpenAPI schema, all 125 repository tests
+passed, and `mkdocs build --strict` passed. A separate frontend browser fixture
+exercised conversation listing, reload hydration, selection, and continuation
+through the local API shape. This does not establish that a live Tau process
+has persisted a new conversation; no local Tau process was listening during
+that browser check.
+
+Later on 2026-09-27, the running local stack at `127.0.0.1:38644` exposed a
+ready CRM bootstrap and Tau runtime. A live browser send initially failed with
+HTTP 400 because the frontend still sent the old `ROLE_REQUESTER` Message role;
+Tau 1.2.11 requires `ROLE_USER`. After updating the frontend wire format, the
+same browser received a real Tau reply, and reloading the session URL restored
+both public messages from Tau's history API. This verifies local Message
+send and persisted history through the Vite proxy, not a deployed Agent run.
 
 ## Keeping this site current
 

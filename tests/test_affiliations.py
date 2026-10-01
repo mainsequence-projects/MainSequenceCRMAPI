@@ -270,6 +270,9 @@ def test_merge_moves_all_loser_affiliations_before_retiring_contact(monkeypatch)
     assert "affiliations_demoted AS (UPDATE" in sql
     assert "affiliations_moved AS (UPDATE" in sql
     assert "(SELECT count(*) FROM affiliations_moved) moved" in sql
+    assert "interactions_changed AS (UPDATE" in sql
+    assert "(SELECT count(*) FROM interactions_changed) people_moved" in sql
+    assert calls[0]["tables"]["interaction"] == "write"
     assert calls[0]["tables"]["contact_company_affiliation"] == "write"
 
 

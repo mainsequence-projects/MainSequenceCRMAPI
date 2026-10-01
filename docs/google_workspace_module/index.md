@@ -2,7 +2,7 @@
 
 **Status: implemented in source, deployment unverified.** The Google routes
 mount only when `extensions.google_workspace.active: true` in
-`config/crm.yaml`. Migration `0008`,
+`config/crm.yaml`. Migrations `0008` and `0009`,
 Google Cloud setup, and CRM Secrets/configuration are required before a user
 can connect an account. Creating credentials in Google Cloud alone is not
 sufficient. The deployed FastAPI release must also activate exact public
@@ -15,13 +15,13 @@ imports:
 | --- | --- |
 | Saved Google Contacts through the People API | Create or match [Contacts](../concepts/contacts.md) after review. |
 | Gmail message correspondents | Suggest Contacts from selected message headers; never create them automatically. |
-| Google Calendar meetings | Create core [Interactions](../concepts/interactions.md) after the user selects a Company; update meetings already linked to the same event after review. |
+| Google Calendar events | Review organizers and attendees, then create core [Interactions](../concepts/interactions.md) with optional Company context; update linked Interactions after review. |
 
 The CRM continues to use Main Sequence's injected identity and policy. Google
 OAuth grants access to the consenting user's Google data; it is not a second
 CRM login. The backend receives Google credentials and calls Google APIs. The
 Command Center frontend has separate **Google Contacts**, **Gmail
-correspondents**, and **Calendar meetings** destinations for connection,
+correspondents**, and **Calendar events** destinations for connection,
 preview, and review. It can show connection state before Google operator
 credentials have been configured; starting consent then reports the missing
 configuration.
@@ -38,6 +38,12 @@ loaded by a separate button. Preview checks existing CRM links and matches in
 bounded batches and does not create records. Clicking a Contact candidate
 opens a create modal prefilled with the Google details. Saving the reviewed
 form creates the CRM Contact and its Google source link together.
+Calendar previews request ascending start-time order from Google, so the
+nearest event appears first across pages. An event's review opens the shared
+CRM dialog. Each participant can remain email-only or link to a Contact through
+the standard searchable picker, which can create a missing Contact. Company is
+optional context and has the same quick-create option. The Interaction is
+imported only when its review is saved.
 
 ## Module documents
 

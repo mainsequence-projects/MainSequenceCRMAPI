@@ -2,7 +2,7 @@
 
 - **Status:** Accepted; source implementation is gated and deployed public ingress/OAuth remain unverified
 - **Date:** 2026-09-24
-- **Scope:** Gmail and Google Contacts contact intake; Google Calendar meeting import
+- **Scope:** Gmail and Google Contacts contact intake; Google Calendar Interaction import
 - **Depends on:** [Core Interaction](../../crm_core/adrs/0001-interaction.md) and the existing
   [Contact](../../concepts/contacts.md) and [transfer](../../concepts/transfers.md)
   boundaries
@@ -15,8 +15,8 @@ found in Gmail, and import meetings from Google Calendar. Saved address-book
 contacts live in Google Contacts (People API); Gmail messages can reveal
 additional correspondents. The existing CRM Contact record can hold a person's
 name, email addresses, phone numbers, and company affiliation. The core
-Interaction record can hold a meeting, but requires a Company and has only one
-optional primary Contact. Existing source connections identify file import
+Interaction record can hold a Calendar event and its participants, with an
+optional Company context. Existing source connections identify file import
 sources; they do not hold OAuth credentials or provide a live Google connector.
 
 Google contacts, email, and calendar data belong to a particular Google
@@ -103,7 +103,7 @@ The single request contains:
 | --- | --- | --- |
 | Saved Google Contacts | `https://www.googleapis.com/auth/contacts.readonly` | Read selected address-book people through the People API. |
 | Gmail correspondents | `https://www.googleapis.com/auth/gmail.readonly` | Search selected messages and read the headers needed to propose contacts. |
-| Calendar meetings | `https://www.googleapis.com/auth/calendar.events.readonly` | Read events from a selected calendar. |
+| Calendar events | `https://www.googleapis.com/auth/calendar.events.readonly` | Read events from a selected calendar. |
 | Calendar picker | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` | List calendars; a manual calendar ID still works if this optional scope is declined. |
 
 Do not request write scopes. The backend checks the scopes actually granted
@@ -250,14 +250,18 @@ calendar ID and event/recurrence-instance identity, to recognize a prior
 import. A recurring occurrence must not collapse into its series or a
 different occurrence.
 
-For each selected event, the user must choose a CRM Company, because
-`Interaction.company_uid` is required. Contact and Deal are optional and must
-obey the Interaction's existing relationship checks. Create `kind="meeting"`;
+For each selected event, the user reviews the organizer and attendees as
+Interaction participants. Each may remain email-only or link to a CRM Contact;
+the user can create a missing Contact in the review dialog. Company is optional
+context. A selected Deal requires its matching Company. Create `kind="meeting"`;
+The bounded preview includes up to 99 attendee emails plus the organizer and
+flags when Google reports additional attendees; the user can add missing people
+in the review dialog before saving.
 map the event start to `scheduled_at`. Do not fill `occurred_at` or mark an
 event completed just because its scheduled time has passed. Let the user
 confirm `planned`, `completed`, or `cancelled`, and edit the subject before
-commit. Do not store the full attendee list in `contact_uid`; it identifies
-only one primary Contact. Calendar changes or deletions after import do not
+commit. The reviewed participant list, including names or email-only people,
+is stored on the Interaction. Calendar changes or deletions after import do not
 silently overwrite or archive a CRM Interaction. A repeat import shows the
 existing link and offers a reviewed, version-fenced update.
 
@@ -265,7 +269,7 @@ existing link and offers a reviewed, version-fenced update.
 
 The Google adapter is distinct from the existing file adapters and must not
 pretend to be supported by `ImportAdapterId` or the current upload routes.
-Provide a bounded preview with counts, conflicts, missing Company choices,
+Provide a bounded preview with counts, conflicts, missing person identities,
 and per-item decisions. Commit through the existing domain services and
 governed MetaTable operations, with the current actor, capability checks,
 entity version fences, and source identities. The source identity key is
@@ -278,18 +282,19 @@ which require review. Expired/revoked Google authorization must stop the read
 and ask the user to reconnect without pretending that the import succeeded.
 
 Minimize retained Google data: keep source IDs, hashes, chosen CRM fields,
-and small diagnostic metadata needed for reconciliation. Do not retain raw
-mail bodies, attachments, or complete attendee lists. Avoid logging private
+and small diagnostic metadata needed for reconciliation. Reviewed participants
+are CRM Interaction data; do not retain a second raw Google attendee list,
+mail bodies, or attachments. Avoid logging private
 message, contact, or event details. The preview expires; selected CRM records
 persist under CRM policy. The user must be told which imported data will
 become visible to other authorized CRM users.
 
 ## Consequences
 
-- Contact and meeting imports use existing domain records and a separate
+- Contact and Interaction imports use existing domain records and a separate
   backend-only credential store. The OAuth, preview, and commit routes mount
   only when `extensions.google_workspace.active: true` in `config/crm.yaml`. Provider migration
-  `0008` and live Google/deployed verification remain required.
+  revisions `0008` and `0009` and live Google/deployed verification remain required.
 - Gmail's restricted read scope may require significant verification work
   before a production rollout. A pilot cannot be described as production
   ready until Google consent and data-handling requirements are met.
@@ -313,7 +318,7 @@ protection, exact redirect matching, ID-token account binding, callback without
 a platform bearer token, completion by the same actor only, missing refresh
 tokens, partial scope grants, cross-principal isolation, revocation and
 `invalid_grant`, duplicate and ambiguous contacts, recurring and
-cancelled events, missing Company, source re-import, stale CRM versions,
+cancelled events, missing participant identity, source re-import, stale CRM versions,
 partial failure and restart, and governed atomic rollback. Verify a fresh
 process resolves any new MetaTable catalog bindings. Update mounted API and
 delivery documentation with only behavior actually shipped, then run the

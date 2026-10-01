@@ -116,7 +116,7 @@ through `api/crm/local.py` is separate from deployed gateway admission.
    | Identify the connected Google account | `openid` and `email` |
    | Import saved Google Contacts | `https://www.googleapis.com/auth/contacts.readonly` |
    | Suggest Contacts from Gmail headers | `https://www.googleapis.com/auth/gmail.readonly` |
-   | Import Calendar meetings | `https://www.googleapis.com/auth/calendar.events.readonly` |
+   | Import Calendar events as CRM Interactions | `https://www.googleapis.com/auth/calendar.events.readonly` |
    | Let users choose among their calendars | `https://www.googleapis.com/auth/calendar.calendarlist.readonly` |
 
    Internal apps might not show scopes on the consent screen, but the backend

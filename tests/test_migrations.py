@@ -48,3 +48,27 @@ def test_receipt_removal_revision_drops_only_obsolete_table(monkeypatch):
         ),
         ("table", ("mainsequence_crm__command_receipt",), {}),
     ]
+
+
+def test_interaction_participant_migration_backfills_before_removing_primary_contact(monkeypatch):
+    revision = importlib.import_module(
+        "src.crm.migrations.versions.mainsequence_crm.0009_interaction_participants"
+    )
+    operations = []
+    monkeypatch.setattr(revision, "op", SimpleNamespace(
+        add_column=lambda *a, **k: operations.append(("add_column", a, k)),
+        execute=lambda statement: operations.append(("execute", statement.text)),
+        create_check_constraint=lambda *a, **k: operations.append(("check", a, k)),
+        drop_index=lambda *a, **k: operations.append(("drop_index", a, k)),
+        drop_constraint=lambda *a, **k: operations.append(("drop_constraint", a, k)),
+        drop_column=lambda *a, **k: operations.append(("drop_column", a, k)),
+        alter_column=lambda *a, **k: operations.append(("alter_column", a, k)),
+    ))
+    revision.upgrade()
+    assert [step[0] for step in operations] == [
+        "add_column", "execute", "check", "check", "drop_index",
+        "drop_constraint", "drop_column", "alter_column",
+    ]
+    assert "jsonb_build_array" in operations[1][1]
+    assert "contact_uid" in operations[1][1]
+    assert operations[-1][2]["nullable"] is True

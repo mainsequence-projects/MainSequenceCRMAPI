@@ -39,6 +39,22 @@ Install Tau's version-matched coding guidance in `.agents/skills/ms_tau_sdk/`.
 Runtime instructions under `.tau/` and coding guidance under `.agents/` have
 different purposes.
 
+### Runtime answer and prompt boundary
+
+The deployed Agent Card names the assistant but does not supply its conversation
+instructions. Tau loads this repository's `.tau/SYSTEM.md` as its runtime
+system prompt, replacing the SDK's general default. That prompt defines the
+in-app CRM role, response style, supported business workflows, and how to
+ground record claims in tool results. The assistant does not advertise coding
+work in CRM chat. The deliberate exclusion of Tau's base coding and Main
+Sequence MCP tools is a separate process configuration choice, unchanged by
+this prompt. A prompt change requires a new runtime session or reload and
+deployment of the updated repository artifact.
+Tau also appends the repository `AGENTS.md` as project context. Its
+`CodeRepository-Specific Instructions` section distinguishes coding guidance
+from the runtime assistant role so those implementation instructions do not
+become an implied chat capability.
+
 ### Project tools and runtime configuration
 
 Keep `api.tau.main:app` as a standard `create_app()` entrypoint. The deployer

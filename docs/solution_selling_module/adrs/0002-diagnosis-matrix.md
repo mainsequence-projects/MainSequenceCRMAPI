@@ -128,7 +128,7 @@ refer to the same Company. If the Interaction also references a Deal, it must
 be the assessment's Deal. A diagnosis can be recorded before either Deal or
 assessment exists; the optional link can be added later without moving the
 original conversation. `contact_uid` is explicit and is not inferred from
-Interaction's optional primary contact or from a company affiliation.
+Interaction's participant list or from a company affiliation.
 
 ## Consequences and limits
 

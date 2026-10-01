@@ -5,7 +5,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKeyConstraint, Index, String, Text, Uuid
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKeyConstraint,
+    Index,
+    String,
+    Text,
+    Uuid,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from mainsequence.meta_tables import PlatformManagedMetaTable, schema_table_name
@@ -27,9 +37,6 @@ class Interaction(VersionedRecord, PlatformManagedMetaTable, Base):
             ["company_uid"], ["mainsequence_crm__company.uid"], ondelete="RESTRICT"
         ),
         ForeignKeyConstraint(
-            ["contact_uid"], ["mainsequence_crm__contact.uid"], ondelete="RESTRICT"
-        ),
-        ForeignKeyConstraint(
             ["deal_uid", "company_uid"],
             ["mainsequence_crm__deal.uid", "mainsequence_crm__deal.company_uid"],
             ondelete="RESTRICT",
@@ -38,16 +45,18 @@ class Interaction(VersionedRecord, PlatformManagedMetaTable, Base):
         CheckConstraint("length(trim(subject)) > 0"),
         CheckConstraint("kind IN ('call','meeting','workshop','email')"),
         CheckConstraint("status IN ('planned','completed','cancelled')"),
+        CheckConstraint("jsonb_typeof(participants) = 'array'"),
+        CheckConstraint("deal_uid IS NULL OR company_uid IS NOT NULL"),
         Index("ix_mainsequence_crm__interaction_company", "company_uid", "scheduled_at"),
         Index("ix_mainsequence_crm__interaction_deal", "deal_uid"),
-        Index("ix_mainsequence_crm__interaction_contact", "contact_uid"),
     )
 
-    company_uid: Mapped[uuid.UUID] = mapped_column(
-        Uuid(), nullable=False, info=_info("Company", "Customer Company FK.")
+    company_uid: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), info=_info("Company", "Optional organizational context.")
     )
-    contact_uid: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(), info=_info("Primary contact", "Optional Contact FK.")
+    participants: Mapped[list] = mapped_column(
+        JSONB(), nullable=False, server_default=text("'[]'::jsonb"),
+        info=_info("Participants", "People attending, with optional Contact links."),
     )
     deal_uid: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(), info=_info("Deal", "Optional Deal FK; must belong to Company.")

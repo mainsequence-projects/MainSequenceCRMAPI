@@ -14,7 +14,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from src.crm.models.common import Email, Phone
 from src.crm.models.contacts import ContactCreate
-from src.crm.models.interactions import InteractionCreate
+from src.crm.models.interactions import InteractionCreate, InteractionParticipant
 from src.crm.repositories.errors import ResourceConflict
 
 from .security import CALENDAR_PICKER_SCOPE, SCOPES, digest
@@ -37,7 +37,7 @@ class ImportDecision(BaseModel):
     target_uid: uuid.UUID | None = None
     expected_version: int | None = Field(default=None, ge=1)
     company_uid: uuid.UUID | None = None
-    contact_uid: uuid.UUID | None = None
+    participants: list[InteractionParticipant] | None = None
     deal_uid: uuid.UUID | None = None
     subject: str | None = Field(default=None, min_length=1, max_length=255)
     status: Literal["planned", "completed", "cancelled"] | None = None
@@ -125,13 +125,13 @@ class GoogleImports:
         else:
             if not query.calendar_id or not query.time_min or not query.time_max:
                 raise ValueError("Choose a calendar and date range")
-            if query.time_max <= query.time_min or query.time_max - query.time_min > timedelta(days=90):
-                raise ValueError("Calendar preview range must be at most 90 days")
+            if query.time_max <= query.time_min or query.time_max - query.time_min > timedelta(days=365):
+                raise ValueError("Calendar preview range must be at most 365 days")
             body = self._get(
                 f"https://www.googleapis.com/calendar/v3/calendars/{quote(query.calendar_id, safe='')}/events",
                 access,
                 {"timeMin": query.time_min.isoformat(), "timeMax": query.time_max.isoformat(),
-                 "singleEvents": "true", "showDeleted": "true", "maxResults": 50,
+                 "singleEvents": "true", "orderBy": "startTime", "showDeleted": "true", "maxResults": 50,
                  **({"pageToken": query.page_token} if query.page_token else {})},
             )
             candidates = self._events(body, query.calendar_id)
@@ -236,14 +236,15 @@ class GoogleImports:
             event_id = event.get("id")
             if not isinstance(when, str) or not isinstance(event_id, str):
                 continue
-            subject = (event.get("summary") or "Meeting").strip()[:255] or "Meeting"
+            subject = (event.get("summary") or "Calendar event").strip()[:255] or "Calendar event"
             result.append({
                 "external_id": f"calendar:{calendar_id}:{event_id}", "source": "calendar",
                 "subject": subject, "scheduled_at": when,
                 "end_at": (event.get("end") or {}).get("dateTime"),
                 "time_zone": start.get("timeZone"),
                 "organizer": (event.get("organizer") or {}).get("email"),
-                "attendees": [a.get("email") for a in (event.get("attendees") or [])[:10] if isinstance(a, dict)],
+                "attendees": [a.get("email") for a in (event.get("attendees") or [])[:99] if isinstance(a, dict)],
+                "attendees_omitted": bool(event.get("attendeesOmitted")) or len(event.get("attendees") or []) > 99,
                 "status": "cancelled" if event.get("status") == "cancelled" else "planned",
             })
         return result
@@ -286,12 +287,10 @@ class GoogleImports:
             }
             data = ContactCreate.model_validate(proposed).model_dump(mode="json")
         else:
-            if decision.action == "create" and decision.company_uid is None:
-                raise ValueError("Choose a CRM Company for this meeting")
-            if decision.action == "update" and decision.company_uid is None:
-                raise ValueError("Choose the linked meeting's CRM Company")
+            if decision.action != "link" and not decision.participants:
+                raise ValueError("Review at least one person for this Interaction")
             data = InteractionCreate.model_validate({
-                "company_uid": decision.company_uid, "contact_uid": decision.contact_uid,
+                "company_uid": decision.company_uid, "participants": decision.participants,
                 "deal_uid": decision.deal_uid,
                 "subject": decision.subject or candidate["subject"],
                 "kind": "meeting", "status": decision.status or candidate["status"],

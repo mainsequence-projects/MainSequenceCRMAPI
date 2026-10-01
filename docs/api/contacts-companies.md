@@ -46,7 +46,9 @@ Merge preview needs `loser_uid` and `field_resolutions`. Execution adds
 `expected_version`, `loser_expected_version`, and the preview's `plan_hash`.
 Re-preview after either contact changes. `field_resolutions` may name an
 individual social key such as `"socials.linkedin": "loser"`; unmentioned
-platforms merge with survivor precedence.
+platforms merge with survivor precedence. Interaction participant links to the
+retired Contact are moved to the survivor in the same governed command; a
+duplicate participant is removed if both Contacts appear in one Interaction.
 
 For `ContactPatch`, `changes.socials` updates only the named platform keys.
 `null` for one key removes that URL; `changes.socials: null` clears the entire
