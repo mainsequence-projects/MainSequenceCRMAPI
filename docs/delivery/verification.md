@@ -34,6 +34,18 @@ catalog resolution, governed read or write, or migration was exercised. Before
 a release, verify a fresh process against the MetaTables API deployment and
 repeat the governed mutation and rollback gates below.
 
+Later on 2026-10-01 the API moved to `mainsequence` 9.0.2 and
+`mainsequence-metatable` 0.1.6 with no CRM code change. The client wheel now
+installs only the `metatables` package, so this repository's top-level `api`
+package no longer shares an import name with the bundled MetaTables server.
+Hosted API discovery selects the one `metatables` deployment in the caller's
+Organization Environment; `METATABLES_API_URL` is accepted only for a loopback
+development API, and the CRM does not set it. This upgrade was also checked
+offline only, with network access blocked: the client's SDK compatibility
+check, provider loading and the unchanged `0001`–`0009` revision chain, the
+unit/route tests, Ruff with no new findings, and a strict MkDocs build. The
+live checks above remain outstanding.
+
 | Gate | Evidence needed |
 | --- | --- |
 | Local unit and route checks | Passing test output for the changed code |

@@ -115,11 +115,11 @@ keyring==25.7.0
     #   mainsequence-metatable
 linkify-it-py==2.2.0
     # via markdown-it-py
-mainsequence==9.0.1
+mainsequence==9.0.2
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi
-mainsequence-metatable==0.1.5
+mainsequence-metatable==0.1.6
     # via mainsequencecrmapi
 mako==1.4.1
     # via alembic
