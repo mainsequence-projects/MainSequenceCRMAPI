@@ -118,9 +118,6 @@ def test_create_is_one_governed_write_with_activity_and_reference_gate():
     store.create("leads", uuid.uuid4(), LeadCreate(contact_uid=uuid.uuid4(), status="to_contact"))
     operation = store.calls[0]
     assert operation["operation"] == "insert"
-    assert operation["tables"] == {
-        "contact": "read", "solution_selling_lead": "write", "activity_event": "write"
-    }
     assert f'INSERT INTO "{MODELS["solution_selling_lead"].__tablename__}"' in operation["sql"]
     assert f'INSERT INTO "{MODELS["activity_event"].__tablename__}"' in operation["sql"]
     assert "NOT EXISTS" in operation["sql"]

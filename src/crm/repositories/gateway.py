@@ -5,17 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from mainsequence.client import MetaTable
+from metatables import MetaTable
 
-from ..platform.catalog import CatalogBinding, CatalogRegistry, configured_registry
+from ..platform.catalog import CatalogRegistry, configured_registry
 
 
 class GovernedGateway:
     def __init__(self, registry: CatalogRegistry | None = None):
         self.registry = registry or configured_registry()
-
-    def _binding(self, logical_table: str) -> CatalogBinding:
-        return self.registry.binding(logical_table)
 
     def _operation(
         self,
@@ -24,13 +21,8 @@ class GovernedGateway:
         sql: str,
         parameters: dict[str, Any],
         parameter_types: dict[str, str],
-        tables: dict[str, str],
         max_rows: int = 1000,
     ) -> dict[str, Any]:
-        bindings = {name: self._binding(name) for name in tables}
-        data_sources = {binding.data_source_uid for binding in bindings.values()}
-        if len(data_sources) != 1:
-            raise RuntimeError("CRM operation spans multiple data sources")
         return MetaTable.execute_operation(
             {
                 "operation": operation,
@@ -46,13 +38,9 @@ class GovernedGateway:
                         if value in {"json", "jsonb"}
                     },
                 },
-                "scope": {
-                    "data_source_uid": next(iter(data_sources)),
-                    "tables": [
-                        {"meta_table_uid": binding.meta_table_uid, "access": tables[name]}
-                        for name, binding in bindings.items()
-                    ],
-                },
+                # One DataSource per request; the database enforces table
+                # permissions on the tables the SQL actually touches.
+                "data_source_uid": self.registry.data_source_uid,
                 "limits": {"max_rows": max_rows, "statement_timeout_ms": 15000},
             }
         )

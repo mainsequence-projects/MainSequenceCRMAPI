@@ -53,7 +53,6 @@ class SettingsRepository(GovernedGateway):
             sql=sql,
             parameters=parameters,
             parameter_types={"configuration": "jsonb"},
-            tables={"settings": "write", "activity_event": "write"},
             max_rows=1,
         )
         if not result.get("rows"):

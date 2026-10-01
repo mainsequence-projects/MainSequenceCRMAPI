@@ -34,7 +34,6 @@ class DealBoard(GovernedGateway):
             ),
             parameters={"pipeline_uid": str(pipeline_uid)},
             parameter_types={"pipeline_uid": "uuid"},
-            tables={"pipeline": "read", "stage": "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -83,7 +82,7 @@ class DealBoard(GovernedGateway):
             raise ValueError("Invalid board page")
         pipeline_table = MODELS["pipeline"].__tablename__
         stage_table = MODELS["stage"].__tablename__
-        select_sql, referenced = self.reads._select_sql("deals")
+        select_sql = self.reads._select_sql("deals")
         sql = (
             "WITH pipeline_state AS (SELECT board_version FROM "
             f'"{pipeline_table}" WHERE uid=CAST(%(pipeline_uid)s AS uuid)), q AS ('
@@ -114,7 +113,6 @@ class DealBoard(GovernedGateway):
                 "page_size": "integer",
                 "offset": "integer",
             },
-            tables={"pipeline": "read", "deal": "read", **referenced},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -141,7 +139,6 @@ class DealBoard(GovernedGateway):
                     "pipeline_uid": "uuid",
                     "stage_uid": "uuid",
                 },
-                tables={"stage": "read"},
                 max_rows=1,
             )
             stage_rows = stage_result.get("rows")
@@ -255,12 +252,6 @@ class DealBoard(GovernedGateway):
             sql=sql,
             parameters=parameters,
             parameter_types={},
-            tables={
-                "pipeline": "write",
-                "stage": "read",
-                "deal": "write",
-                "activity_event": "write",
-            },
             max_rows=1,
         )
         rows = result.get("rows")

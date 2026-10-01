@@ -157,9 +157,7 @@ class ResourceMutations(GovernedGateway):
                 "WHERE existing.stage_uid=CAST(%(stage_uid)s AS uuid) "
                 "AND existing.archived_at IS NULL)"
             )
-        gate_predicates, reference_tables = self._create_predicates(
-            resource, values, relation_values
-        )
+        gate_predicates = self._create_predicates(resource, values, relation_values)
         entity_table = MODELS[definition.logical_table].__tablename__
         activity_table = MODELS["activity_event"].__tablename__
         ctes = [
@@ -183,7 +181,6 @@ class ResourceMutations(GovernedGateway):
                 "FROM created CROSS JOIN jsonb_array_elements_text(%(relation_uids)s::jsonb) refs "
                 "RETURNING uid)"
             )
-            reference_tables[relation_logical] = "write"
         if resource == "contacts" and values.get("company_uid") is not None:
             affiliation_table = MODELS["contact_company_affiliation"].__tablename__
             parameters["affiliation_uid"] = str(uuid.uuid5(command_uid, "initial-affiliation"))
@@ -196,7 +193,6 @@ class ResourceMutations(GovernedGateway):
                 "created.company_uid, NOW(), NOW(), %(actor_uid)s::uuid, %(actor_uid)s::uuid, "
                 "1, NULL, 'current', TRUE, NULL, NULL, NULL FROM created RETURNING uid)"
             )
-            reference_tables["contact_company_affiliation"] = "write"
         if resource == "notes" and values.get("contact_uid"):
             contact_table = MODELS["contact"].__tablename__
             ctes.append(
@@ -205,7 +201,6 @@ class ResourceMutations(GovernedGateway):
                 "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=c.version+1 "
                 "FROM created WHERE c.uid=created.contact_uid RETURNING c.uid)"
             )
-            reference_tables["contact"] = "write"
         if resource == "deals":
             pipeline_table = MODELS["pipeline"].__tablename__
             ctes.append(
@@ -213,7 +208,6 @@ class ResourceMutations(GovernedGateway):
                 "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=p.version+1 "
                 "FROM created WHERE p.uid=created.pipeline_uid RETURNING p.uid)"
             )
-            reference_tables["pipeline"] = "write"
         parameters["entity_type"] = definition.logical_table
         parameter_types["entity_type"] = "string"
         sql = (
@@ -224,17 +218,11 @@ class ResourceMutations(GovernedGateway):
             "'created', NOW(), NOW(), %(actor_uid)s::uuid, 'live', %(command_uid)s::uuid, "
             "%(summary)s, '{}'::jsonb, NULL FROM created RETURNING entity_uid"
         )
-        tables = {
-            definition.logical_table: "write",
-            "activity_event": "write",
-            **reference_tables,
-        }
         result = self._operation(
             operation="insert",
             sql=sql,
             parameters=parameters,
             parameter_types=parameter_types,
-            tables=tables,
             max_rows=1,
         )
         if not result.get("rows"):
@@ -284,7 +272,7 @@ class ResourceMutations(GovernedGateway):
             assignments.append(f"{name}={expression}")
         entity_table = MODELS[definition.logical_table].__tablename__
         activity_table = MODELS["activity_event"].__tablename__
-        gate_extra, reference_tables = self._create_predicates(
+        gate_extra = self._create_predicates(
             resource,
             data,
             relation_values if isinstance(relation_values, list) else [],
@@ -339,7 +327,6 @@ class ResourceMutations(GovernedGateway):
                     "jsonb_array_elements_text(%(relation_uids)s::jsonb)) RETURNING old.uid)",
                 ]
             )
-            reference_tables[logical] = "write"
         if resource == "contacts":
             affiliation_table = MODELS["contact_company_affiliation"].__tablename__
             parameters["affiliation_uid"] = str(uuid.uuid5(command_uid, "new-affiliation"))
@@ -366,7 +353,6 @@ class ResourceMutations(GovernedGateway):
                     "RETURNING uid)",
                 ]
             )
-            reference_tables["contact_company_affiliation"] = "write"
         if resource == "deals":
             pipeline_table = MODELS["pipeline"].__tablename__
             ctes.append(
@@ -374,7 +360,6 @@ class ResourceMutations(GovernedGateway):
                 "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=p.version+1 "
                 "FROM changed WHERE p.uid=changed.pipeline_uid RETURNING p.uid)"
             )
-            reference_tables["pipeline"] = "write"
         parameters["event_changes"] = json.dumps(data)
         parameter_types["event_changes"] = "jsonb"
         sql = (
@@ -390,11 +375,6 @@ class ResourceMutations(GovernedGateway):
             sql=sql,
             parameters=parameters,
             parameter_types=parameter_types,
-            tables={
-                definition.logical_table: "write",
-                "activity_event": "write",
-                **reference_tables,
-            },
             max_rows=1,
         )
         if not result.get("rows"):
@@ -442,7 +422,6 @@ class ResourceMutations(GovernedGateway):
             "WHERE target.uid=%(entity_uid)s::uuid "
             "AND target.version=CAST(%(expected_version)s AS bigint) RETURNING target.*)",
         ]
-        reference_tables: dict[str, str] = {}
         if resource == "deals":
             pipeline_table = MODELS["pipeline"].__tablename__
             ctes.append(
@@ -450,7 +429,6 @@ class ResourceMutations(GovernedGateway):
                 "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=p.version+1 "
                 "FROM changed WHERE p.uid=changed.pipeline_uid RETURNING p.uid)"
             )
-            reference_tables["pipeline"] = "write"
         sql = (
             "WITH " + ", ".join(ctes) + f' INSERT INTO "{activity_table}" '
             "(uid, entity_type, entity_uid, kind, occurred_at, recorded_at, "
@@ -464,11 +442,6 @@ class ResourceMutations(GovernedGateway):
             sql=sql,
             parameters=parameters,
             parameter_types=parameter_types,
-            tables={
-                definition.logical_table: "write",
-                "activity_event": "write",
-                **reference_tables,
-            },
             max_rows=1,
         )
         if not result.get("rows"):
@@ -482,9 +455,8 @@ class ResourceMutations(GovernedGateway):
         relation_values: list[str],
         *,
         allow_existing_archived_company: bool = False,
-    ) -> tuple[str, dict[str, str]]:
+    ) -> str:
         predicates: list[str] = []
-        tables: dict[str, str] = {}
         references = {
             "companies": (("owner_uid", None),),
             "contacts": (("company_uid", "company"),),
@@ -513,7 +485,6 @@ class ResourceMutations(GovernedGateway):
                 f'AND EXISTS (SELECT 1 FROM "{table}" ref_{field} '
                 f"WHERE ref_{field}.uid=CAST(%({field})s AS uuid){active_company})"
             )
-            tables[logical_table] = "read"
         if resource == "deals":
             stage = MODELS["stage"].__tablename__
             predicates.append(
@@ -535,5 +506,4 @@ class ResourceMutations(GovernedGateway):
                 "jsonb_array_elements_text(%(relation_uids)s::jsonb))) = "
                 "jsonb_array_length(%(relation_uids)s::jsonb)"
             )
-            tables[logical] = "read"
-        return (" " + " ".join(predicates)) if predicates else "", tables
+        return (" " + " ".join(predicates)) if predicates else ""

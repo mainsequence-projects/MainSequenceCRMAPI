@@ -10,7 +10,7 @@ from sqlalchemy import BigInteger, DateTime, Index, String, Text, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from mainsequence.meta_tables import PlatformManagedMetaTable, schema_table_name
+from metatables import PlatformManagedMetaTable, schema_table_name
 
 from .base import Base, column_info
 

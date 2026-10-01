@@ -26,7 +26,6 @@ class GoogleStore(GovernedGateway):
             sql=f'SELECT * FROM "{table}" WHERE actor_uid=%(actor_uid)s::uuid LIMIT 1',
             parameters={"actor_uid": str(actor_uid)},
             parameter_types={},
-            tables={"google_oauth_connection": "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -54,7 +53,7 @@ class GoogleStore(GovernedGateway):
                 "OR (status IN ('exchanged','redeeming') AND completed_at<NOW()-INTERVAL '1 day')) "
                 "ORDER BY expires_at LIMIT 100) RETURNING uid"
             ),
-            parameters={}, parameter_types={}, tables={"google_oauth_attempt": "write"}, max_rows=100,
+            parameters={}, parameter_types={}, max_rows=100,
         )
         self._one(
             self._operation(
@@ -72,7 +71,6 @@ class GoogleStore(GovernedGateway):
                     "verifier_ciphertext": verifier_ciphertext, "nonce": nonce,
                 },
                 parameter_types={},
-                tables={"google_oauth_attempt": "write"},
                 max_rows=1,
             ),
             "Google OAuth attempt could not be created",
@@ -89,7 +87,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"state_hash": state_hash},
             parameter_types={},
-            tables={"google_oauth_attempt": "write"},
             max_rows=1,
         )
         return self._one(result, "Google OAuth state is expired or already used")
@@ -106,7 +103,6 @@ class GoogleStore(GovernedGateway):
                 ),
                 parameters={"uid": str(uid), "completion_hash": completion_hash, "pending_ciphertext": pending_ciphertext},
                 parameter_types={},
-                tables={"google_oauth_attempt": "write"},
                 max_rows=1,
             ),
             "Google OAuth exchange could not be completed",
@@ -123,7 +119,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"uid": str(uid)},
             parameter_types={},
-            tables={"google_oauth_attempt": "write"},
             max_rows=1,
         )
 
@@ -138,7 +133,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"actor_uid": str(actor_uid), "completion_hash": completion_hash},
             parameter_types={},
-            tables={"google_oauth_attempt": "read"},
             max_rows=1,
         )
         return self._one(result, "Google OAuth completion is expired or already used")
@@ -157,7 +151,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"uid": str(uid), "actor_uid": str(actor_uid)},
             parameter_types={},
-            tables={"google_oauth_attempt": "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -224,7 +217,6 @@ class GoogleStore(GovernedGateway):
                 "refresh_ciphertext": refresh_ciphertext,
             },
             parameter_types={"scopes": "jsonb"},
-            tables={"google_oauth_attempt": "write", "google_oauth_connection": "write", "source_connection": "write"},
             max_rows=1,
         )
         return self._one(result, "Google connection changed or was already completed")
@@ -244,7 +236,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"uid": str(uid), "actor_uid": str(actor_uid)},
             parameter_types={},
-            tables={"google_oauth_connection": "write"},
             max_rows=1,
         )
         row = self._one(result, "Google connection not found")
@@ -261,7 +252,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"uid": str(uid), "actor_uid": str(actor_uid)},
             parameter_types={},
-            tables={"google_oauth_connection": "write"},
             max_rows=1,
         )
 
@@ -282,7 +272,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"connection_uid": str(source_connection_uid), "entity_type": entity_type, "external_id": external_id},
             parameter_types={},
-            tables={"source_identity": "read", entity_type: "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -310,7 +299,6 @@ class GoogleStore(GovernedGateway):
             parameters={"connection_uid": str(source_connection_uid), "entity_type": entity_type,
                         "external_ids": json.dumps(external_ids)},
             parameter_types={"external_ids": "jsonb"},
-            tables={"source_identity": "read", entity_type: "read"},
             max_rows=len(external_ids),
         )
         rows = result.get("rows")
@@ -329,7 +317,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"email": email.casefold()},
             parameter_types={},
-            tables={"contact": "read"},
             max_rows=4,
         )
         rows = result.get("rows")
@@ -354,7 +341,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters={"emails": json.dumps(sorted(set(emails)))},
             parameter_types={"emails": "jsonb"},
-            tables={"contact": "read"},
             max_rows=4 * len(set(emails)),
         )
         rows = result.get("rows")
@@ -414,7 +400,6 @@ class GoogleStore(GovernedGateway):
                     "1, NULL, %(first_name)s, %(last_name)s, %(emails)s::jsonb, %(phones)s::jsonb, '{}'::jsonb FROM gate "
                     "RETURNING uid, version"
                 )
-                scopes = {"contact": "write"}
             else:
                 parameters.update({
                     "company_uid": str(values["company_uid"]) if values.get("company_uid") else None,
@@ -443,7 +428,6 @@ class GoogleStore(GovernedGateway):
                     "WHERE d.uid=%(deal_uid)s::uuid AND d.company_uid=%(company_uid)s::uuid AND d.archived_at IS NULL)) "
                     "RETURNING uid, version"
                 )
-                scopes = {"interaction": "write", "company": "read", "contact": "read", "deal": "read"}
         elif action == "link":
             if target_uid is None:
                 raise ValueError("Link requires a CRM target")
@@ -451,7 +435,6 @@ class GoogleStore(GovernedGateway):
                 f'SELECT uid, version FROM "{target}" WHERE uid=%(uid)s::uuid AND archived_at IS NULL '
                 "AND EXISTS (SELECT 1 FROM gate)"
             )
-            scopes = {entity_type: "read"}
         else:
             if target_uid is None or expected_version is None:
                 raise ValueError("Update requires a target and expected version")
@@ -482,7 +465,6 @@ class GoogleStore(GovernedGateway):
                 "AND s.target_uid=t.uid) "
                 "RETURNING t.uid, t.version"
             )
-            scopes = {"interaction": "write", "contact": "read"}
         if action == "update":
             identity_write = (
                 f'UPDATE "{identity}" s SET source_payload_hash=%(payload_hash)s, '
@@ -516,7 +498,6 @@ class GoogleStore(GovernedGateway):
             ),
             parameters=parameters,
             parameter_types=types,
-            tables={**scopes, "source_identity": "write", "activity_event": "write", "source_connection": "read", "google_oauth_connection": "read"},
             max_rows=1,
         )
         self._one(result, "Google import precondition failed")

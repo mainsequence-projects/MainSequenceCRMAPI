@@ -5,7 +5,7 @@ from __future__ import annotations
 from ...metatables import MODELS
 
 
-def deal_projection() -> tuple[str, dict[str, str]]:
+def deal_projection() -> str:
     table = MODELS["deal"].__tablename__
     link = MODELS["deal_contact"].__tablename__
     return (
@@ -16,6 +16,5 @@ def deal_projection() -> tuple[str, dict[str, str]]:
         "t.expected_closing_date, t.position, t.source_created_at, t.source_updated_at, "
         f'COALESCE((SELECT jsonb_agg(dc.contact_uid ORDER BY dc.contact_uid) FROM "{link}" dc '
         f"WHERE dc.deal_uid=t.uid), '[]'::jsonb) "
-        f'AS contact_uids FROM "{table}" t',
-        {"deal_contact": "read"},
+        f'AS contact_uids FROM "{table}" t'
     )

@@ -8,6 +8,7 @@ import uuid
 import pytest
 
 from api.crm.transfer_routes import _parse_rows
+from src.crm.metatables import MODELS
 from src.crm.models.affiliations import (
     AffiliationCreate,
     AffiliationPatch,
@@ -109,12 +110,6 @@ def test_create_affiliation_is_versioned_without_workspace_scope(monkeypatch):
     )
     assert result["uid"] == str(AFFILIATION)
     call = calls[0]
-    assert call["tables"] == {
-        "contact": "write",
-        "company": "read",
-        "contact_company_affiliation": "write",
-        "activity_event": "write",
-    }
     assert "c.version=%(expected_contact_version)s::bigint" in call["sql"]
     assert "company.archived_at IS NULL" in call["sql"]
     assert "%(started_period)s" in call["sql"]
@@ -133,7 +128,6 @@ def test_legacy_contact_company_writes_preserve_history(monkeypatch):
     )
     created = calls.pop()
     assert "affiliation_created AS (INSERT INTO" in created["sql"]
-    assert created["tables"]["contact_company_affiliation"] == "write"
     assert "ref_company_uid.archived_at IS NULL" in created["sql"]
 
     store.update(
@@ -149,15 +143,13 @@ def test_legacy_contact_company_writes_preserve_history(monkeypatch):
     assert "prior_affiliation_closed AS (UPDATE" in updated["sql"]
     assert "new_affiliation AS (INSERT INTO" in updated["sql"]
     assert "ref_company_uid.archived_at IS NULL OR" in updated["sql"]
-    assert updated["tables"]["contact_company_affiliation"] == "write"
 
 
 def test_company_contact_count_includes_concurrent_current_affiliations():
     store = GovernedResourceStore()
-    sql, tables = store.reads._select_sql("companies")
+    sql = store.reads._select_sql("companies")
     assert "count(DISTINCT c.uid)" in sql
     assert "a.status='current'" in sql
-    assert tables["contact_company_affiliation"] == "read"
 
 
 def test_transition_preserves_prior_stint_and_updates_projection(monkeypatch):
@@ -179,7 +171,6 @@ def test_transition_preserves_prior_stint_and_updates_projection(monkeypatch):
     assert "new_affiliation AS (INSERT INTO" in call["sql"]
     assert "company_uid=%(new_company_uid)s::uuid" in call["sql"]
     assert call["parameters"]["previous_ended_period"] == "2024-06"
-    assert call["tables"]["contact_company_affiliation"] == "write"
 
     with pytest.raises(ValueError, match="precedes"):
         store.transition_company(
@@ -272,8 +263,6 @@ def test_merge_moves_all_loser_affiliations_before_retiring_contact(monkeypatch)
     assert "(SELECT count(*) FROM affiliations_moved) moved" in sql
     assert "interactions_changed AS (UPDATE" in sql
     assert "(SELECT count(*) FROM interactions_changed) people_moved" in sql
-    assert calls[0]["tables"]["interaction"] == "write"
-    assert calls[0]["tables"]["contact_company_affiliation"] == "write"
 
 
 def test_portable_contact_export_preserves_affiliation_periods(monkeypatch):
@@ -282,7 +271,7 @@ def test_portable_contact_export_preserves_affiliation_periods(monkeypatch):
 
     def execute(**call):
         if call["operation"] == "select":
-            if call["tables"] == {"contact": "read"}:
+            if f'FROM "{MODELS["contact"].__tablename__}" t' in call["sql"]:
                 return {"rows": [{"item": {"uid": str(CONTACT), "company_uid": str(COMPANY)}}]}
             return {
                 "rows": [

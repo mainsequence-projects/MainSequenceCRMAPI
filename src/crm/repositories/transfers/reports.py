@@ -34,7 +34,6 @@ class TransferReports(TransferBase):
                 "page_size": "integer",
                 "page_offset": "integer",
             },
-            tables={"transfer_row": "read"},
             max_rows=1,
         )
         row = result["rows"][0]
@@ -64,7 +63,6 @@ class TransferReports(TransferBase):
             ),
             parameters={"job_uid": str(job_uid)},
             parameter_types={"job_uid": "uuid"},
-            tables={"transfer_row": "read"},
             max_rows=20000,
         )
         return render_error_csv(result.get("rows") or [])

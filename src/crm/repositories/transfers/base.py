@@ -74,7 +74,6 @@ class TransferBase(GovernedGateway):
                 "actor_uid": str(actor_uid),
             },
             parameter_types={"job_uid": "uuid", "actor_uid": "uuid"},
-            tables={"transfer_job": "read"},
             max_rows=1,
         )
         rows = result.get("rows")

@@ -28,7 +28,6 @@ class SourceConnections(TransferBase):
                 "page_size": "integer",
                 "page_offset": "integer",
             },
-            tables={"source_connection": "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -72,7 +71,6 @@ class SourceConnections(TransferBase):
                 "adapter_id": "string",
                 "source_account_key": "string",
             },
-            tables={"source_connection": "write"},
             max_rows=1,
         )
         row = self._changed_row(result)

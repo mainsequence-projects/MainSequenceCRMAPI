@@ -169,7 +169,6 @@ class VersionedRecordStore(GovernedGateway):
             sql=sql,
             parameters=params,
             parameter_types={},
-            tables={spec.table: "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -197,7 +196,6 @@ class VersionedRecordStore(GovernedGateway):
             sql=f'SELECT to_jsonb(t) AS item FROM "{table}" t WHERE t.uid=%(uid)s::uuid AND t.archived_at IS NULL',
             parameters={"uid": str(uid)},
             parameter_types={},
-            tables={spec.table: "read"},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -219,10 +217,9 @@ class VersionedRecordStore(GovernedGateway):
     @staticmethod
     def _predicate(
         resource: str, data: dict[str, Any], *, creating: bool
-    ) -> tuple[str, dict[str, str]]:
+    ) -> str:
         """Cross-record invariants checked in the same governed write statement."""
         clauses: list[str] = []
-        refs: dict[str, str] = {}
         for field, logical in REFERENCE_FIELDS.get(resource, {}).items():
             if data.get(field) is None:
                 continue
@@ -231,7 +228,6 @@ class VersionedRecordStore(GovernedGateway):
                 f'EXISTS (SELECT 1 FROM "{table}" ref WHERE ref.uid=%({field})s::uuid '
                 "AND ref.archived_at IS NULL)"
             )
-            refs[logical] = "read"
         if creating and resource in {"assessments", "leads"}:
             key = "deal_uid" if resource == "assessments" else "contact_uid"
             table = MODELS[RECORDS[resource].table].__tablename__
@@ -246,7 +242,6 @@ class VersionedRecordStore(GovernedGateway):
                 f"LEFT JOIN \"{contact}\" c ON c.uid=(p->>'contact_uid')::uuid "
                 "WHERE c.uid IS NULL OR c.archived_at IS NOT NULL)"
             )
-            refs["contact"] = "read"
         if resource == "interactions" and data.get("participants"):
             contact = MODELS["contact"].__tablename__
             clauses.append(
@@ -254,12 +249,10 @@ class VersionedRecordStore(GovernedGateway):
                 f'LEFT JOIN "{contact}" c ON c.uid=(p->>\'contact_uid\')::uuid '
                 "WHERE p->>'contact_uid' IS NOT NULL AND (c.uid IS NULL OR c.archived_at IS NOT NULL))"
             )
-            refs["contact"] = "read"
         if resource == "interactions" and data.get("deal_uid"):
             deal = MODELS["deal"].__tablename__
             clauses.append(f'EXISTS (SELECT 1 FROM "{deal}" d WHERE d.uid=%(deal_uid)s::uuid '
                            "AND d.company_uid=%(company_uid)s::uuid AND d.archived_at IS NULL)")
-            refs["deal"] = "read"
         if resource == "leads" and data.get("next_task_uid"):
             task = MODELS["task"].__tablename__
             clauses.append(
@@ -267,7 +260,6 @@ class VersionedRecordStore(GovernedGateway):
                 "AND task.contact_uid=%(contact_uid)s::uuid AND task.completed_at IS NULL "
                 "AND task.archived_at IS NULL)"
             )
-            refs["task"] = "read"
         if resource == "diagnoses" and data.get("solution_selling_uid"):
             assessment = MODELS["solution_selling"].__tablename__
             interaction = MODELS["interaction"].__tablename__
@@ -278,8 +270,6 @@ class VersionedRecordStore(GovernedGateway):
                 "AND i.uid=%(interaction_uid)s::uuid "
                 "AND s.archived_at IS NULL AND i.archived_at IS NULL)"
             )
-            refs["solution_selling"] = "read"
-            refs["interaction"] = "read"
         if resource == "interactions" and not creating:
             diagnosis = MODELS["solution_selling_diagnosis"].__tablename__
             assessment = MODELS["solution_selling"].__tablename__
@@ -289,9 +279,7 @@ class VersionedRecordStore(GovernedGateway):
                 "AND (s.company_uid IS DISTINCT FROM %(company_uid)s::uuid OR "
                 "(%(deal_uid)s::uuid IS NOT NULL AND s.deal_uid IS DISTINCT FROM %(deal_uid)s::uuid)))"
             )
-            refs["solution_selling_diagnosis"] = "read"
-            refs["solution_selling"] = "read"
-        return (" AND " + " AND ".join(clauses) if clauses else ""), refs
+        return (" AND " + " AND ".join(clauses)) if clauses else ""
 
     def create(self, resource: str, actor_uid: uuid.UUID, payload: BaseModel) -> dict[str, Any]:
         spec = RECORDS[resource]
@@ -328,7 +316,7 @@ class VersionedRecordStore(GovernedGateway):
             columns.append(name)
             params[name], bound = self._bound(name, value)
             values.append(bound)
-        predicate, refs = self._predicate(resource, data, creating=True)
+        predicate = self._predicate(resource, data, creating=True)
         sql = (
             f"WITH gate AS (SELECT 1 WHERE TRUE {predicate}), "
             f'created AS (INSERT INTO "{table}" ({", ".join(columns)}) '
@@ -344,7 +332,6 @@ class VersionedRecordStore(GovernedGateway):
             sql=sql,
             parameters=params,
             parameter_types={name: "jsonb" for name in JSON_FIELDS if name in params},
-            tables={**refs, spec.table: "write", "activity_event": "write"},
             max_rows=1,
         )
         if not result.get("rows"):
@@ -381,7 +368,7 @@ class VersionedRecordStore(GovernedGateway):
         for name, value in complete.items():
             if name not in params:
                 params[name], _ = self._bound(name, value)
-        predicate, refs = self._predicate(resource, complete, creating=False)
+        predicate = self._predicate(resource, complete, creating=False)
         sql = (
             f"WITH gate AS (SELECT 1 WHERE TRUE {predicate}), "
             f'changed AS (UPDATE "{table}" t SET {", ".join(assignments)}, '
@@ -400,7 +387,6 @@ class VersionedRecordStore(GovernedGateway):
             parameters=params,
             parameter_types={name: "jsonb" for name in JSON_FIELDS if name in params}
             | {"event_changes": "jsonb"},
-            tables={**refs, spec.table: "write", "activity_event": "write"},
             max_rows=1,
         )
         if not result.get("rows"):

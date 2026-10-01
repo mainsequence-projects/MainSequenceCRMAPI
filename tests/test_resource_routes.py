@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from api.crm.main import create_app
-from src.crm.metatables import MODELS
+from metatables import MetaTableCompiledSQLOperation
 from src.crm.models.pipelines import PipelineStages
 from src.crm.repositories.gateway import GovernedGateway
 
@@ -63,7 +63,6 @@ def test_pipeline_stages_returns_active_stage_choices_without_board_cards(monkey
     monkeypatch.setattr(DealBoard, "_operation", execute)
     result = DealBoard(object(), object()).pipeline_stages(pipeline_uid)
     assert result == {"pipeline_uid": str(pipeline_uid), "board_version": 1, "stages": [stage]}
-    assert observed["tables"] == {"pipeline": "read", "stage": "read"}
     assert "board_column" not in observed["sql"]
 
     app = create_app()
@@ -129,25 +128,6 @@ def test_http_query_validation_stops_before_repository_access():
 
 def test_governed_operation_only_sends_backend_supported_parameter_metadata(monkeypatch, tmp_path):
     data_source_uid = uuid.uuid4()
-    rows = []
-    for number, logical in enumerate(("settings", "deal"), 1):
-        model = MODELS[logical]
-        rows.append(
-            SimpleNamespace(
-                uid=uuid.UUID(int=number),
-                data_source_uid=data_source_uid,
-                identifier=model.__metatable_identifier__,
-                physical_table_name=model.__tablename__,
-                physical_schema=None,
-                provisioning_status="active",
-                namespace="mainsequence-crm",
-                migration_namespace="mainsequence-crm",
-                management_mode="platform_managed",
-                schema_management_mode="alembic_managed",
-                migration_provider_key="crm-provider",
-                alembic_revision="0004",
-            )
-        )
     captured = {}
 
     def execute(operation):
@@ -156,28 +136,15 @@ def test_governed_operation_only_sends_backend_supported_parameter_metadata(monk
 
     monkeypatch.setattr("src.crm.repositories.gateway.MetaTable.execute_operation", execute)
 
-    class Registry:
-        def binding(self, logical):
-            from src.crm.platform.catalog import CatalogBinding
-
-            row = rows[("settings", "deal").index(logical)]
-            return CatalogBinding(
-                meta_table_uid=str(row.uid),
-                data_source_uid=str(row.data_source_uid),
-                physical_table_name=row.physical_table_name,
-                migration_provider_key=row.migration_provider_key,
-                alembic_revision=row.alembic_revision,
-            )
-
-    store = GovernedGateway(Registry())
+    store = GovernedGateway(SimpleNamespace(data_source_uid=str(data_source_uid)))
     store._operation(
         operation="select",
         sql="SELECT %(uid)s, %(limit)s, %(payload)s::jsonb",
         parameters={"uid": str(uuid.uuid4()), "limit": 1, "payload": "{}"},
         parameter_types={"uid": "uuid", "limit": "integer", "payload": "jsonb"},
-        tables={"settings": "read", "deal": "read"},
     )
 
     assert captured["statement"]["parameter_types"] == {"payload": "jsonb"}
-    assert {item["access"] for item in captured["scope"]["tables"]} == {"read"}
-    assert len(captured["scope"]["tables"]) == 2
+    assert captured["data_source_uid"] == str(data_source_uid)
+    assert "scope" not in captured
+    MetaTableCompiledSQLOperation.model_validate(captured)

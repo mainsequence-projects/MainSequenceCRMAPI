@@ -56,10 +56,6 @@ class TaskRepository(GovernedGateway):
             sql=sql,
             parameters=parameters,
             parameter_types=types,
-            tables={
-                "task": "write",
-                "activity_event": "write",
-            },
             max_rows=1,
         )
         if not result.get("rows"):

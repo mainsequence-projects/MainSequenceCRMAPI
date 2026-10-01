@@ -19,8 +19,8 @@ from .catalog import ORDER_COLUMNS, RESOURCE_SPECS
 class ResourceReads(GovernedGateway):
     def collection(self, resource: str, scope: QueryScope) -> dict[str, Any]:
         definition = RESOURCE_SPECS[resource]
-        select_sql, referenced = self._select_sql(resource)
-        where_sql, parameters, parameter_types, filter_tables = self._where_sql(resource, scope)
+        select_sql = self._select_sql(resource)
+        where_sql, parameters, parameter_types = self._where_sql(resource, scope)
         ordering = scope.ordering or definition.default_ordering
         descending = ordering.startswith("-")
         order_key = ordering.removeprefix("-")
@@ -39,13 +39,11 @@ class ResourceReads(GovernedGateway):
             "ORDER BY __row) FROM paged), '[]'::jsonb) AS items, "
             "(SELECT count(*) FROM q) AS total_items"
         )
-        tables = {definition.logical_table: "read", **referenced, **filter_tables}
         result = self._operation(
             operation="select",
             sql=sql,
             parameters=parameters,
             parameter_types=parameter_types,
-            tables=tables,
             max_rows=1,
         )
         rows = result.get("rows")
@@ -70,7 +68,7 @@ class ResourceReads(GovernedGateway):
 
     def detail(self, resource: str, uid: uuid.UUID) -> dict[str, Any]:
         definition = RESOURCE_SPECS[resource]
-        select_sql, referenced = self._select_sql(resource)
+        select_sql = self._select_sql(resource)
         sql = (
             f"WITH q AS ({select_sql} WHERE t.uid = CAST(%(uid)s AS uuid)) "
             "SELECT to_jsonb(q) - 'amount_numeric' AS item FROM q"
@@ -80,7 +78,6 @@ class ResourceReads(GovernedGateway):
             sql=sql,
             parameters={"uid": str(uid)},
             parameter_types={"uid": "uuid"},
-            tables={definition.logical_table: "read", **referenced},
             max_rows=1,
         )
         rows = result.get("rows")
@@ -89,7 +86,7 @@ class ResourceReads(GovernedGateway):
         item = self._json(rows[0].get("item"), expected=dict, label="detail")
         return validate_payload(definition.contract, item)
 
-    def _select_sql(self, resource: str) -> tuple[str, dict[str, str]]:
+    def _select_sql(self, resource: str) -> str:
         table = MODELS[RESOURCE_SPECS[resource].logical_table].__tablename__
         if resource == "companies":
             return company_projection()
@@ -101,18 +98,16 @@ class ResourceReads(GovernedGateway):
             return (
                 "SELECT t.uid, t.entity_type, t.entity_uid, t.kind, t.occurred_at, "
                 "t.recorded_at, t.actor_uid, t.origin, t.summary, t.changes "
-                f'FROM "{table}" t',
-                {},
+                f'FROM "{table}" t'
             )
-        return (f'SELECT t.* FROM "{table}" t', {})
+        return f'SELECT t.* FROM "{table}" t'
 
     def _where_sql(
         self, resource: str, scope: QueryScope
-    ) -> tuple[str, dict[str, Any], dict[str, str], dict[str, str]]:
+    ) -> tuple[str, dict[str, Any], dict[str, str]]:
         clauses: list[str] = []
         parameters: dict[str, Any] = {}
         types: dict[str, str] = {}
-        tables: dict[str, str] = {}
         definition = RESOURCE_SPECS[resource]
         if resource not in {"activity", "pipelines"}:
             archived = scope.filters.get("archived", False)
@@ -174,7 +169,6 @@ class ResourceReads(GovernedGateway):
                 f'EXISTS (SELECT 1 FROM "{link}" ft WHERE ft.contact_uid=t.uid '
                 "AND ft.tag_uid=CAST(%(filter_tag_uid)s AS uuid))"
             )
-            tables["contact_tag"] = "read"
         if resource == "contacts" and "has_open_tasks" in scope.filters:
             task = MODELS["task"].__tablename__
             exists = "EXISTS" if scope.filters["has_open_tasks"] else "NOT EXISTS"
@@ -182,7 +176,6 @@ class ResourceReads(GovernedGateway):
                 f'{exists} (SELECT 1 FROM "{task}" ft WHERE ft.contact_uid=t.uid '
                 "AND ft.completed_at IS NULL AND ft.archived_at IS NULL)"
             )
-            tables["task"] = "read"
         if resource == "deals" and "contact_uid" in scope.filters:
             link = MODELS["deal_contact"].__tablename__
             parameters["filter_contact_uid"] = scope.filters["contact_uid"]
@@ -191,7 +184,6 @@ class ResourceReads(GovernedGateway):
                 f'EXISTS (SELECT 1 FROM "{link}" ft WHERE ft.deal_uid=t.uid '
                 "AND ft.contact_uid=CAST(%(filter_contact_uid)s AS uuid))"
             )
-            tables["deal_contact"] = "read"
         if resource == "tasks" and "completion" in scope.filters:
             value = scope.filters["completion"]
             if value not in {"open", "completed"}:
@@ -206,4 +198,4 @@ class ResourceReads(GovernedGateway):
         } & scope.filters.keys()
         if unsupported_windows:
             raise ValueError(f"Unsupported filter: {sorted(unsupported_windows)[0]}")
-        return " AND ".join(clauses) if clauses else "TRUE", parameters, types, tables
+        return " AND ".join(clauses) if clauses else "TRUE", parameters, types

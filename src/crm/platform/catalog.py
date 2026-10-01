@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 
-from mainsequence.client import MetaTable
+from metatables import MetaTable
 
 from ..metatables import MODELS
 
@@ -78,6 +78,12 @@ class CatalogRegistry:
     def binding(self, logical_name: str) -> CatalogBinding:
         return self.bindings[MODELS[logical_name].__tablename__]
 
+    @property
+    def data_source_uid(self) -> str:
+        """The one DataSource that every validated CRM binding shares."""
+        (data_source_uid,) = {binding.data_source_uid for binding in self.bindings.values()}
+        return data_source_uid
+
     def validate(self) -> None:
         self.bindings
 
@@ -91,10 +97,7 @@ class CatalogRegistry:
                     "sql": f'SELECT key FROM "{binding.physical_table_name}" LIMIT 2',
                     "parameters": {},
                 },
-                "scope": {
-                    "data_source_uid": binding.data_source_uid,
-                    "tables": [{"meta_table_uid": binding.meta_table_uid, "access": "read"}],
-                },
+                "data_source_uid": self.data_source_uid,
                 "limits": {"max_rows": 2, "statement_timeout_ms": 5000},
             }
         )

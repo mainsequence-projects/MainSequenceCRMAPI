@@ -61,8 +61,6 @@ def test_core_create_governs_linked_participant_contacts():
         interaction(participants=[{"contact_uid": str(contact_uid), "role": "attendee"}])
     ))
     operation = store.calls[0]
-    assert operation["tables"]["contact"] == "read"
-    assert operation["tables"]["interaction"] == "write"
     assert "jsonb_array_elements(%(participants)s::jsonb)" in operation["sql"]
     assert json.loads(operation["parameters"]["participants"])[0]["contact_uid"] == str(contact_uid)
 
@@ -81,4 +79,3 @@ def test_calendar_import_writes_reviewed_people_without_company():
     assert "contact_uid" not in operation["sql"].split("updated_by_uid, version, archived_at,")[1].split(") SELECT")[0]
     assert operation["parameters"]["company_uid"] is None
     assert json.loads(operation["parameters"]["participants"])[0]["email"] == "alex@example.com"
-    assert operation["tables"]["contact"] == "read"

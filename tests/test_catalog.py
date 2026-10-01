@@ -58,7 +58,8 @@ def test_fresh_registry_queries_public_catalog_and_uses_governed_read(monkeypatc
     monkeypatch.setattr("src.crm.platform.catalog.MetaTable.execute_operation", fake_execute)
     registry.validate_settings()
     assert len(observed) == 1
-    assert observed[0]["scope"]["tables"][0]["access"] == "read"
+    assert observed[0]["operation"] == "select"
+    assert observed[0]["data_source_uid"] == "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
     assert observed[0]["statement"]["parameters"] == {}
     assert observed[0]["statement"]["sql"].endswith("LIMIT 2")
     assert len(filtered) == 1

@@ -24,7 +24,6 @@ class ImportPlanning(TransferBase):
             ),
             parameters={"job_uid": str(job_uid)},
             parameter_types={"job_uid": "uuid"},
-            tables={"transfer_row": "read"},
             max_rows=20000,
         )
         rows = [
@@ -76,10 +75,6 @@ class ImportPlanning(TransferBase):
                 "status": "string",
                 "plan_hash": "string",
                 "report": "jsonb",
-            },
-            tables={
-                "transfer_row": "write",
-                "transfer_job": "write",
             },
             max_rows=1,
         )

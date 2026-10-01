@@ -46,8 +46,6 @@ def _assert_governed(call, operation):
     assert call["operation"] == operation
     sql = call["sql"]
     assert "workspace" not in sql
-    assert "workspace" not in call["tables"]
-    assert call["tables"]["transfer_job"] == "write"
 
 
 def test_source_and_import_creation_use_record_fences(monkeypatch):
@@ -88,8 +86,6 @@ def test_source_and_import_creation_use_record_fences(monkeypatch):
         },
     )
     assert imported["status"] == "uploading"
-    assert calls[0]["tables"]["source_connection"] == "write"
-    assert calls[1]["tables"]["transfer_job"] == "write"
     for call in calls:
         assert call["operation"] == "insert"
         assert "workspace" not in call["sql"]
@@ -142,7 +138,6 @@ def test_upload_and_mapping_are_durable_governed_commands(monkeypatch):
         _assert_governed(call, "update")
     upload_rows = json.loads(writes[0]["parameters"]["rows"])
     assert upload_rows[0]["external_id"] == "900719925474099312345"
-    assert writes[0]["tables"]["transfer_row"] == "write"
 
 
 def test_transition_is_fenced_by_owner_and_state(monkeypatch):

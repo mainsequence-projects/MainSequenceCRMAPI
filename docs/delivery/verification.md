@@ -24,6 +24,16 @@ API, apply the provider-scoped migration outside API startup, verify fresh-proce
 catalog binding, and exercise governed create/update plus rollback on a
 disposable provider. A running API still on `0008` does not serve this contract.
 
+On 2026-10-01 the API moved to `mainsequence` 9 and the separate
+`mainsequence-metatable` 0.1.5 client (`metatables`). Governed operations now
+send one DataSource UID with their SQL and no declared table scope. This move
+was checked offline only: imports, provider loading and the unchanged
+`0001`–`0009` revision history, operation payloads against the installed client
+model, unit/route tests, Ruff and a strict MkDocs build. No MetaTables API,
+catalog resolution, governed read or write, or migration was exercised. Before
+a release, verify a fresh process against the MetaTables API deployment and
+repeat the governed mutation and rollback gates below.
+
 | Gate | Evidence needed |
 | --- | --- |
 | Local unit and route checks | Passing test output for the changed code |

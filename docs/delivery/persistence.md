@@ -31,7 +31,11 @@ storage definitions. The repository receives validated semantic scopes and
 uses only allowlisted SQL ordering expressions.
 
 `src/crm/repositories/gateway.py` is the small provider-bound MetaTable
-executor. `repositories/resources/` owns shared CRUD mechanics;
+executor. It uses the `metatables` client from the `mainsequence-metatable`
+package. Each operation sends its SQL, bound parameters, row limit, statement
+deadline and the one DataSource UID shared by the resolved CRM catalog; it
+declares no table list. The database enforces table permissions on the tables
+the SQL actually touches. `repositories/resources/` owns shared CRUD mechanics;
 `repositories/records.py` serves core Interaction and optional module records
 through the same governed operation boundary; the module's business contracts
 remain in `src/crm/solution_selling/`.
@@ -103,12 +107,16 @@ The migration provider is `src.crm.migrations:migration`. Migrations run
 outside HTTP startup. A fresh API process queries the platform catalog
 for the 26 authored identifiers, validates active Alembic-managed bindings,
 namespace, provider, revision, physical names and one data source, then caches
-the typed bindings in memory. It must not register tables or repair schema
-during a request. No CRM bindings file, finalization hook, or path variable is
-required by the CLI or API. Run `mainsequence migrations upgrade --provider
-src.crm.migrations:migration head` through the SDK lifecycle. The provider uses
-namespace `mainsequence-crm`, the repository-prefixed Alembic table
-`mainsequence_crm__alembic_version`, and repository-prefixed application names.
+the typed bindings in memory. Governed operations select that data source. It
+must not register tables or repair schema during a request. No CRM bindings
+file, finalization hook, or path variable is required by the CLI or API. Run
+`metatables migrations upgrade --provider src.crm.migrations:migration head`
+with the `metatables` CLI from `mainsequence-metatable`. The client runs this
+application-owned provider's Alembic revisions with the selected environment
+connection; the MetaTables API reserves and finalizes the catalog bindings.
+The provider uses namespace `mainsequence-crm`, the repository-prefixed Alembic
+table `mainsequence_crm__alembic_version`, and repository-prefixed application
+names.
 
 This repository has no manual workspace initializer or persistent atomic-proof
 gate. The API validates one settings row and a default pipeline through

@@ -12,11 +12,11 @@ import uuid
 from collections.abc import Mapping
 from typing import Any, Protocol
 
-from mainsequence.client import MetaTable
+from metatables import MetaTable
 
 from ..google_workspace.config import google_workspace_enabled
 from ..metatables import MODELS
-from ..platform.catalog import CatalogBinding, CatalogRegistry, configured_registry
+from ..platform.catalog import CatalogRegistry, configured_registry
 from ..platform.runtime import CAPABILITIES, DirectoryPort, PolicyPort
 from ..solution_selling.config import solution_selling_enabled
 
@@ -33,11 +33,7 @@ class CatalogSettingsStore:
     def __init__(self, registry: CatalogRegistry | None = None):
         self.registry = registry or configured_registry()
 
-    def _required_bindings(self) -> tuple[CatalogBinding, CatalogBinding]:
-        return self.registry.binding("settings"), self.registry.binding("pipeline")
-
     def bootstrap_record(self) -> Mapping[str, Any]:
-        settings_binding, pipeline_binding = self._required_bindings()
         settings_table = MODELS["settings"].__tablename__
         pipeline_table = MODELS["pipeline"].__tablename__
         response = MetaTable.execute_operation(
@@ -53,19 +49,7 @@ class CatalogSettingsStore:
                     ),
                     "parameters": {},
                 },
-                "scope": {
-                    "data_source_uid": settings_binding.data_source_uid,
-                    "tables": [
-                        {
-                            "meta_table_uid": settings_binding.meta_table_uid,
-                            "access": "read",
-                        },
-                        {
-                            "meta_table_uid": pipeline_binding.meta_table_uid,
-                            "access": "read",
-                        },
-                    ],
-                },
+                "data_source_uid": self.registry.data_source_uid,
                 "limits": {"max_rows": 2, "statement_timeout_ms": 5000},
             }
         )

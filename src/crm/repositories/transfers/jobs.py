@@ -52,7 +52,6 @@ class TransferJobs(TransferBase):
             ),
             parameters=parameters,
             parameter_types={key: "string" for key in parameters},
-            tables={"transfer_job": "read"},
             max_rows=1,
         )
         row = result["rows"][0]
@@ -109,10 +108,6 @@ class TransferJobs(TransferBase):
                 "source_connection_uid": "uuid",
                 "manifest": "jsonb",
                 "report": "jsonb",
-            },
-            tables={
-                "transfer_job": "write",
-                "source_connection": "read",
             },
             max_rows=1,
         )
@@ -203,10 +198,6 @@ class TransferJobs(TransferBase):
                 "manifest": "jsonb",
                 "report": "jsonb",
             },
-            tables={
-                "transfer_job": "write",
-                "transfer_row": "write",
-            },
             max_rows=1,
         )
         return _summary(self._changed_row(result))
@@ -233,7 +224,6 @@ class TransferJobs(TransferBase):
                 "job_uid": str(job_uid),
             },
             parameter_types={"mapping": "jsonb", "job_uid": "uuid"},
-            tables={"transfer_job": "write"},
             max_rows=1,
         )
         return _summary(self._changed_row(result))
@@ -332,7 +322,6 @@ class TransferJobs(TransferBase):
                 "job_uid": "uuid",
                 "allowed": "jsonb",
             },
-            tables={"transfer_job": "write"},
             max_rows=1,
         )
         return _summary(self._changed_row(result))

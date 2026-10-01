@@ -111,12 +111,6 @@ class ContactAffiliations(GovernedGateway):
             sql=sql,
             parameters=params,
             parameter_types={},
-            tables={
-                "contact": "write",
-                "company": "read",
-                "contact_company_affiliation": "write",
-                "activity_event": "write",
-            },
             max_rows=1,
         )
         if not result.get("rows"):
@@ -175,12 +169,6 @@ class ContactAffiliations(GovernedGateway):
             sql=sql,
             parameters=params,
             parameter_types={},
-            tables={
-                "contact": "write",
-                "company": "read",
-                "contact_company_affiliation": "write",
-                "activity_event": "write",
-            },
             max_rows=1,
         )
         if not result.get("rows"):
@@ -243,11 +231,6 @@ class ContactAffiliations(GovernedGateway):
             sql=sql,
             parameters=params,
             parameter_types={},
-            tables={
-                "contact": "write",
-                "contact_company_affiliation": "write",
-                "activity_event": "write",
-            },
             max_rows=1,
         )
         if not result.get("rows"):
@@ -286,7 +269,6 @@ class ContactAffiliations(GovernedGateway):
                 "offset": page_index * page_size,
             },
             parameter_types={},
-            tables={"contact_company_affiliation": "read", "contact": "read", "company": "read"},
             max_rows=page_size + 1,
         )
         rows = result.get("rows") or []
@@ -323,7 +305,6 @@ class ContactAffiliations(GovernedGateway):
                 "affiliation_uid": str(affiliation_uid),
             },
             parameter_types={},
-            tables={"contact_company_affiliation": "read", "company": "read"},
             max_rows=1,
         )
         rows = result.get("rows") or []

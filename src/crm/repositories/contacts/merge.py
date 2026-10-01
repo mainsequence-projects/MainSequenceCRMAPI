@@ -146,14 +146,6 @@ class ContactMerge(GovernedGateway):
             ),
             parameters={"loser_uid": str(loser_uid)},
             parameter_types={},
-            tables={
-                "note": "read",
-                "task": "read",
-                "deal_contact": "read",
-                "contact_tag": "read",
-                "source_identity": "read",
-                "contact_company_affiliation": "read",
-            },
             max_rows=1,
         )
         rows = counts_result.get("rows")
@@ -353,18 +345,6 @@ class ContactMerge(GovernedGateway):
             sql=sql,
             parameters=parameters,
             parameter_types=parameter_types,
-            tables={
-                "contact": "write",
-                "contact_tag": "write",
-                "deal_contact": "write",
-                "note": "write",
-                "task": "write",
-                "interaction": "write",
-                "source_identity": "write",
-                "contact_company_affiliation": "write",
-                "entity_redirect": "write",
-                "activity_event": "write",
-            },
             max_rows=1,
         )
         if not result.get("rows"):

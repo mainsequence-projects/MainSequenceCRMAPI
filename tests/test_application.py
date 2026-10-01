@@ -78,8 +78,7 @@ def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch):
             return {"rows": [{"key": "default"}]}
         assert 'JOIN "mainsequence_crm__pipeline"' in sql
         assert operation["statement"]["parameters"] == {}
-        assert {table["access"] for table in operation["scope"]["tables"]} == {"read"}
-        assert len(operation["scope"]["tables"]) == 2
+        assert operation["data_source_uid"] == str(DATA_SOURCE)
         return {"rows": [_settings_row()]}
 
     monkeypatch.setattr("src.crm.services.application.MetaTable.execute_operation", execute)

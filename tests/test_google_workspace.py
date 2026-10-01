@@ -304,9 +304,7 @@ def test_google_preview_uses_bounded_batch_reads():
     assert store.source_links(source_uid, "contact", ["people:1", "people:2"]) == {}
     assert store.contact_matches_many(["one@example.com", "two@example.com"]) == {}
     assert len(store.calls) == 2
-    assert store.calls[0]["tables"] == {"source_identity": "read", "contact": "read"}
     assert json.loads(store.calls[0]["parameters"]["external_ids"]) == ["people:1", "people:2"]
-    assert store.calls[1]["tables"] == {"contact": "read"}
     assert store.calls[1]["max_rows"] == 8
 
 
@@ -403,10 +401,6 @@ def test_import_is_one_governed_record_provenance_and_activity_write():
     )
     call = store.calls[0]
     assert call["operation"] == "insert"
-    assert call["tables"]["contact"] == "write"
-    assert call["tables"]["source_identity"] == "write"
-    assert call["tables"]["activity_event"] == "write"
-    assert call["tables"]["google_oauth_connection"] == "read"
     assert "WITH gate AS" in call["sql"] and "linked AS" in call["sql"]
     assert "private-refresh" not in json.dumps(call["parameters"])
 

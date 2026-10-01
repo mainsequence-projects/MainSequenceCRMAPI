@@ -32,7 +32,6 @@ class TransferExports(TransferBase):
                 sql=f'SELECT to_jsonb(t) AS item FROM "{table}" t WHERE TRUE{archived} ORDER BY uid',
                 parameters={},
                 parameter_types={},
-                tables={name: "read"},
                 max_rows=20000,
             )
             records[export_record_key(name)] = [
@@ -50,7 +49,6 @@ class TransferExports(TransferBase):
                 ),
                 parameters={},
                 parameter_types={},
-                tables={affiliation: "read"},
                 max_rows=20000,
             )
             exported_contacts = {str(row["uid"]) for row in records["contacts"]}
@@ -90,7 +88,6 @@ class TransferExports(TransferBase):
                 "report": "jsonb",
                 "output": "jsonb",
             },
-            tables={"transfer_job": "write"},
             max_rows=1,
         )
         return _summary(result["rows"][0])
