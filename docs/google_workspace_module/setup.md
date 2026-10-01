@@ -34,9 +34,10 @@ The CRM defines `GET /extensions/google/oauth/callback/` and
 CRM API workflow `.mainsequence/workflows/crm-api.yaml` declares those
 two exact public ingress pairs. The persisted `config/crm.yaml` enables the
 extension. The platform does not infer public
-paths from FastAPI decorators or CORS settings. Read the installed
-`.agents/skills/mainsequence/pod_manager/code_repository_workflows/SKILL.md`
-and `resource_release/SKILL.md` for the current platform contract.
+paths from FastAPI decorators or CORS settings. Read the platform-owned
+`code_repository_workflows` and `resource_release` skills, which the
+authenticated platform skill update installs under
+`.agents/skills/mainsequence_platform/`, for the current platform contract.
 
 1. Resolve the exact CodeRepositoryBranch and fetch its backend
    `workflow-template/`. Use the returned API version (currently `2.3.0`).
