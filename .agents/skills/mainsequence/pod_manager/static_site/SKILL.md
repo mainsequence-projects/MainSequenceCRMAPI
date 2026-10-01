@@ -282,3 +282,12 @@ Stop and ask for direction when:
   another mutation; or
 - the requested work requires changing a Command Center SDK or DRF contract
   rather than consuming its current public surface.
+
+## Deployment dependencies
+
+A workflow may put general Jobs before or after a Static Site `deploy` step.
+Use the code-repository-workflows execution contract. The site owns its build,
+so its deploy step has no image_from; Jobs can use a declared Job's prepare_image
+step. All prerequisite Jobs must succeed before site submission. An unfinished
+workflow protects its referenced site from deletion; completed workflow history
+retains canonical UIDs and releases those live references.

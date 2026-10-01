@@ -101,19 +101,14 @@ Keep these distinctions:
   persisted JobRun and never launches an automatic retry. Do not infer
   readiness from CodeRepository creation returning successfully.
 - `OrganizationEnvironment` is shared by exact compatible
-  CodeRepositoryBranches from one or several CodeRepositories. Its DataSource is routing
-  configuration, not environment identity.
-- `DataSource` is the sole canonical physical database identity. New
-  MetaTable work routes through the CodeRepositoryBranch's backend-derived
-  Organization Environment; there is no generic CodeRepository-to-DataSource
-  membership.
-- `MetaTable` is the platform catalog boundary for a physical relational
-  table. Platform-managed rows belong directly to one Organization Environment
-  and use its canonical DataSource. External-registered rows, including
-  Connection/DataSource imports, belong to one explicit Organization Environment
-  while retaining their selected DataSource. CodeRepository-owned
-  table shapes are authored in SQLAlchemy metadata and bound to
-  PostgreSQL/TimescaleDB, MySQL, or SQL Server data sources.
+  CodeRepositoryBranches from one or several CodeRepositories. It owns platform
+  execution and configuration context.
+- `MetaTable` is an independent MetaTables application catalog boundary for a
+  physical table. The application owns storage registration, catalog grants and
+  table operations without platform Organization or Environment ownership.
+  CodeRepository-owned shapes are authored in SQLAlchemy metadata and use
+  SQLite, PostgreSQL, or TimescaleDB. Delegate storage configuration and
+  capabilities to the owning application's installed guidance.
 - `TimeIndexMetaTable` is the `MetaTable` specialization for time-indexed
   storage. It owns the time index, cadence, ordered identity dimensions,
   partition strategy, and time-series progress behavior.
@@ -425,20 +420,19 @@ Job, API, or CLI record.
 ## Design MetaTables
 
 Use a MetaTable for a CodeRepository table whose shape is authored in SQLAlchemy or
-for an existing physical relational table registered into the platform.
+for an existing physical table registered in the independent MetaTables application.
 
 For a CodeRepository-owned table, SQLAlchemy metadata is the authored table shape.
-The physical backend is one of PostgreSQL/TimescaleDB, MySQL, or SQL Server.
+The physical backend is one of SQLite, PostgreSQL, or TimescaleDB.
 Record the dialect explicitly and keep the shape compatible with it. Do not
 turn the Blueprint into Python code.
 
 Record:
 
 - relational or time-indexed table kind;
-- physical database dialect: `postgresql`, `timescaledb`, `mysql`, or `mssql`;
-- management mode: `platform_managed` or `external_registered`;
-- schema-management mode: `backend_managed`, `alembic_managed`, or
-  `external_registered`;
+- physical database dialect: `sqlite`, `postgresql`, or `timescaledb`;
+- application-owned management and schema-evolution intent, resolved through
+  the independent MetaTables guidance;
 - physical schema and unqualified SQLAlchemy table name;
 - row grain in one precise sentence;
 - business key;
@@ -551,6 +545,18 @@ rows are operational evidence and never Blueprint fields.
 
 ## Design APIs
 
+For accepted idle-latency requirements, record the desired replica floor and
+its resource-cost rationale in existing deployment expectations. Current workflow
+API `2.3.0` accepts `min_scale` for FastAPI (`0` through `10`) and Harness Agents
+(`0` through `5`), default `0`. A floor of `1` keeps the deployed revision warm;
+it does not guarantee zero downtime or bypass readiness and runtime admission.
+The release owns this policy; the Agent Card, session runtime configuration,
+and workflow `env_vars` do not. PATCH/MCP updates save desired state and the next
+successful workflow-driven deployment applies its immutable revision snapshot.
+Update omission preserves the value and explicit zero resets it. Runtime release
+and bound Harness Agent summaries expose the desired value as a numeric stat,
+including zero; Static Sites and unbound Agents omit it.
+
 Use an API as a typed CodeRepository interface over accepted business behavior and
 data.
 
@@ -602,6 +608,15 @@ access through Django, waits on `waking` with bounded backoff, and sends the
 business request only with the credential returned by a ready response. Local
 and debug execution instead waits on its locally owned process; Django does
 not control that lifecycle.
+
+If an API operation must call Django on behalf of the inbound FastAPI caller,
+record that actor requirement and the operation-specific authorization rule.
+The implementation must present both the verified signed caller assertion and
+the revision-bound workload credential. Neither `X-User-UID` nor the workload
+credential's responsible User is caller proof. ADR-0046 is in staged rollout;
+do not claim actor-aware behavior is available until gateway forwarding and
+runtime verification are deployed. Service-only operations use workload
+identity without manufacturing an inbound actor.
 
 This FastAPI transport rule does not apply to a Harness Agent. A Harness Agent
 uses the Harness Agent product adapter in `coding-agents`; an ordinary FastAPI
@@ -710,6 +725,10 @@ Record:
   the generated branch-specific SemVer rule, and use explicit null only when
   every synchronized commit is intended; and
 - the project ASGI resource selected for the Harness Agent runtime.
+
+Accepted Harness Agent deployment intent may also record `min_scale` and its
+availability/cost rationale within the existing `code_repository_to_agent`
+deployment block; implementation hands the value to `spec.min_scale`.
 
 The deployment handoff is exactly one workflow resource with
 `kind: harness_agent`. `harness_agent` is also the persisted release kind and
@@ -918,7 +937,7 @@ GitHubRepositoryBinding branch discovery is not an MCP tool in the current catal
 manual branch creation/import is retired by the ADR-031/ADR-0036 lifecycle.
 After bootstrap, only a signed provider push may create a missing CodeRepositoryBranch,
 and only when the Organization already owns the exact matching environment.
-Git does not create that environment or choose a DataSource. No MCP branch
+Git does not create that environment or choose application storage. No MCP branch
 creation/import tool exists. Canonical DRF repository detail returns the owning
 logical CodeRepository UID; it never computes a branch UID.
 
@@ -947,17 +966,11 @@ CodeRepository creation means `python`. Do not invent separate language, framewo
 profile, or scaffold version fields. The canonical CodeRepository response exposes the derived technology, the
 mandatory pinned framework image, and repository/commit-scoped SDK
 observations. A Vite CodeRepository keeps browser build variables on its
-StaticSiteRelease; its environment owns
-MetaTable DataSource routing like every other CodeRepositoryBranch. CodeRepository creation
-does not accept a DataSource selector. The backend always resolves the Organization's
-canonical production environment for `main` and may additionally derive the submitted
-bootstrap Environment's non-main branch. The CodeRepository stores and exposes no
-default MetaTables DataSource; managed
-MetaTable routing resolves only through the exact CodeRepositoryBranch's persisted
-Organization Environment. The read-only CodeRepositoryBranch
-`metatables_data_source` and `metatables_data_source_uid` projections stay in
-the public branch contract and reflect the branch Environment's routing
-configuration.
+StaticSiteRelease. MetaTables owns its storage registry independently of platform
+Environments and repository branches. CodeRepository creation accepts no storage
+selector. The platform resolves its production Environment for `main` and may derive
+the submitted bootstrap Environment's branch; these relations serve ordinary platform
+operations such as Secrets and Constants. Branch responses contain no storage routing.
 Do not infer framework-image paths, tags, or runtime versions: the physical
 infrastructure producer advertises those values, and CodeRepository creation resolves
 its advertised default when no image UID is supplied.
@@ -1000,3 +1013,29 @@ Stop and ask for direction when:
 - a required concept has no approved Blueprint contract;
 - the requested operation is not exposed through an approved interface;
 - implementation would start before the Blueprint decision is accepted.
+
+## Workflow Environment applicability
+
+Optional root `scope.environments` is a non-empty list of unique exact
+Environment names. Omission applies in the event branch's existing Environment.
+`production` matches its backend-owned production role; other names match
+case-sensitively. This is a file applicability filter, never Environment
+selection. A nonmatching file is structurally validated but skips source/target
+resolution, reconciliation and automatic deployment. It does not delete
+resources or stop existing schedules. Validation reports `applicable` for scoped
+files. Generic deployment handlers honor the same exact-event result.
+
+## Jobs around deployment
+
+For a release requiring prerequisite or post-deployment work, keep the components
+in the existing `jobs`, `apis`, `code_repository_to_agent`, or `static_sites`
+Blueprint domains. Record invocation order, parallel work, exact candidate-image
+sharing, runtime limits and failure expectations in their existing relationships
+and deployment expectations. Handoff to code-repository-workflows for optional
+`execution.steps` with prepare_image/run_job/deploy, local needs and image_from.
+Django creates/reuses Jobs from their declarations. No manual Job creation or
+UID wiring is required. A schema migration is one example of a general Job.
+All targets in a connected group must admit the event under their promotion
+policies. Scope is an optional Environment filter, not a new deployment target.
+Post-deployment failure does not roll back an already active release. Script
+retry, cross-file dependencies, matrices and outputs are outside this contract.

@@ -362,11 +362,14 @@ contract.
 
 ### Requester and responder direction
 
-Model and serialize message direction directly as `requester` and `responder`. The Main Sequence
-A2A wire values are:
+Model and serialize message direction directly as `requester` and `responder`.
+The Main Sequence Tau binding uses:
 
 - requester -> `ROLE_REQUESTER` on the wire;
 - responder -> `ROLE_RESPONDER` on the wire.
+
+These are Main Sequence binding values. A canonical A2A v1 adapter maps them to
+`ROLE_USER` and `ROLE_AGENT`, respectively, before emitting a v1 Message.
 
 These values are transport direction, not principal identity. An Agent calling another Agent is
 the requester for that exchange and sends `ROLE_REQUESTER`; it remains authenticated and audited

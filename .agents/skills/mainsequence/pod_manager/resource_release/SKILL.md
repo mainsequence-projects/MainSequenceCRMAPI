@@ -21,6 +21,18 @@ collection POST and the former `resource_release.create` MCP tool are retired.
 
 ## Preserve Canonical Ownership
 
+For accepted idle-latency requirements, record the desired replica floor and
+its resource-cost rationale in existing deployment expectations. Current workflow
+API `2.3.0` accepts `min_scale` for FastAPI (`0` through `10`) and Harness Agents
+(`0` through `5`), default `0`. A floor of `1` keeps the deployed revision warm;
+it does not guarantee zero downtime or bypass readiness and runtime admission.
+The release owns this policy; the Agent Card, session runtime configuration,
+and workflow `env_vars` do not. PATCH/MCP updates save desired state and the next
+successful workflow-driven deployment applies its immutable revision snapshot.
+Update omission preserves the value and explicit zero resets it. Runtime release
+and bound Harness Agent summaries expose the desired value as a numeric stat,
+including zero; Static Sites and unbound Agents omit it.
+
 Pod Manager owns release persistence, validation, authorization, image and
 source resolution, automatic promotion, deployment orchestration, and run
 state. MCP owns only protocol adaptation and this operation guidance.
@@ -106,9 +118,16 @@ URL as opaque connection data instead of constructing a product hostname.
 ## Discover Existing Releases
 
 Use `resource_release.list` with bounded `limit` and `offset`. Prefer exact
-filters such as `code_repository_branch_uid`, `release_kind`, or `uid` before free-text
+filters such as `name`, `code_repository_branch_uid`, `release_kind`, or `uid` before free-text
 search. The response is the canonical paginated collection with `count`,
 `next`, `previous`, `results`, `controls`, and `actions`.
+
+`name` matches the exact shared release name for both runtime and static-site
+releases. Names can repeat across branches; use the deployment's owning branch
+UID or release kind to disambiguate and retain the returned release UID. A
+shared MetaTables API can belong to a different CodeRepository than its consumer,
+so do not assume that the consuming repository's branch owns the deployment.
+These filters narrow the existing authorized collection and grant no access.
 
 Use `resource_release.get` with `resource_release_uid` before configuration or
 deployment. Detail is discriminated by `release_kind`; do not assume runtime
@@ -197,6 +216,14 @@ bounded `retry_after_ms` hint. Send the business request only after
 Local/debug processes use their launcher-owned readiness flow because Django
 does not own those processes. MCP release lifecycle tools continue to manage
 deployment configuration and do not duplicate the runtime-access operation.
+
+For an application operation that needs to act for the inbound FastAPI caller,
+the `X-User-UID` gateway header alone is not proof. The staged ADR-0046
+contract requires a verified, release- and Environment-bound signed caller
+assertion alongside the revision-bound workload credential on an actor-aware
+Django operation. Do not enable that application behavior until gateway
+forwarding and runtime verification are deployed. Service-only calls use the
+workload identity without a caller assertion.
 
 REST requests continue to use the existing FastAPI Bearer flow. A non-browser
 WebSocket client that can set handshake headers may use that same UID-bound
@@ -431,7 +458,11 @@ Runtime releases accept only:
 - `automatic_deployment`;
 - `automatic_redeployment_policy`;
 - positive release-owned `revision_retention_count`; and
-- for FastAPI only, `cors_allowed_origins`.
+- for FastAPI only, `cors_allowed_origins` and `public_ingress`.
+
+Added `public_ingress` paths become effective only after a matching ready
+revision deploys and activates. Removed paths lose public admission
+immediately; an explicitly submitted `[]` removes all public admission.
 
 Static sites additionally accept the canonical static configuration fields
 advertised by `resource_release.static_site_capabilities`, including the

@@ -1,6 +1,6 @@
 ---
 name: code-repository-workflows
-description: Create and validate backend-managed API 2.3.0 deployment declarations under .mainsequence/workflows for Jobs, FastAPI applications, Static Sites, and the one branch-owned Harness Agent.
+description: Create and validate backend-managed API 2.3.0 deployment declarations and optional Job dependencies under .mainsequence/workflows for Jobs, FastAPI applications, Static Sites, and the one branch-owned Harness Agent.
 ---
 
 # Main Sequence CodeRepository Workflows
@@ -44,6 +44,18 @@ providers do not select branch HEAD. Automatically managed targets receive only
 the verified digest-pinned code repository image selected by the backend.
 
 ## File Contract
+
+For accepted idle-latency requirements, record the desired replica floor and
+its resource-cost rationale in existing deployment expectations. Current workflow
+API `2.3.0` accepts `min_scale` for FastAPI (`0` through `10`) and Harness Agents
+(`0` through `5`), default `0`. A floor of `1` keeps the deployed revision warm;
+it does not guarantee zero downtime or bypass readiness and runtime admission.
+The release owns this policy; the Agent Card, session runtime configuration,
+and workflow `env_vars` do not. PATCH/MCP updates save desired state and the next
+successful workflow-driven deployment applies its immutable revision snapshot.
+Update omission preserves the value and explicit zero resets it. Runtime release
+and bound Harness Agent summaries expose the desired value as a numeric stat,
+including zero; Static Sites and unbound Agents omit it.
 
 - Every file requires `api_version`, `name`, and `resources`.
 - `2.3.0` is current. It accepts `job`, `fastapi`, `static_site`, and
@@ -324,3 +336,46 @@ retention cleanup removes them.
 
 When validation fails, report exact backend paths and error codes. Do not invent
 a corrected branch, internal UID, image, Agent UID, or deployment kind.
+
+## Workflow Environment applicability
+
+Optional root `scope.environments` is a non-empty list of unique exact
+Environment names. Omission applies in the event branch's existing Environment.
+`production` matches its backend-owned production role; other names match
+case-sensitively. This is a file applicability filter, never Environment
+selection. A nonmatching file is structurally validated but skips source/target
+resolution, reconciliation and automatic deployment. It does not delete
+resources or stop existing schedules. Validation reports `applicable` for scoped
+files. Generic deployment handlers honor the same exact-event result.
+
+
+## Deployment Job dependencies
+
+The optional `execution.steps` mapping coordinates general Jobs around a
+release. A step contains one `prepare_image`, `run_job`, or `deploy` resource
+reference. `needs` references local step names; independent ready Jobs can run
+in parallel. Runtime deploy and Job steps require `image_from` pointing to a
+prepare-image ancestor. Static Site deploy owns its build and has no image_from.
+Job `command_args` defaults to an empty list and never inherits scheduled args.
+
+Django creates or reuses the declared Jobs; do not ask the user to create them
+first or paste UIDs into YAML. A Job declaration without run_job keeps its
+manual/scheduled behavior. The backend freezes the exact image and invocation
+inputs, and waits for settled JobRun success before starting dependent work.
+Every represented target's promotion policy must admit its connected group.
+Optional scope.environments remains independent of execution and never remaps
+the Environment. Neither field is required for existing workflows.
+
+A migration is an ordinary Job, as are initialization, validation and smoke
+checks. A failed prerequisite blocks descendants. A failed post-deployment Job
+fails the workflow while the successful deployment remains active. There is no
+automatic script replay, rollback, workflow retry endpoint, expression language,
+output passing or cross-file dependency support. Duplicate events and recovery
+reuse the same invocation. Jobs touching shared external data own their locking
+and idempotency.
+
+Inspect the latest 20 runs using the existing branch read with
+`include=workflow_runs`, or MCP `code_repository_branch.get` with
+`include: "workflow_runs"`. Named steps reference canonical JobRun and deployment
+UIDs; follow their existing status/log reads. The two workflow models coordinate
+those owners and do not replace their execution lifecycle.

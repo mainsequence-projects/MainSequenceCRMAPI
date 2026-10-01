@@ -201,6 +201,18 @@ capabilities, and the supported response-kind intersection.
 
 ## Harness Agent Workflow
 
+For accepted idle-latency requirements, record the desired replica floor and
+its resource-cost rationale in existing deployment expectations. Current workflow
+API `2.3.0` accepts `min_scale` for FastAPI (`0` through `10`) and Harness Agents
+(`0` through `5`), default `0`. A floor of `1` keeps the deployed revision warm;
+it does not guarantee zero downtime or bypass readiness and runtime admission.
+The release owns this policy; the Agent Card, session runtime configuration,
+and workflow `env_vars` do not. PATCH/MCP updates save desired state and the next
+successful workflow-driven deployment applies its immutable revision snapshot.
+Update omission preserves the value and explicit zero resets it. Runtime release
+and bound Harness Agent summaries expose the desired value as a numeric stat,
+including zero; Static Sites and unbound Agents omit it.
+
 Use the backend-provided workflow template as the source for the current field
 shape. The deployment intent has this structure:
 

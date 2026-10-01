@@ -21,6 +21,12 @@ Sequence derives the repository from that branch, verifies that the exact Git
 branch exists in the bound GitHub repository, and snapshots its observed head
 commit before creation.
 
+For runtime callers, Main Sequence checks that the selected branch belongs to
+the authenticated target's Organization Environment and that the responsible
+User can view it for reads or edit it for writes. The runtime target's own
+branch does not have to match the selected branch. Issue detail, comment, and
+operation access use the same Environment and origin-branch permission boundary.
+
 GitHub issues remain repository-scoped. The origin CodeRepositoryBranch is Main
 Sequence authorization and provenance; it is not a native GitHub issue-to-branch
 association. Never substitute a CodeRepository UID, repository name, owner,

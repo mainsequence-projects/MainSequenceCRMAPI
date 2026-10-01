@@ -27,12 +27,15 @@ Report local setup as complete only when all of the following are true:
 - the selected local directory is either a verified checkout of that exact
   repository or a newly completed clone;
 - repository access was verified using a caller-owned SSH private key;
-- `.env` contains the Main Sequence endpoint and one complete supported
-  authentication mode; it contains no repository or branch identity variable,
-  because canonical local identity is resolved from the verified Git checkout;
+- `.env` contains the Main Sequence endpoint; it contains no repository or
+  branch identity variable, because canonical local identity is resolved from
+  the verified Git checkout, and no credential, because the session is kept in
+  the machine's credential store and not in the checkout (the entries an
+  older CLI writes there itself are the one exception, described below);
 - local CLI/runtime authentication was established through either the
   backend-issued MCP handoff or the existing injected runtime-credential lane,
-  without returning credentials through MCP or model-visible output;
+  and the CLI reports a working session, without returning credentials through
+  MCP or model-visible output;
 - `.env` is excluded from Git; and
 - the repository's own `AGENTS.md` and relevant skills have been read before
   implementation begins.
@@ -44,7 +47,7 @@ step rather than deleting successfully cloned source.
 ## Preserve The Boundary
 
 The skill owns the platform-aware sequence, readiness checks, safe repository
-identity rules, credential-materialization contract, verification, and
+identity rules, local-authentication contract, verification, and
 handoff.
 
 Git branch discovery in this skill applies only to a genuine caller-owned local
@@ -60,6 +63,8 @@ Do not:
   secret, `.env` content, or local absolute path in an MCP tool argument;
 - request or expose the MCP Authorization header through a tool;
 - print, summarize, copy to chat, or commit credential values;
+- write, copy, or move a credential into `.env` or any other file of the
+  checkout;
 - infer initialization merely because `code_repository.create` returned;
 - silently ignore deploy-key registration failures;
 - overwrite an existing directory or repoint an existing Git remote;
@@ -68,7 +73,7 @@ Do not:
 - require Python, the Main Sequence SDK, or the Main Sequence CLI merely to
   inspect CodeRepository readiness, register the deploy key, or clone. A runnable
   SDK checkout may then use its installed CLI for the approved authentication
-  handoff and `.env` rendering.
+  handoff.
 
 ## Resolve And Wait For The CodeRepository
 
@@ -194,16 +199,34 @@ After cloning, verify that `origin` identifies the expected GitHubRepositoryBind
 that `git branch --show-current` equals the selected branch. Do not repoint a
 remote or silently select another branch merely to make a mismatch disappear.
 
-## Materialize Local Authentication
+## Establish Local Authentication
+
+The session belongs to the machine, not to the checkout. The CLI keeps one
+session per backend in the operating system's credential store, the SDK reads
+it when it is imported, and one login serves every checkout on that machine.
+The checkout's `.env` holds the Main Sequence endpoint and no credential.
+
+Use the CLI the checkout has. A Python repository has `mainsequence` in its
+environment. A Vite application has `command-center-sdk` once its dependencies
+are installed, run as `npx command-center-sdk`. Both CLIs read and write the
+same machine session and name these commands the same, so a session made with
+either serves both kinds of checkout.
 
 Do not copy credentials out of the MCP host's OAuth store. The supported normal
 user lane creates a separate tracked CLI session through a short-lived PKCE
 handoff:
 
-1. On the machine that owns the checkout, run:
+1. On the machine that owns the checkout, run the handoff login of its CLI.
+   In a Python repository:
 
    ```text
    mainsequence login --mcp
+   ```
+
+   In a Vite application:
+
+   ```text
+   npx command-center-sdk login --mcp
    ```
 
 2. Keep the command running. It sends only PKCE state and challenge to
@@ -215,16 +238,29 @@ handoff:
    UID from another process.
 4. The waiting CLI polls the backend-issued callback with its private PKCE
    verifier. After authorization, the callback returns the normal tracked JWT
-   pair directly to the CLI, which stores it through its existing credential
-   store. Neither token enters the MCP tool result or model output.
-5. Materialize local authentication through the canonical local command:
-   command:
+   pair directly to the CLI, which saves it in the machine's credential store.
+   Neither token enters the MCP tool result or model output.
+5. Confirm the session from inside the checkout:
 
    ```text
-   mainsequence code-repository refresh-token --path <checkout>
+   mainsequence refresh-token
    ```
 
-For this normal tracked-session lane, the resulting `.env` manages exactly:
+   In a Vite application the same command is
+   `npx command-center-sdk refresh-token`. The command takes no path. It renews the saved session, reports the backend,
+   the user, and the expiry, and prints no token value. When the `.env` of the
+   directory it runs in still holds an access token, a refresh token, or a
+   runtime credential from an earlier setup, it removes those entries and names
+   them. A nonzero exit means there is no working session; report its message.
+
+A machine that already holds a working session for this backend, made with
+either CLI, needs no new handoff: `refresh-token` succeeds there. Start the
+handoff when it fails.
+
+A CLI released before the machine session has no top-level `refresh-token` and
+answers `No such command`. It keeps the session in the checkout instead. With
+such a CLI, run `mainsequence code-repository refresh-token --path <checkout>`,
+which writes these entries into `.env` itself:
 
 ```text
 MAINSEQUENCE_ACCESS_TOKEN
@@ -232,22 +268,24 @@ MAINSEQUENCE_REFRESH_TOKEN
 MAINSEQUENCE_ENDPOINT
 ```
 
+Those entries are that CLI's own output. Never add, copy, or edit them.
+
+A `command-center-sdk` released before the machine session has no `login` and
+answers `Unknown command`. It keeps no session. When the machine also has the
+`mainsequence` CLI, make the session with that one. Otherwise preserve the
+checkout and report local runtime authentication as pending, and that the
+checkout needs a Command Center SDK that has `login`.
+
 For a deployed Main Sequence Harness Agent runtime, do not use the handoff to convert its
 access-only principal into a refresh-backed user session. Its deployment
-already injects the existing runtime-credential environment. The user never
-authors that auth mode, credential, CodeRepositoryBranch UID, repository branch, or
-Organization Environment UID. Run ordinary
-`mainsequence login`, then `mainsequence code-repository refresh-token --path
-<checkout>`; the CLI uses its current noninteractive runtime exchange and
-preserves these supported entries:
-
-```text
-MAINSEQUENCE_AUTH_MODE=runtime_credential
-MAINSEQUENCE_RUNTIME_CREDENTIAL_ID
-MAINSEQUENCE_RUNTIME_CREDENTIAL_SECRET
-MAINSEQUENCE_ACCESS_TOKEN
-MAINSEQUENCE_ENDPOINT
-```
+already injects the existing runtime-credential environment, and every process
+in that runtime reads the credential from there. The user never authors that
+auth mode, credential, CodeRepositoryBranch UID, repository branch, or
+Organization Environment UID. Run ordinary `mainsequence login`, then
+`mainsequence refresh-token`; the CLI uses its current noninteractive runtime
+exchange and writes nothing into `.env`. A CLI released before the machine
+session runs `mainsequence code-repository refresh-token --path <checkout>`
+instead and writes the runtime-credential entries into `.env` itself.
 
 Do not combine session-refresh and runtime-credential modes. Do not use
 `mainsequence login --mcp --export`, manual token arguments, an MCP tool that
@@ -257,28 +295,28 @@ credentials may permit the current MCP session, but it cannot provide durable
 local SDK authentication. Report that limitation instead of claiming
 completion.
 
-The `code-repository refresh-token` render must:
+The checkout's `.env` is not a credential store:
 
-1. read the existing file without returning it to the model;
-2. preserve every unrelated entry;
-3. omit existing `MAINSEQUENCE_TOKEN` and any legacy repository/branch
-   identity variables from the rendered result rather than running a separate
-   cleanup operation;
-4. rewrite only the supported Main Sequence authentication entries and
-   endpoint for the selected mode; repository identity remains derived from
-   the verified Git checkout plus authenticated backend resolution; and
-5. verify presence by key name only, never by printing values.
+1. never write, copy, or move a token or a runtime credential into it;
+2. never print it or return it to the model, and verify presence by key name
+   only;
+3. leave every unrelated entry as it is; and
+4. let `mainsequence refresh-token` remove the credential entries an earlier
+   setup left there, rather than editing them by hand.
 
-Initial materialization and later authentication refresh use this same render
-contract. Refresh uses the CLI's established tracked session or an already
-backend-injected runtime-credential exchange, then rewrites the managed entries
-in `.env`. It never turns user-authored environment variables into deployed
-runtime context; authenticated backend response state is required.
-Refresh is not an MCP tool and does not expose credential values to the model.
+Later authentication refresh is the same `refresh-token` of the checkout's CLI.
+It uses the CLI's saved session or an already backend-injected runtime-credential
+exchange. It never turns user-authored environment variables into deployed
+runtime context; authenticated backend response state is required. Refresh is
+not an MCP tool and does not expose credential values to the model.
 
-Before materialization, verify that `.env` is ignored by the repository. If it
-is not ignored, stop before writing secrets and ask for approval to correct the
-repository ignore policy.
+A local tool that cannot read the credential store obtains a short-lived access
+token from `auth token` of either CLI. That command exists for programs. Do not
+run it to read a token into the conversation.
+
+Verify that `.env` is ignored by the repository. If it is not ignored, stop and
+ask for approval to correct the repository ignore policy: an older CLI and
+other local tools may write secrets there.
 
 If the local machine does not have the CodeRepository CLI/runtime needed to
 execute the repository, preserve the verified checkout and report local runtime
@@ -297,8 +335,9 @@ Verify without revealing sensitive values:
 - exact Git `origin` agreement;
 - current Git branch agreement with the selected `repository_branch`;
 - clean repository identity and expected checkout root;
-- `.env` presence, Git exclusion, and required key names;
-- a nonsecret authenticated platform check through the selected local
+- `.env` presence, Git exclusion, and the endpoint entry, by key name only;
+- a working local session: `mainsequence refresh-token` exits zero, or a
+  nonsecret authenticated platform check succeeds through the selected local
   authentication mode; and
 - repository instructions and existing user changes.
 
@@ -326,7 +365,7 @@ Identify the last completed boundary and preserve safe completed work:
   human to inspect or explicitly retry through DRF;
 - deploy-key failure: local key may exist, repository not yet accessible;
 - clone failure: remove only a new incomplete clone created by this attempt;
-- credential materialization unavailable: preserve the verified checkout and
+- local authentication unavailable: preserve the verified checkout and
   report local runtime authentication as pending;
 - `.env` validation failure: do not print the file or secret values; and
 - repository-instruction failure: preserve setup and report the missing or

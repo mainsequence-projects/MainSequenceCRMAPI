@@ -1,6 +1,6 @@
 ---
 name: organization-environments
-description: Understand, enumerate, design, and review Main Sequence Organization Environments and their lifecycle. Use to resolve visible environment UIDs before human or local Agent discovery; distinguish an Environment from a CodeRepositoryBranch, data source, release, or deployment; and reason about backend-derived runtime scope for Jobs, ResourceReleases, and Harness Agents.
+description: Understand, enumerate, design, and review Main Sequence Organization Environments and their lifecycle. Use to resolve visible environment UIDs before human or local Agent discovery; distinguish an Environment from a CodeRepositoryBranch, release, or deployment; and reason about backend-derived runtime scope for Jobs, ResourceReleases, and Harness Agents.
 ---
 
 # Main Sequence Organization Environments
@@ -18,7 +18,7 @@ is organization_environment_uid, and collection filtering uses
 
 An Organization Environment is the Organization-wide operational partition for
 data, configuration, code execution, applications, and Agents. It is not a
-CodeRepository, Git branch, DataSource, release, or DeploymentRun.
+CodeRepository, Git branch, release, or DeploymentRun.
 
 Operational roots store one required Environment, descendants derive it through
 their mandatory owner, declared polymorphic boundaries carry backend-maintained
@@ -56,7 +56,6 @@ Organization.
     Organization
     ├── OrganizationEnvironment
     │   ├── OrganizationProject
-    │   ├── MetaTable, Namespace, and TableUpdateNode
     │   ├── Secret and Constant
     │   ├── Bucket and PVCDisk
     │   └── Agent
@@ -104,7 +103,7 @@ still applies; Environment scope narrows those permissions and never replaces
 them.
 
 A missing or inconsistent runtime Environment fails closed. Never fall back to
-human grants, production, main, an image, a prompt value, or a DataSource.
+human grants, production, main, an image, or a prompt value.
 
 ### Human or local caller
 
@@ -121,17 +120,13 @@ manufacture runtime identity or widen Environment scope.
 
 ## Resource boundaries
 
-### MetaTables and DataSources
+### Independent application storage
 
-Every MetaTable belongs to one Environment, including external registrations.
-Platform-managed MetaTables use the Environment's routing DataSource; external
-registrations retain their selected physical DataSource. DataSource identity is
-not Environment identity, and sharing a DataSource does not merge logical
-catalog scope.
-
-Apply the Environment boundary before list, retrieve, search, identifier
-lookup, registration, import, reservation, finalization, and write. A known UID
-must obey the same boundary as a collection query.
+MetaTables owns its catalog, storage registration and table authorization.
+Its resources have no platform Environment ownership or routing relationship.
+An authenticated platform runtime context does not add a catalog scope or
+select storage for that application. Use its installed application guidance
+for storage operations; ordinary platform Secrets retain the policy below.
 
 ### Secrets and Constants
 
@@ -199,7 +194,7 @@ Stop and ask for direction when:
 - a human credential is treated as having implicit runtime Environment scope;
 - a release operation is described as deploying an Environment;
 - code deployment is assumed to migrate data or configuration; or
-- an established branch, DataSource, or resource mapping would change without
+- an established branch or resource mapping would change without
   an explicit migration plan.
 
 ## Handoff
