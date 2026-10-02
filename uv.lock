@@ -730,7 +730,7 @@ wheels = [
 
 [[package]]
 name = "mainsequencecrmapi"
-version = "0.1.15"
+version = "0.1.16"
 source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
