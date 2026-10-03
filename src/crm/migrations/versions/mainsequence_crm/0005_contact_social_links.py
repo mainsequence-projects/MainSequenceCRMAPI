@@ -36,20 +36,31 @@ def upgrade() -> None:
                 "A contact has an invalid legacy LinkedIn URL; correct it before upgrading"
             ) from exc
 
+    # The local SQLite runtime has no jsonb cast or functions; it gets portable
+    # forms of those statements. PostgreSQL keeps the original SQL.
+    sqlite = connection.dialect.name == "sqlite"
     op.add_column(
         CONTACT,
         sa.Column(
-            "socials", postgresql.JSONB(), server_default=sa.text("'{}'::jsonb"), nullable=False
+            "socials",
+            postgresql.JSONB(),
+            server_default=sa.text("'{}'" if sqlite else "'{}'::jsonb"),
+            nullable=False,
         ),
     )
     connection.execute(
         sa.text(
-            f"UPDATE \"{CONTACT}\" SET socials=jsonb_build_object('linkedin', linkedin_url) "
+            f"UPDATE \"{CONTACT}\" SET socials=json_object('linkedin', linkedin_url) "
+            "WHERE linkedin_url IS NOT NULL"
+            if sqlite
+            else f"UPDATE \"{CONTACT}\" SET socials=jsonb_build_object('linkedin', linkedin_url) "
             "WHERE linkedin_url IS NOT NULL"
         )
     )
     op.create_check_constraint(
-        "ck_mainsequence_crm__contact_socials", CONTACT, "jsonb_typeof(socials) = 'object'"
+        "ck_mainsequence_crm__contact_socials",
+        CONTACT,
+        "json_type(socials) = 'object'" if sqlite else "jsonb_typeof(socials) = 'object'",
     )
     op.drop_column(CONTACT, "linkedin_url")
 
@@ -57,14 +68,23 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Refuse to discard any profile the old schema cannot represent."""
     connection = op.get_bind()
+    sqlite = connection.dialect.name == "sqlite"
     has_other_profiles = connection.execute(
         sa.text(
-            f"SELECT EXISTS(SELECT 1 FROM \"{CONTACT}\" WHERE socials - 'linkedin' <> '{{}}'::jsonb)"
+            f"SELECT EXISTS(SELECT 1 FROM \"{CONTACT}\" WHERE json_remove(socials, '$.linkedin') <> '{{}}')"
+            if sqlite
+            else f"SELECT EXISTS(SELECT 1 FROM \"{CONTACT}\" WHERE socials - 'linkedin' <> '{{}}'::jsonb)"
         )
     ).scalar_one()
     if has_other_profiles:
         raise RuntimeError("Cannot downgrade contacts with non-LinkedIn social profiles")
     op.add_column(CONTACT, sa.Column("linkedin_url", sa.Text(), nullable=True))
-    connection.execute(sa.text(f"UPDATE \"{CONTACT}\" SET linkedin_url=socials->>'linkedin'"))
+    connection.execute(
+        sa.text(
+            f"UPDATE \"{CONTACT}\" SET linkedin_url=json_extract(socials, '$.linkedin')"
+            if sqlite
+            else f"UPDATE \"{CONTACT}\" SET linkedin_url=socials->>'linkedin'"
+        )
+    )
     op.drop_constraint("ck_mainsequence_crm__contact_socials", CONTACT, type_="check")
     op.drop_column(CONTACT, "socials")

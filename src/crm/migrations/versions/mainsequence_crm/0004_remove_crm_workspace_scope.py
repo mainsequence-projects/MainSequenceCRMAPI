@@ -7,6 +7,7 @@ Create Date: 2026-09-23 20:58:54.276206
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -150,6 +151,10 @@ INDEXES = {
 def upgrade() -> None:
     """Replace CRM-only workspace scoping with ordinary application settings."""
     bind = op.get_bind()
+    # The local SQLite runtime has no regex operator, NOW() or jsonb cast and
+    # cannot bind uuid.UUID; it gets portable forms of those statements.
+    # PostgreSQL keeps the original SQL.
+    sqlite = bind.dialect.name == "sqlite"
     inspector = sa.inspect(bind)
     names = set(inspector.get_table_names())
     expected = {PREFIX + name for name in TABLES} | {PREFIX + "workspace"}
@@ -180,14 +185,19 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.CheckConstraint("key = 'default'", name="ck_mainsequence_crm__settings_key"),
         sa.CheckConstraint(
-            "default_currency ~ '^[A-Z]{3}$'", name="ck_mainsequence_crm__settings_currency"
+            "default_currency GLOB '[A-Z][A-Z][A-Z]'"
+            if sqlite
+            else "default_currency ~ '^[A-Z]{3}$'",
+            name="ck_mainsequence_crm__settings_currency",
         ),
         sa.CheckConstraint(
             "configuration_version > 0", name="ck_mainsequence_crm__settings_version"
         ),
         sa.UniqueConstraint("key", name="uq_mainsequence_crm__settings_key"),
     )
-    if count:
+    if sqlite:
+        _seed_settings_on_sqlite(bind, from_workspace=bool(count))
+    elif count:
         bind.execute(
             sa.text(
                 f'INSERT INTO "{PREFIX}settings" (uid,key,name,default_currency,timezone,configuration,configuration_version,created_at,updated_at) '
@@ -269,7 +279,9 @@ def upgrade() -> None:
                 **({"postgresql_where": sa.text(predicate)} if predicate else {}),
             )
     op.drop_table(PREFIX + "workspace")
-    if not count:
+    if not count and sqlite:
+        _seed_pipeline_on_sqlite(bind)
+    elif not count:
         pipeline_uid = uuid.uuid4()
         bind.execute(
             sa.text(
@@ -304,6 +316,65 @@ def upgrade() -> None:
                     "outcome": outcome,
                 },
             )
+
+
+def _seed_settings_on_sqlite(bind, *, from_workspace: bool) -> None:
+    """The settings statements above, for local SQLite, with typed binds."""
+    uid = sa.bindparam("uid", uuid.uuid4(), type_=sa.Uuid())
+    columns = "uid,key,name,default_currency,timezone,configuration,configuration_version,created_at,updated_at"
+    if from_workspace:
+        statement = sa.text(
+            f'INSERT INTO "{PREFIX}settings" ({columns}) '
+            f"SELECT :uid,'default',name,default_currency,timezone,configuration,configuration_version,created_at,updated_at FROM \"{PREFIX}workspace\""
+        ).bindparams(uid)
+    else:
+        statement = sa.text(
+            f'INSERT INTO "{PREFIX}settings" ({columns}) '
+            "VALUES (:uid,'default','Main Sequence CRM','USD','UTC',:configuration,1,:now,:now)"
+        ).bindparams(
+            uid,
+            sa.bindparam("now", datetime.now(timezone.utc), type_=sa.DateTime(timezone=True)),
+            configuration='{"company_sectors":[],"contact_statuses":[],"deal_categories":[],"task_types":[]}',
+        )
+    bind.execute(statement)
+
+
+def _seed_pipeline_on_sqlite(bind) -> None:
+    """The default pipeline and stage statements above, for local SQLite."""
+    now = sa.bindparam("now", datetime.now(timezone.utc), type_=sa.DateTime(timezone=True))
+    pipeline_uid = uuid.uuid4()
+    bind.execute(
+        sa.text(
+            f'INSERT INTO "{PREFIX}pipeline" '
+            "(uid,created_at,updated_at,created_by_uid,updated_by_uid,version,name,is_default,board_version) "
+            "VALUES (:uid,:now,:now,NULL,NULL,1,'Sales',TRUE,1)"
+        ).bindparams(sa.bindparam("uid", pipeline_uid, type_=sa.Uuid()), now)
+    )
+    for position, (key, label, outcome) in enumerate(
+        (
+            ("new", "New", "open"),
+            ("qualified", "Qualified", "open"),
+            ("proposal", "Proposal", "open"),
+            ("negotiation", "Negotiation", "open"),
+            ("won", "Won", "won"),
+            ("lost", "Lost", "lost"),
+        )
+    ):
+        bind.execute(
+            sa.text(
+                f'INSERT INTO "{PREFIX}stage" '
+                "(uid,created_at,updated_at,created_by_uid,updated_by_uid,version,pipeline_uid,key,label,position,outcome,is_active) "
+                "VALUES (:uid,:now,:now,NULL,NULL,1,:pipeline_uid,:key,:label,:position,:outcome,TRUE)"
+            ).bindparams(
+                sa.bindparam("uid", uuid.uuid4(), type_=sa.Uuid()),
+                sa.bindparam("pipeline_uid", pipeline_uid, type_=sa.Uuid()),
+                now,
+                key=key,
+                label=label,
+                position=position,
+                outcome=outcome,
+            )
+        )
 
 
 def downgrade() -> None:
