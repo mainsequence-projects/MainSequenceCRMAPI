@@ -18,3 +18,33 @@ resources:
           path: /extensions/google/oauth/callback/
         - method: GET
           path: /extensions/google/oauth/done/
+
+  - key: migrate-crm
+    kind: job
+    spec:
+      name: CRM migrations
+      description: Applies the CRM MetaTables migrations before the CRM API rolls out.
+      execution_path: jobs/migrate_crm.py
+      cpu_request: "0.5"
+      memory_request: "1"
+      max_runtime_seconds: 1800
+      spot: false
+      automatic_redeployment:
+        enabled: true
+        tag_regex: null
+
+# The API deploys only after the migration Job succeeds on the same candidate
+# image. The CRM assistant is declared in crm-assistant.yaml and deploys on
+# its own; steps cannot reference resources in another file.
+execution:
+  steps:
+    image:
+      prepare_image: crm-api
+    migrate:
+      run_job: migrate-crm
+      image_from: image
+      needs: [image]
+    deploy_api:
+      deploy: crm-api
+      image_from: image
+      needs: [migrate]
