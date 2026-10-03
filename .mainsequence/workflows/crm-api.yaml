@@ -23,7 +23,7 @@ resources:
     kind: job
     spec:
       name: CRM migrations
-      description: Applies the CRM MetaTables migrations before the CRM API rolls out.
+      description: Applies the CRM MetaTables migrations before the CRM API and assistant roll out.
       execution_path: jobs/migrate_crm.py
       cpu_request: "0.5"
       memory_request: "1"
@@ -33,9 +33,29 @@ resources:
         enabled: true
         tag_regex: null
 
-# The API deploys only after the migration Job succeeds on the same candidate
-# image. The CRM assistant is declared in crm-assistant.yaml and deploys on
-# its own; steps cannot reference resources in another file.
+  - key: crm-assistant
+    kind: harness_agent
+    spec:
+      source_path: api/tau/main.py
+      llm_provider: openai
+      llm_model: gpt-5.4
+      llm_thinking: medium
+      automatic_deployment: true
+      automatic_redeployment:
+        enabled: true
+        tag_regex: null
+      revision_retention_count: 3
+      env_vars:
+        - name: TAU_EXCLUDE_BASE_TOOLS
+          value: "true"
+        - name: TAU_EXCLUDE_MAINSEQUENCE_MCP
+          value: "true"
+
+# This is the repository's only workflow file. The migration Job runs from the
+# API's candidate image, and the API and the CRM assistant deploy only after it
+# succeeds, each from its own resource's image step. A scheduled Job belongs in
+# this file too, but outside execution.steps: a step-referenced Job gets its new
+# image when the run is admitted, before the migration runs.
 execution:
   steps:
     image:
@@ -48,3 +68,9 @@ execution:
       deploy: crm-api
       image_from: image
       needs: [migrate]
+    image_assistant:
+      prepare_image: crm-assistant
+    deploy_assistant:
+      deploy: crm-assistant
+      image_from: image_assistant
+      needs: [migrate, image_assistant]

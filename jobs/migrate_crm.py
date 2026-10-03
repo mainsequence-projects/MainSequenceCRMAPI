@@ -1,9 +1,10 @@
-"""Main Sequence Job: apply the CRM migrations before the CRM API rolls out.
+"""Main Sequence Job: apply the CRM migrations before the CRM API and assistant roll out.
 
-The deployment workflow in `.mainsequence/workflows/crm-api.yaml` runs this
-from the candidate image, so the revisions it applies are the ones that image
-ships. A failure stops the rollout and the previous release keeps serving.
-A database already at head is left unchanged.
+The deployment workflow in `.mainsequence/workflows/crm-api.yaml`, the
+repository's only workflow file, runs this from the candidate image, so the
+revisions it applies are the ones that image ships. A failure stops both
+rollouts and the previous releases keep serving. A database already at head is
+left unchanged.
 
 This repository owns one provider. Local development does not run this Job;
 it runs `metatables --local migrations upgrade --provider
