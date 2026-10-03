@@ -93,7 +93,7 @@ uv run metatables --local migrations current --provider src.crm.migrations:migra
 temporary SQLite file without an API.
 
 Hosted environments are migrated only by the deployment workflow's
-`migrate-crm` Job, before the API rolls out; see
+`migrate-crm` Job, before the API and the CRM assistant roll out; see
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
 Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
 

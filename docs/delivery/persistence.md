@@ -127,11 +127,15 @@ must not register tables or repair schema during a request. No CRM bindings
 file, finalization hook, or path variable is required by the CLI or API.
 
 Hosted environments are migrated only by the deployment workflow.
-`.mainsequence/workflows/crm-api.yaml` declares the `migrate-crm` Job, which runs
-`jobs/migrate_crm.py` from the candidate image. The Job calls
+`.mainsequence/workflows/crm-api.yaml` is the repository's only workflow file.
+It declares the CRM API (`crm-api`), the CRM assistant (`crm-assistant`) and
+the `migrate-crm` Job, which runs `jobs/migrate_crm.py` from the candidate
+image. The Job calls
 `metatables.upgrade_application("src.crm.migrations:migration")` and prints the
 resulting revision. Its graph prepares the `crm-api` image, runs the Job from
-it, and deploys the API only after the Job succeeds:
+it, and deploys the API and the assistant only after the Job succeeds. A
+deployment must use its own resource's image step, so the assistant has its
+own:
 
 ```yaml
 execution:
@@ -139,14 +143,23 @@ execution:
     image: {prepare_image: crm-api}
     migrate: {run_job: migrate-crm, image_from: image, needs: [image]}
     deploy_api: {deploy: crm-api, image_from: image, needs: [migrate]}
+    image_assistant: {prepare_image: crm-assistant}
+    deploy_assistant: {deploy: crm-assistant, image_from: image_assistant, needs: [migrate, image_assistant]}
 ```
 
-A database already at head is left unchanged. A failed migration blocks the
-rollout and the previous release keeps serving. Do not run
+A database already at head is left unchanged. A failed migration blocks both
+rollouts and the previous releases keep serving. Do not run
 `metatables migrations upgrade` or `downgrade` against a hosted runtime by
-hand. The CRM assistant is declared in `crm-assistant.yaml`; workflow steps
-cannot reference another file, so its deployment does not wait for the Job.
-Its CRM tools currently fail closed before any table access.
+hand. The assistant's CRM tools call the same governed operations on the CRM
+tables as the API. They currently fail closed before any table access; the
+gate keeps the assistant on a migrated schema once they are enabled.
+
+Every API, agent and scheduled Job of this repository belongs in that one
+file, because steps can only reference resources in their own file. A
+scheduled Job stays out of `execution.steps`: the backend gives a
+step-referenced Job its new image when the workflow run is admitted, before the
+migration runs, so a step could not make its schedule wait. The repository has
+no scheduled Job today.
 
 Local development applies the same revisions to the MetaTables local SQLite
 runtime, after `metatables --local runtime status` confirms Local mode and

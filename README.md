@@ -71,7 +71,8 @@ Migration `0004` replaces the old workspace table with singleton CRM settings
 and removes `workspace_uid` from all CRM record tables; it seeds defaults on an
 empty provider. Nothing migrates at HTTP startup. Hosted environments are
 migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
-`.mainsequence/workflows/crm-api.yaml` runs before it deploys the API. Local
+`.mainsequence/workflows/crm-api.yaml` runs before it deploys the API and the
+CRM assistant. That file is the repository's only workflow file. Local
 development applies revisions to the MetaTables local SQLite runtime:
 
 ```bash

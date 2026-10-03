@@ -32,6 +32,21 @@ deploys the API only after it succeeds. The backend workflow validator's
 execution check accepted that graph when run offline; the exact branch's
 `validate-workflow/` endpoint was not called.
 
+Later on 2026-10-03 the CRM assistant's declaration moved from
+`crm-assistant.yaml` into `crm-api.yaml`, which is now the repository's only
+workflow file, and the assistant now deploys only after the `migrate-crm` Job
+succeeds. Its key and settings did not change; only the `migrate-crm`
+description now names the assistant. The tdag-django workflow validator at
+`35ad44ce0` (`development`) was replayed offline from its source, with only the
+branch-bound checks skipped as the validator itself skips them without a
+branch: source indexing and the release create serializer. It accepted the new
+file with no errors or warnings, and it also accepted the two previous files.
+It rejected the new file next to the old `crm-assistant.yaml` with
+`cross_file_conflict`, so the two must never be pushed together. The branch's
+`validate-workflow/` endpoint was not called, because the local backend did not
+answer. See [moved workflow resources](#moved-workflow-resources) for what the
+push changes on the platform.
+
 MetaTables 0.1.17 accepts foreign keys with `CASCADE`, `SET NULL` and
 `SET DEFAULT` actions, records each table's cascade targets (system migration
 `0010_cascade_targets`) and adds the `MetaTable.get_impact()` pre-flight.
@@ -91,7 +106,7 @@ live checks above remain outstanding.
 | Local unit and route checks | Passing test output for the changed code |
 | Documentation | `mkdocs build --strict` with no warnings |
 | Package contents | Build source and wheel artifacts containing the docs-independent Python packages |
-| Migration and catalog | Local SQLite upgrade of the provider, the deployment workflow's `migrate-crm` Job succeeding before the API rolls out, and a fresh process resolving active MetaTables from the platform catalog |
+| Migration and catalog | Local SQLite upgrade of the provider, the deployment workflow's `migrate-crm` Job succeeding before the API and the assistant roll out, and a fresh process resolving active MetaTables from the platform catalog |
 | Governed mutation | Separate live multi-table commit and intentional failure rollback on a disposable provider; API readiness does not establish this |
 | Release | Exact tested commit/image/resource and a deployed frontend/API contract check |
 
@@ -309,10 +324,66 @@ send and persisted history through the Vite proxy, not a deployed Agent run.
 Since SDK 9.0.5, `mainsequence code-repository sync` only refreshes the local
 dependency files: `uv lock`, `uv sync` and
 `uv export --locked --no-dev --no-hashes`. It no longer bumps the version,
-tags, commits or pushes. Publishing is a plain `git push`, and the files under
-`.mainsequence/workflows/` decide what deploys: `crm-api.yaml` runs the
-`migrate-crm` Job and then deploys the API, and `crm-assistant.yaml` deploys
-the assistant.
+tags, commits or pushes. Publishing is a plain `git push`, and
+`.mainsequence/workflows/crm-api.yaml`, the repository's only workflow file,
+decides what deploys: it runs the `migrate-crm` Job and then deploys the API
+and the CRM assistant.
+
+## Moved workflow resources
+
+The backend identifies a workflow resource by its branch, workflow file and
+key. The push that removes `crm-assistant.yaml` moves one declaration into
+`crm-api.yaml`:
+
+| Old workflow file | Key | Kind | Display name |
+| --- | --- | --- | --- |
+| `.mainsequence/workflows/crm-assistant.yaml` (workflow `crm-assistant`) | `crm-assistant` | `harness_agent` | `CRM assistant` (from `.agents/agent_card.json`) |
+
+**Delete nothing after the push.** A Harness Agent is the exception to the
+rule that a moved declaration creates a new target. The backend finds the
+branch's Agent by its CodeRepositoryBranch, not by workflow file, and
+reconciles the release bound to that Agent. The push keeps the same Agent, with
+its UID and sessions, and the same release, with its UID, revision history and
+runtime URL. Do not delete the assistant's release or Agent: that release is
+the live assistant, and deleting the Agent also deletes its sessions.
+
+What else the push does depends on the tdag-django code that processes it:
+
+- From `bd89608b4` (ADR-077 §5, issue #767), the push first moves the release's
+  workflow binding from `crm-assistant.yaml` to `crm-api.yaml`. The execution
+  graph then owns the assistant's deployment and holds it until `migrate`
+  succeeds. From `4a2833f12` (ADR-077), a push also deletes workflow targets
+  that no file declares any more. The assistant is still declared, so nothing
+  is deleted.
+- Before `bd89608b4`, the release keeps its binding to the removed file. The
+  Agent and release are still kept, but the generic per-push deployment does
+  not see that the graph owns the assistant and can deploy it without waiting
+  for the migration. Push only to a backend that runs `bd89608b4` or later.
+
+After the push, check that:
+
+1. The repository-event result lists only `crm-api.yaml`, valid, with
+   `crm-assistant` queued in its workflow run. On a backend with ADR-077, its
+   `deletions` list is empty.
+2. The branch read with `include=workflow_runs` shows `deploy_assistant`
+   starting only after `migrate` succeeded.
+3. `CRM assistant` has the same Agent UID and runtime release UID as before the
+   push.
+
+Nothing that refers to the assistant's identity needs to change, because the
+identity is kept:
+
+- `src/crm/assistant_runtime.py` finds the Agent at each bootstrap by the Agent
+  Card name, this branch and the Environment, and requires a bound runtime
+  release. This repository stores no Agent or release UID.
+- The frontend repository reads `agent_uid` from the bootstrap response. Its
+  `crm-site.yaml` pins only `VITE_CRM_FASTAPI_RELEASE_UID`, which belongs to
+  `crm-api`; that declaration did not move.
+- Command Center's per-user Agent shortcuts and the Agent's sessions point at
+  the Agent row, so they stay valid while the Agent exists.
+
+`crm-api` and `migrate-crm` stay in `crm-api.yaml` under the same keys and keep
+their identities.
 
 ## Keeping this site current
 
