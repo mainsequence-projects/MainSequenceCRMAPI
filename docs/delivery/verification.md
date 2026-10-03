@@ -25,12 +25,20 @@ catalog binding and exercise governed create/update plus rollback on a
 disposable provider. A running API still on `0008` does not serve this contract.
 
 On 2026-10-03 the API moved to `mainsequence` 9.0.5 and `mainsequence-metatable`
-0.1.14. MetaTables 0.1.14 migrates hosted application databases only from a Job
-in the application's own deployment workflow, so `crm-api.yaml` now runs the
-`migrate-crm` Job (`jobs/migrate_crm.py`) from the candidate image and deploys
-the API only after it succeeds. The backend workflow validator's execution
-check accepted that graph when run offline; the exact branch's
+0.1.18. Since 0.1.14, MetaTables migrates hosted application databases only
+from a Job in the application's own deployment workflow, so `crm-api.yaml` now
+runs the `migrate-crm` Job (`jobs/migrate_crm.py`) from the candidate image and
+deploys the API only after it succeeds. The backend workflow validator's
+execution check accepted that graph when run offline; the exact branch's
 `validate-workflow/` endpoint was not called.
+
+MetaTables 0.1.17 accepts foreign keys with `CASCADE`, `SET NULL` and
+`SET DEFAULT` actions, records each table's cascade targets (system migration
+`0010_cascade_targets`) and adds the `MetaTable.get_impact()` pre-flight.
+0.1.18 makes write on a table depend only on that table's own grants. Every
+CRM foreign key is `ON DELETE RESTRICT` by design, because CRM records are
+archived rather than cascade-deleted, so neither release changes a CRM model
+or revision.
 
 Revisions `0001`, `0002`, `0004`, `0005`, `0006` and `0009` gained SQLite forms
 of their PostgreSQL-only SQL. Their PostgreSQL statements did not change: on a
@@ -41,14 +49,20 @@ and produced the same `pg_dump --schema-only` output. Only the order of
 catalog reflection queries varied, as it does between two runs of the
 original.
 
-On an isolated local SQLite runtime,
+On a fresh, isolated local SQLite runtime that MetaTables 0.1.18 initialized
+through system migration `0010_cascade_targets`,
 `metatables --local migrations upgrade --provider src.crm.migrations:migration head`
 applied `0001` through `0009` and finalized 27 catalog entries, the 26 tables
-and the Alembic registry. `migrations current` reported `0009 (head)`, a second
-upgrade changed nothing, and the Job script reported
-`0009 (already current)`. No hosted MetaTables API, Job run or deployment was
-exercised. The first hosted run of the Job follows the next push; check its
-workflow run and DeploymentRuns before calling the API deployed.
+and the Alembic registry, all `active`. `migrations current` reported
+`0009 (head)` and a second upgrade changed nothing. The CRM's catalog resolver
+bound all 26 tables, and revision `0004` had seeded the settings row, the
+default pipeline and its six stages. The impact pre-flight for deleting Company
+rows reported the action allowed, with five `restrict` edges from the tables
+that reference Company. The Job script, run against that runtime through
+`configure_local_client()`, reported `0009 (already current)`. No hosted
+MetaTables API, Job run or deployment was exercised. The first hosted run of
+the Job follows the next push; check its workflow run and DeploymentRuns before
+calling the API deployed.
 
 On 2026-10-01 the API moved to `mainsequence` 9 and the separate
 `mainsequence-metatable` 0.1.5 client (`metatables`). Governed operations now
