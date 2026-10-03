@@ -20,6 +20,8 @@ Current repository decision (2026-09-23): Alembic `0003` removes `command_receip
 
 Current repository decision (2026-09-23): Alembic `0004` removes the CRM application workspace table and every `workspace_uid` column. The CRM has singleton settings and direct record foreign keys; platform-injected identity/policy remain authoritative. Older handoff instructions for workspace-scoped keys, a workspace UID resolver, or a workspace mutation epoch are superseded. Do not reintroduce them.
 
+Current repository decision (2026-10-03): hosted CRM databases are migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`) that `.mainsequence/workflows/crm-api.yaml` runs before it deploys the API. Local development applies revisions with `metatables --local migrations upgrade --provider src.crm.migrations:migration`. Never run `metatables migrations upgrade` or `downgrade` against a hosted runtime, and never migrate at API startup. Revisions branch raw PostgreSQL SQL on `op.get_bind().dialect.name` so the whole history also runs on local SQLite.
+
 For every material change to a CRM model, business rule, mounted API behavior, persistence, transfer workflow, or delivery status, use `.agents/skills/mainsequence_crm/maintain-crm-documentation/SKILL.md` and update the relevant MkDocs concept and API/delivery pages in the same change. Run `mkdocs build --strict` and report its result; keep planned or unverified behavior labeled.
 
 ### CodeRepository-Specific Instructions

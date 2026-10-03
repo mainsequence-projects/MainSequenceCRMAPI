@@ -3,8 +3,8 @@
 **Status: callback and public ingress are declared in source; deployment and
 a real Google consent flow remain unverified.**
 The extension is enabled in this repository's `config/crm.yaml`. Complete the
-Google-side steps, apply CRM migration `0008`, and configure the API runtime
-before using the
+Google-side steps, make sure CRM migration `0008` is applied, and configure the
+API runtime before using the
 [mounted routes](../api/google-workspace.md).
 
 ## What you create
@@ -200,8 +200,12 @@ replace only the placeholder records, and leave the encryption key untouched.
 The placeholder strings are not usable Google credentials.
 Do not paste credentials into chat or commit them to Git.
 
-Apply provider-scoped migration `0008` **before** starting the API with this
-code. The new private MetaTables hold one-time OAuth attempts and encrypted
+Migration `0008` must be applied **before** the API with this code starts.
+Hosted environments get it from the deployment workflow's `migrate-crm` Job,
+which runs before the API rolls out; local development applies it with
+`metatables --local migrations upgrade --provider src.crm.migrations:migration`.
+See [persistence and migrations](../delivery/persistence.md#migration-and-runtime-boundary).
+The new private MetaTables hold one-time OAuth attempts and encrypted
 per-user refresh tokens. The persisted extension activation controls route and frontend
 availability; as with Solution Selling, the migration-owned tables still
 need to exist in the catalog. The CRM frontend reads the module value from

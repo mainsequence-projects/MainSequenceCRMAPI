@@ -64,11 +64,20 @@ one settings record, existing policy and directory adapters, an active
 MetaTable catalog, and a default pipeline are available. The API does not
 accept a caller-supplied identity or workspace selector.
 
-The 18-table migration provider is `src.crm.migrations:migration`. A fresh API
+The 26-table migration provider is `src.crm.migrations:migration`. A fresh API
 process resolves its active, provider-owned MetaTables directly from the platform
 catalog; no local bindings file or application tenant setting is used.
 Migration `0004` replaces the old workspace table with singleton CRM settings
-and removes `workspace_uid` from all CRM record tables. Migrations run outside
-HTTP startup; the migration seeds defaults on an empty provider. Governed
+and removes `workspace_uid` from all CRM record tables; it seeds defaults on an
+empty provider. Nothing migrates at HTTP startup. Hosted environments are
+migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
+`.mainsequence/workflows/crm-api.yaml` runs before it deploys the API. Local
+development applies revisions to the MetaTables local SQLite runtime:
+
+```bash
+uv run metatables --local migrations upgrade --provider src.crm.migrations:migration
+```
+
+See [persistence and migrations](docs/delivery/persistence.md). Governed
 mutation safety must be checked separately before a mutation release;
 readiness does not certify it.

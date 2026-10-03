@@ -75,6 +75,33 @@ The VS Code local stack checks the protected bootstrap before printing its
 ready message. If bootstrap returns a failed check or does not respond within
 100 seconds, the launcher prints that failure and stops all four services.
 
+## Apply migrations locally
+
+Author and apply CRM revisions against the MetaTables local SQLite runtime,
+never against a hosted database. The installed
+`.agents/skills/metatables/metatables-local-development/SKILL.md` covers
+`metatables init --local`, `metatables serve --local` and the explicit
+`metatables --local runtime initialize`. Before migrating, check that
+`metatables --local runtime status` reports Local mode and `sqlite`, then run:
+
+```bash
+uv run metatables --local migrations upgrade --provider src.crm.migrations:migration
+uv run metatables --local migrations current --provider src.crm.migrations:migration
+```
+
+`.venv/bin/pytest tests/test_migrations.py` also runs the whole history on a
+temporary SQLite file without an API.
+
+Hosted environments are migrated only by the deployment workflow's
+`migrate-crm` Job, before the API rolls out; see
+[persistence and migrations](persistence.md#migration-and-runtime-boundary).
+Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
+
+The local runtime checks the migration history, not the running CRM API. The
+loopback launcher does not call `configure_local_client()`, so its MetaTables
+client discovers the Environment's hosted MetaTables API, and the CRM's
+governed queries are written in PostgreSQL SQL.
+
 ## Optional Google Workspace extension
 
 The [Google Workspace module setup guide](../google_workspace_module/setup.md)
@@ -85,8 +112,9 @@ routes and include `modules.google_workspace=true` in bootstrap. The
 frontend uses that bootstrap value and the user's import capability to show
 the module. It never reads the YAML itself. Keep the
 client ID, client secret, and 32-byte token-encryption key in separate Main Sequence
-Secrets. `GOOGLE_OAUTH_REDIRECT_URI` is the API environment value. Apply migration `0008` before starting a
-process that expects the new catalog bindings. The loopback launcher is
+Secrets. `GOOGLE_OAUTH_REDIRECT_URI` is the API environment value. The
+process expects the `0008` catalog bindings, which hosted environments receive
+from the deployment workflow's migration Job. The loopback launcher is
 single-user only; use a separately registered localhost Web OAuth client for
 local consent testing, never the production client.
 

@@ -18,11 +18,37 @@ compared with the [mounted route index](../api/route-index.md);
 ## Evidence boundaries
 
 Revision `0009` changes Interactions to a participant list and optional Company.
-It is authored in source but has not been applied or finalized on the local
-provider in this change. Before using the new Calendar import against a live
-API, apply the provider-scoped migration outside API startup, verify fresh-process
-catalog binding, and exercise governed create/update plus rollback on a
+It has not been applied to a hosted environment. The deployment workflow's
+migration Job applies it before the API that serves this contract rolls out.
+Before using the new Calendar import against a live API, verify fresh-process
+catalog binding and exercise governed create/update plus rollback on a
 disposable provider. A running API still on `0008` does not serve this contract.
+
+On 2026-10-03 the API moved to `mainsequence` 9.0.5 and `mainsequence-metatable`
+0.1.14. MetaTables 0.1.14 migrates hosted application databases only from a Job
+in the application's own deployment workflow, so `crm-api.yaml` now runs the
+`migrate-crm` Job (`jobs/migrate_crm.py`) from the candidate image and deploys
+the API only after it succeeds. The backend workflow validator's execution
+check accepted that graph when run offline; the exact branch's
+`validate-workflow/` endpoint was not called.
+
+Revisions `0001`, `0002`, `0004`, `0005`, `0006` and `0009` gained SQLite forms
+of their PostgreSQL-only SQL. Their PostgreSQL statements did not change: on a
+throwaway PostgreSQL 14 database, the original and the changed history, run
+empty and with legacy rows seeded at `0001` and `0008`, issued the same
+statements against the CRM tables with the same parameters, left the same rows
+and produced the same `pg_dump --schema-only` output. Only the order of
+catalog reflection queries varied, as it does between two runs of the
+original.
+
+On an isolated local SQLite runtime,
+`metatables --local migrations upgrade --provider src.crm.migrations:migration head`
+applied `0001` through `0009` and finalized 27 catalog entries, the 26 tables
+and the Alembic registry. `migrations current` reported `0009 (head)`, a second
+upgrade changed nothing, and the Job script reported
+`0009 (already current)`. No hosted MetaTables API, Job run or deployment was
+exercised. The first hosted run of the Job follows the next push; check its
+workflow run and DeploymentRuns before calling the API deployed.
 
 On 2026-10-01 the API moved to `mainsequence` 9 and the separate
 `mainsequence-metatable` 0.1.5 client (`metatables`). Governed operations now
@@ -51,7 +77,7 @@ live checks above remain outstanding.
 | Local unit and route checks | Passing test output for the changed code |
 | Documentation | `mkdocs build --strict` with no warnings |
 | Package contents | Build source and wheel artifacts containing the docs-independent Python packages |
-| Migration and catalog | Provider-scoped migration plus a fresh process resolving active MetaTables from the platform catalog |
+| Migration and catalog | Local SQLite upgrade of the provider, the deployment workflow's `migrate-crm` Job succeeding before the API rolls out, and a fresh process resolving active MetaTables from the platform catalog |
 | Governed mutation | Separate live multi-table commit and intentional failure rollback on a disposable provider; API readiness does not establish this |
 | Release | Exact tested commit/image/resource and a deployed frontend/API contract check |
 
@@ -217,7 +243,8 @@ the model provider request failed with `CERTIFICATE_VERIFY_FAILED` on this
 machine. An end-to-end chat reply remains unverified. Repository tests and a
 frontend build verify the source behavior.
 
-On 2026-09-26, CodeRepository sync published API commit `5f639dc5` and
+On 2026-09-26, CodeRepository sync, which still committed and pushed with the
+SDK installed then, published API commit `5f639dc5` and
 frontend commit `a6506358`. The managed CRM assistant DeploymentRun succeeded
 and bound Agent `CRM assistant` to its active runtime release. The Static Site
 DeploymentRun also succeeded and published the protected frontend. The CRM
@@ -262,6 +289,16 @@ Tau 1.2.11 requires `ROLE_USER`. After updating the frontend wire format, the
 same browser received a real Tau reply, and reloading the session URL restored
 both public messages from Tau's history API. This verifies local Message
 send and persisted history through the Vite proxy, not a deployed Agent run.
+
+## Publishing
+
+Since SDK 9.0.5, `mainsequence code-repository sync` only refreshes the local
+dependency files: `uv lock`, `uv sync` and
+`uv export --locked --no-dev --no-hashes`. It no longer bumps the version,
+tags, commits or pushes. Publishing is a plain `git push`, and the files under
+`.mainsequence/workflows/` decide what deploys: `crm-api.yaml` runs the
+`migrate-crm` Job and then deploys the API, and `crm-assistant.yaml` deploys
+the assistant.
 
 ## Keeping this site current
 

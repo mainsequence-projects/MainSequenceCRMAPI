@@ -52,8 +52,9 @@ formatting live under `src/crm/portability/`, outside the MetaTable gateway.
 Revision `0002` creates the affiliation table and backfills an undated primary
 current affiliation for each existing contact with `company_uid`. It does not
 guess historical start or end periods. It was applied to the configured local
-provider on 2026-09-23; other environments still need their own upgrade and
-fresh-process binding verification before using the new routes.
+provider on 2026-09-23. Hosted environments receive it from the deployment
+workflow's migration Job; each still needs fresh-process binding verification
+before using the new routes.
 
 Revision `0003` removes the obsolete `command_receipt` table. Its upgrade
 deletes existing receipt rows; its downgrade restores the table schema, not
@@ -75,16 +76,17 @@ non-null JSONB `socials` object checked to be a JSON object. It first validates
 and backfills non-null legacy URLs into `socials.linkedin`; invalid legacy
 URLs stop the upgrade without dropping them. The downgrade restores LinkedIn
 only when no other platform is populated, otherwise it refuses to lose data.
-The configured local CRM provider was upgraded on 2026-09-24; other providers
-must run their own provider-scoped upgrade before using this contact contract.
+The configured local CRM provider was upgraded on 2026-09-24. Hosted
+environments receive the revision from the deployment workflow's migration Job
+before the API that uses this contact contract rolls out.
 
 Revision `0006` creates core `Interaction` and the five Solution Selling
 tables, and adds a Deal `(uid, company_uid)` uniqueness constraint to support
 composite foreign keys. It was generated from the SQLAlchemy MetaTable
 declarations and applied to the configured local `mainsequence-crm` provider
 on 2026-09-24. The upgrade finalized six new catalog entries; it did not
-delete existing records. Other providers must upgrade before running code
-that expects these tables. `extensions.solution_selling.active` in
+delete existing records. Hosted environments receive it from the migration Job
+before code that expects these tables rolls out. `extensions.solution_selling.active` in
 `config/crm.yaml` controls API/UI
 availability, not whether the tables exist.
 
@@ -101,22 +103,75 @@ extension is gated by
 `extensions.google_workspace.active` in `config/crm.yaml`; the migration-owned tables remain part
 of the provider catalog even when the routes are off.
 
+Revision `0009` adds the non-null JSONB `participants` list to Interactions,
+moves each existing `contact_uid` into one participant entry, checks that the
+list is a JSON array and that a Deal requires a Company, drops the old
+`contact_uid` column with its index and foreign key, and makes `company_uid`
+nullable. Its downgrade refuses while companyless, multi-person or unlinked
+Interactions exist.
+
 ## Migration and runtime boundary
 
-The migration provider is `src.crm.migrations:migration`. Migrations run
-outside HTTP startup. A fresh API process queries the platform catalog
+The migration provider is `src.crm.migrations:migration`. It uses namespace
+`mainsequence-crm`, the repository-prefixed Alembic table
+`mainsequence_crm__alembic_version`, and repository-prefixed application
+names. The `metatables` client from `mainsequence-metatable` runs its Alembic
+revisions with the selected environment connection; the MetaTables API
+reserves and finalizes the catalog bindings.
+
+Nothing migrates at HTTP startup. A fresh API process queries the platform catalog
 for the 26 authored identifiers, validates active Alembic-managed bindings,
 namespace, provider, revision, physical names and one data source, then caches
 the typed bindings in memory. Governed operations select that data source. It
 must not register tables or repair schema during a request. No CRM bindings
-file, finalization hook, or path variable is required by the CLI or API. Run
-`metatables migrations upgrade --provider src.crm.migrations:migration head`
-with the `metatables` CLI from `mainsequence-metatable`. The client runs this
-application-owned provider's Alembic revisions with the selected environment
-connection; the MetaTables API reserves and finalizes the catalog bindings.
-The provider uses namespace `mainsequence-crm`, the repository-prefixed Alembic
-table `mainsequence_crm__alembic_version`, and repository-prefixed application
-names.
+file, finalization hook, or path variable is required by the CLI or API.
+
+Hosted environments are migrated only by the deployment workflow.
+`.mainsequence/workflows/crm-api.yaml` declares the `migrate-crm` Job, which runs
+`jobs/migrate_crm.py` from the candidate image. The Job calls
+`metatables.upgrade_application("src.crm.migrations:migration")` and prints the
+resulting revision. Its graph prepares the `crm-api` image, runs the Job from
+it, and deploys the API only after the Job succeeds:
+
+```yaml
+execution:
+  steps:
+    image: {prepare_image: crm-api}
+    migrate: {run_job: migrate-crm, image_from: image, needs: [image]}
+    deploy_api: {deploy: crm-api, image_from: image, needs: [migrate]}
+```
+
+A database already at head is left unchanged. A failed migration blocks the
+rollout and the previous release keeps serving. Do not run
+`metatables migrations upgrade` or `downgrade` against a hosted runtime by
+hand. The CRM assistant is declared in `crm-assistant.yaml`; workflow steps
+cannot reference another file, so its deployment does not wait for the Job.
+Its CRM tools currently fail closed before any table access.
+
+Local development applies the same revisions to the MetaTables local SQLite
+runtime, after `metatables --local runtime status` confirms Local mode and
+`sqlite`:
+
+```bash
+uv run metatables --local migrations upgrade --provider src.crm.migrations:migration
+uv run metatables --local migrations current --provider src.crm.migrations:migration
+```
+
+See [local development](local-development.md#apply-migrations-locally).
+
+Revisions are written for PostgreSQL. On SQLite, MetaTables runs column and
+constraint changes through Alembic batch mode. Raw PostgreSQL SQL in a
+revision (regex `~` checks, `jsonb_*` functions, `::` casts, `NOW()`, `md5()`)
+branches on `op.get_bind().dialect.name`; its PostgreSQL branch keeps the
+original statement. A SQLite table rebuild keeps only named CHECK constraints,
+so name new ones. `tests/test_migrations.py` runs the whole history, with
+legacy rows, on a temporary SQLite file.
+
+Each revision must stay usable by the release that is still serving: the Job
+runs before the rollout, and the previous release keeps serving during it and
+after a failure. Add tables and nullable or defaulted columns first; drop or
+rename in a later release. Redeploying an older image does not roll back the
+schema, and a downgrade is never a deployment step.
 
 This repository has no manual workspace initializer or persistent atomic-proof
 gate. The API validates one settings row and a default pipeline through
