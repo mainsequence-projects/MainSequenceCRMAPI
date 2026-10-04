@@ -24,6 +24,45 @@ Before using the new Calendar import against a live API, verify fresh-process
 catalog binding and exercise governed create/update plus rollback on a
 disposable provider. A running API still on `0008` does not serve this contract.
 
+On 2026-10-04 the API moved to `mainsequence` 9.0.6, `mainsequence-metatable`
+0.1.20 and `ms-tau-sdk` 1.2.14 (release tag `v1.2.14`), the latest releases, and
+the vendored SDK, MetaTables and Tau skills were copied again from those
+versions. No CRM code, model, revision or workflow changed:
+
+- SDK 9.0.6 never replays a POST, PUT, PATCH or DELETE by itself. Read-only
+  retries, their backoff and token renewal share one timeout budget per call,
+  which replaces an outer loop of up to 60 attempts. Every governed CRM
+  operation is a POST, so an uncertain write now fails instead of running
+  twice, as the rule to read server state before retrying expects. PyJWT and
+  cryptography are now base SDK dependencies and the `server` extra is gone;
+  the CRM keeps its own requirements on both because its Google OAuth code
+  imports them.
+- MetaTables 0.1.19 runs one local API per laptop and removes the Local/Hosted
+  switch; 0.1.20 retries runtime-access requests that time out during hosted
+  discovery and requires SDK 9.0.6. See
+  [local development](local-development.md#apply-migrations-locally).
+  The 0.1.17 and 0.1.18 foreign-key rules are unchanged, and every CRM foreign
+  key stays `ON DELETE RESTRICT`.
+- `ms-tau-sdk` 1.2.13 lets local mode take the user's access token from the
+  Main Sequence CLI session; 1.2.14 changes only documentation. The sibling
+  launcher starts Tau without token variables, which the previously locked
+  1.2.12 rejected in local mode. This follows from the two releases' settings;
+  no local Tau process was started. See the
+  [optional Tau runtime](local-development.md#optional-tau-runtime).
+
+Offline, the lock and `requirements.txt` agree,
+`python -m metatables.sdk_compat` accepts SDK 9.0.6, the 131 repository tests
+pass, including the whole `0001`–`0009` history with legacy rows on a temporary
+SQLite file, and the strict MkDocs build passes. The backend workflow
+validator, replayed offline from tdag-django `5a6c9280b` (`development`),
+accepted the unchanged `crm-api.yaml` with no errors or warnings. The isolated
+local migration proof has not been repeated on 0.1.20: the local MetaTables API
+looks up the signed-in SDK user when it starts, the local Main Sequence backend
+did not answer, and the launcher stopped the API after its 45-second startup
+deadline. The 0.1.18 run below remains the latest local migration evidence, and
+the branch's `validate-workflow/` endpoint was not called. Nothing hosted was
+exercised.
+
 On 2026-10-03 the API moved to `mainsequence` 9.0.5 and `mainsequence-metatable`
 0.1.18. Since 0.1.14, MetaTables migrates hosted application databases only
 from a Job in the application's own deployment workflow, so `crm-api.yaml` now
