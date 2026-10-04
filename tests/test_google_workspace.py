@@ -19,8 +19,13 @@ from api.crm.main import create_app
 from src.crm.config import crm_config
 from src.crm.google_workspace.imports import GoogleImports, ImportDecision, PreviewQuery
 from src.crm.google_workspace.security import (
-    CALENDAR_PICKER_SCOPE, GOOGLE_REQUIRED_SCOPES, SCOPES, GoogleConfig, Sealer,
-    _configured_url, digest,
+    CALENDAR_PICKER_SCOPE,
+    GOOGLE_REQUIRED_SCOPES,
+    SCOPES,
+    GoogleConfig,
+    Sealer,
+    _configured_url,
+    digest,
 )
 from src.crm.google_workspace.service import GoogleWorkspaceService
 from src.crm.google_workspace.store import GoogleStore
