@@ -81,8 +81,18 @@ Author and apply CRM revisions against the MetaTables local SQLite runtime,
 never against a hosted database. The installed
 `.agents/skills/metatables/metatables-local-development/SKILL.md` covers
 `metatables init --local`, `metatables serve --local` and the explicit
-`metatables --local runtime initialize`. Before migrating, check that
-`metatables --local runtime status` reports Local mode and `sqlite`, then run:
+`metatables --local runtime initialize`.
+
+The laptop runs one local MetaTables API, as it has one local runtime: start
+`metatables serve --local` once, from this or any other checkout. The launcher
+writes its address and private token to `server.json` in the local storage
+directory (`~/.local/share/metatables`, or `METATABLES_LOCAL_STORAGE_DIR`), and
+`metatables --local` and `configure_local_client()` read that file from any
+checkout. A second `serve --local` reports the running API and exits. Commits
+and branch changes do not require restarting the API. It always runs Local:
+there is no switch to a hosted runtime. Other checkouts' tables share the same
+SQLite file. Before migrating, check that `metatables --local runtime status`
+reports Local mode and `sqlite`, then run:
 
 ```bash
 uv run metatables --local migrations upgrade --provider src.crm.migrations:migration
@@ -122,11 +132,12 @@ local consent testing, never the production client.
 
 The sibling static site's sole VS Code launch entry runs `scripts/dev-stack.mjs`.
 It starts this API on `127.0.0.1:38641`, Tau on `127.0.0.1:38642`, the guide
-on `127.0.0.1:38643`, and Vite on `127.0.0.1:38644`. The launcher refreshes
-this repository's local SDK user session, explicitly renews its access token
-before startup, and passes the resulting JWT pair to
-Tau in process environment with `MAINSEQUENCE_AUTH_MODE=jwt` and
-`TAU_LOCAL_MODE=true`. It uses the same local provider/model as Sentinel:
+on `127.0.0.1:38643`, and Vite on `127.0.0.1:38644`. The launcher renews
+this repository's saved SDK sign-in with `mainsequence refresh-token` before
+startup and starts this API and Tau without token variables. Tau runs with
+`MAINSEQUENCE_AUTH_MODE=jwt` and `TAU_LOCAL_MODE=true`, so it takes the user's
+access token from the saved CLI session (see below). It uses the same local
+provider/model as Sentinel:
 `TAU_LOCAL_PROVIDER=deemachine-ollama` and `TAU_LOCAL_MODEL=qwen3.8:27b`.
 Vite proxies `/api/` and `/extensions/` to this API, `/tau/` to Tau, and
 `/docs/` to the guide. All listeners bind to loopback; the launcher checks for
@@ -136,7 +147,7 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 1.2.12 is locked to its release tag in `pyproject.toml` and
+`ms-tau-sdk` 1.2.14 is locked to its release tag `v1.2.14` in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
@@ -189,9 +200,19 @@ in `harness_agent.spec.env_vars`, regardless of whether they launch the CLI
 or the ASGI entrypoint. The entrypoint has been deployed as a platform Agent;
 its trusted CRM caller binding remains unimplemented.
 
-Running `ms-tau` locally needs the SDK's documented authenticated user token
-handoff, explicit provider/model, and `TAU_LOCAL_MODE=true`. Do not put those
-tokens or provider credentials in the repository or `.tau` files. Local mode
+Running `ms-tau` or `api.tau.main:app` locally needs `TAU_LOCAL_MODE=true`,
+`MAINSEQUENCE_AUTH_MODE=jwt`, an explicit provider and model, and the signed-in
+user's access token. Since `ms-tau-sdk` 1.2.13, when neither
+`MAINSEQUENCE_ACCESS_TOKEN` nor `MAINSEQUENCE_REFRESH_TOKEN` is set, local mode
+asks the Main Sequence CLI for it (`mainsequence auth token --json`), so one
+`mainsequence login` is enough. It uses the CLI named by `MAINSEQUENCE_CLI`,
+else the one beside the Python interpreter (`.venv/bin/mainsequence` here), else
+the one on `PATH`, and the CLI session must be for Tau's `MAINSEQUENCE_ENDPOINT`.
+A launcher or CI may export both tokens instead. A pair read from the project
+`.env` still works but is deprecated; `mainsequence refresh-token` run in this
+directory removes it. Tau's `/health` reports the source in
+`mainsequence_auth_source`. Do not put tokens or provider credentials in the
+repository or `.tau` files. Local mode
 still calls the live Main Sequence provider services; the CRM agent profile
 above excludes MCP. Deploy the Tau runtime separately from
 `api.crm.main:app` after a trusted per-turn identity/policy binding and the
