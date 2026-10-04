@@ -132,9 +132,11 @@ local consent testing, never the production client.
 
 The sibling static site's sole VS Code launch entry runs `scripts/dev-stack.mjs`.
 It starts this API on `127.0.0.1:38641`, Tau on `127.0.0.1:38642`, the guide
-on `127.0.0.1:38643`, and Vite on `127.0.0.1:38644`. The launcher renews
-this repository's saved SDK sign-in with `mainsequence refresh-token` before
-startup and starts this API and Tau without token variables. Tau runs with
+on `127.0.0.1:38643`, and Vite on `127.0.0.1:38644`. Before startup the
+launcher renews the machine's saved Main Sequence sign-in with
+`mainsequence refresh-token`, run in this repository so that it also removes
+token lines an earlier SDK left in this `.env`. It starts this API and Tau
+without token variables. Tau runs with
 `MAINSEQUENCE_AUTH_MODE=jwt` and `TAU_LOCAL_MODE=true`, so it takes the user's
 access token from the saved CLI session (see below). It uses the same local
 provider/model as Sentinel:
