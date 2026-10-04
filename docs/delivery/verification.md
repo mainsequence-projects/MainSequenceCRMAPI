@@ -50,6 +50,23 @@ versions. No CRM code, model, revision or workflow changed:
   no local Tau process was started. See the
   [optional Tau runtime](local-development.md#optional-tau-runtime).
 
+**Hosted prerequisite:** upgrade the Environment's hosted MetaTables API to
+0.1.19 or later before this branch is pushed; 0.1.18 is not enough. The
+client's `RuntimeContext` rejects fields it does not know, 0.1.19 removed
+`runtime_switch_available`, `runtime_switch_error` and
+`hosted_environment_target` from it, and an API on 0.1.18 or older still sends
+all three in its `/runtime-context/` response
+([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)).
+`upgrade_application()` reads that response before it migrates anything, so
+against an older API the `migrate-crm` Job fails, `deploy_api` and
+`deploy_assistant` never run, and the rollout stops. An offline replay of a
+0.1.18-shaped API with the locked client showed this: the Job's first request,
+`GET /runtime-context/`, failed with `extra_forbidden` on those three fields. In
+the same replay the CRM's catalog lookup and governed operations, which the API
+and the loopback launcher run, sent only their own requests, did not read the
+runtime context and were unaffected. The incompatibility therefore stops the
+deployment at its migration Job.
+
 Offline, the lock and `requirements.txt` agree,
 `python -m metatables.sdk_compat` accepts SDK 9.0.6, the 131 repository tests
 pass, including the whole `0001`–`0009` history with legacy rows on a temporary
@@ -115,8 +132,9 @@ rows reported the action allowed, with five `restrict` edges from the tables
 that reference Company. The Job script, run against that runtime through
 `configure_local_client()`, reported `0009 (already current)`. No hosted
 MetaTables API, Job run or deployment was exercised. The first hosted run of
-the Job follows the next push; check its workflow run and DeploymentRuns before
-calling the API deployed.
+the Job follows the next push, which since the 2026-10-04 move needs the
+Environment's MetaTables API on 0.1.19 or later; check its workflow run and
+DeploymentRuns before calling the API deployed.
 
 On 2026-10-01 the API moved to `mainsequence` 9 and the separate
 `mainsequence-metatable` 0.1.5 client (`metatables`). Governed operations now
@@ -366,7 +384,10 @@ dependency files: `uv lock`, `uv sync` and
 tags, commits or pushes. Publishing is a plain `git push`, and
 `.mainsequence/workflows/crm-api.yaml`, the repository's only workflow file,
 decides what deploys: it runs the `migrate-crm` Job and then deploys the API
-and the CRM assistant.
+and the CRM assistant. Push only after the Environment's hosted MetaTables API
+runs 0.1.19 or later. Against an older API the Job fails before it migrates
+anything and neither the API nor the assistant rolls out; see
+[persistence and migrations](persistence.md#migration-and-runtime-boundary).
 
 ## Moved workflow resources
 

@@ -154,6 +154,17 @@ hand. The assistant's CRM tools call the same governed operations on the CRM
 tables as the API. They currently fail closed before any table access; the
 gate keeps the assistant on a migrated schema once they are enabled.
 
+The Job needs the Environment's hosted MetaTables API on 0.1.19 or later, so
+upgrade that API before pushing this branch; 0.1.18 is not enough. This
+repository locks `mainsequence-metatable` 0.1.20, whose `RuntimeContext`
+rejects fields it does not know, and an API on 0.1.18 or older still sends
+`runtime_switch_available`, `runtime_switch_error` and
+`hosted_environment_target` in its `/runtime-context/` response
+([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)).
+`upgrade_application()` reads that response before it migrates anything, so
+against an older API the Job fails, `deploy_api` and `deploy_assistant` never
+run, and the rollout stops.
+
 Every API, agent and scheduled Job of this repository belongs in that one
 file, because steps can only reference resources in their own file. A
 scheduled Job stays out of `execution.steps`: the backend gives a

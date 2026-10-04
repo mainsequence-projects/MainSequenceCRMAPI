@@ -72,8 +72,12 @@ and removes `workspace_uid` from all CRM record tables; it seeds defaults on an
 empty provider. Nothing migrates at HTTP startup. Hosted environments are
 migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
 `.mainsequence/workflows/crm-api.yaml` runs before it deploys the API and the
-CRM assistant. That file is the repository's only workflow file. Local
-development applies revisions to the MetaTables local SQLite runtime:
+CRM assistant. That file is the repository's only workflow file. Push only
+after the Environment's hosted MetaTables API runs 0.1.19 or later: this
+repository's 0.1.20 client rejects an older API's runtime context, so the Job
+would fail before migrating and nothing would roll out
+([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)).
+Local development applies revisions to the MetaTables local SQLite runtime:
 
 ```bash
 uv run metatables --local migrations upgrade --provider src.crm.migrations:migration

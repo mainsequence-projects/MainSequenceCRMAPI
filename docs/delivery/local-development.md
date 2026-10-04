@@ -106,11 +106,22 @@ Hosted environments are migrated only by the deployment workflow's
 `migrate-crm` Job, before the API and the CRM assistant roll out; see
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
 Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
+Before this branch is pushed, the Environment's hosted MetaTables API must be
+upgraded to 0.1.19 or later; 0.1.18 is not enough. This repository's 0.1.20
+client rejects the `/runtime-context/` response of an older API
+([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)),
+so the Job would fail before it migrates anything, and neither the API nor the
+assistant would roll out.
 
 The local runtime checks the migration history, not the running CRM API. The
 loopback launcher does not call `configure_local_client()`, so its MetaTables
 client discovers the Environment's hosted MetaTables API, and the CRM's
-governed queries are written in PostgreSQL SQL.
+governed queries are written in PostgreSQL SQL. That client rejects the
+runtime context of a hosted API older than 0.1.19, but the launcher's catalog
+lookup and governed operations do not read it: in an offline replay of a
+0.1.18-shaped API they were unaffected (see
+[verification](verification.md#evidence-boundaries)). The upgrade is needed
+before the push, for the migration Job.
 
 ## Optional Google Workspace extension
 
