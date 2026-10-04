@@ -115,11 +115,11 @@ keyring==25.7.0
     #   mainsequence-metatable
 linkify-it-py==2.2.0
     # via markdown-it-py
-mainsequence==9.0.5
+mainsequence==9.0.6
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi
-mainsequence-metatable==0.1.18
+mainsequence-metatable==0.1.20
     # via mainsequencecrmapi
 mako==1.4.1
     # via alembic
@@ -142,7 +142,7 @@ more-itertools==11.1.0
     # via
     #   jaraco-classes
     #   jaraco-functools
-ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@feff07a84246bb82d9d16183d1f57019df94a392
+ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@4c45d6a13d6f1897847ad4a530800304d4419e2c
     # via mainsequencecrmapi
 numpy==2.5.3
     # via
