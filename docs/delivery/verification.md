@@ -72,12 +72,27 @@ Offline, the lock and `requirements.txt` agree,
 pass, including the whole `0001`–`0009` history with legacy rows on a temporary
 SQLite file, and the strict MkDocs build passes. The backend workflow
 validator, replayed offline from tdag-django `5a6c9280b` (`development`),
-accepted the unchanged `crm-api.yaml` with no errors or warnings. The isolated
-local migration proof has not been repeated on 0.1.20: the local MetaTables API
-looks up the signed-in SDK user when it starts, the local Main Sequence backend
-did not answer, and the launcher stopped the API after its 45-second startup
-deadline. The 0.1.18 run below remains the latest local migration evidence, and
-the branch's `validate-workflow/` endpoint was not called. Nothing hosted was
+accepted the unchanged `crm-api.yaml` with no errors or warnings. The
+branch's `validate-workflow/` endpoint was not called.
+
+Later on 2026-10-04 the isolated local migration proof was repeated on 0.1.20 at
+commit `569e77a`, once the local development backend answered and the CLI was
+signed in to it. A local MetaTables API ran from a fresh, isolated storage
+directory, never the default one, and was stopped afterwards. `metatables --local
+runtime initialize` brought the SQLite runtime to system migration
+`0010_cascade_targets` (none pending), and
+`metatables --local migrations upgrade --provider src.crm.migrations:migration head`
+applied `0001` through `0009` and finalized 27 catalog entries, the 26 tables and
+the Alembic registry: 27 `active`, 0 `reserved`, 0 `failed`.
+`migrations current` reported `0009 (head)`, and a second upgrade finalized
+nothing and reported `migrated: False`. All 27 `mainsequence-crm` catalog rows
+were `active`, `alembic_managed` and at `0009` on the local DataSource. The
+CRM's catalog resolver bound all 26 tables; revision `0004` had seeded the
+`default` settings row, the default `Sales` pipeline and its six stages. The
+impact pre-flight on Company reported deleting rows allowed with five `restrict`
+edges, and updating keys allowed with no edges. The Job script, run against that
+runtime through `configure_local_client()`, reported
+`src.crm.migrations:migration: 0009 (already current)`. Nothing hosted was
 exercised.
 
 On 2026-10-03 the API moved to `mainsequence` 9.0.5 and `mainsequence-metatable`
