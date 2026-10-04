@@ -37,9 +37,9 @@ versions. No CRM code, model, revision or workflow changed:
   cryptography are now base SDK dependencies and the `server` extra is gone;
   the CRM keeps its own requirements on both because its Google OAuth code
   imports them.
-- MetaTables 0.1.19 runs one local API per laptop and removes the Local/Hosted
-  switch; 0.1.20 retries runtime-access requests that time out during hosted
-  discovery and requires SDK 9.0.6. See
+- MetaTables 0.1.19 runs one local API per local storage directory and removes
+  the Local/Hosted switch; 0.1.20 retries runtime-access requests that time out
+  during hosted discovery and requires SDK 9.0.6. See
   [local development](local-development.md#apply-migrations-locally).
   The 0.1.17 and 0.1.18 foreign-key rules are unchanged, and every CRM foreign
   key stays `ON DELETE RESTRICT`.

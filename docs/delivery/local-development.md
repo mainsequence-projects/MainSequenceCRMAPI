@@ -83,16 +83,23 @@ never against a hosted database. The installed
 `metatables init --local`, `metatables serve --local` and the explicit
 `metatables --local runtime initialize`.
 
-The laptop runs one local MetaTables API, as it has one local runtime: start
-`metatables serve --local` once, from this or any other checkout. The launcher
-writes its address and private token to `server.json` in the local storage
-directory (`~/.local/share/metatables`, or `METATABLES_LOCAL_STORAGE_DIR`), and
-`metatables --local` and `configure_local_client()` read that file from any
-checkout. A second `serve --local` reports the running API and exits. Commits
-and branch changes do not require restarting the API. It always runs Local:
-there is no switch to a hosted runtime. Other checkouts' tables share the same
-SQLite file. Before migrating, check that `metatables --local runtime status`
-reports Local mode and `sqlite`, then run:
+Each local storage directory has one local MetaTables API and one SQLite
+runtime. The directory is `~/.local/share/metatables`, or
+`METATABLES_LOCAL_STORAGE_DIR` when that is set, so a laptop normally runs one
+local API: start `metatables serve --local` once, from this or any other
+checkout. The launcher writes the API's address and private token to
+`server.json` in that directory, and `metatables --local` and
+`configure_local_client()`, which takes no arguments, read that file from any
+checkout. A second `serve --local` for the same directory reports the running
+API and exits; a different `METATABLES_LOCAL_STORAGE_DIR` gets its own API, on
+another `--port`, and its own runtime. `serve --local` looks up the signed-in
+user on the Main Sequence backend (`/api/v1/users/me/`) as it starts and stops
+if that lookup fails or the API is not ready within its 45-second startup
+deadline, so it cannot start while the backend does not answer. Commits and
+branch changes do not require restarting the API. It always runs Local: there
+is no switch to a hosted runtime. Checkouts that use the same storage directory
+share its SQLite file. Before migrating, check that
+`metatables --local runtime status` reports Local mode and `sqlite`, then run:
 
 ```bash
 uv run metatables --local migrations upgrade --provider src.crm.migrations:migration
