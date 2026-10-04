@@ -2,7 +2,7 @@
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| `GET` | `/healthz` | Process-only status; no CRM readiness guarantee |
+| `GET` | `/healthz` | Process-only status; no CRM readiness guarantee. Deployed, it needs a verified caller |
 | `GET` | `/api/crm/v1/readiness/` | Protected readiness body; `200` ready or `503` not ready |
 | `GET` | `/api/crm/v1/bootstrap/` | One authorized startup snapshot with readiness and assistant runtime |
 | `GET` | `/api/crm/v1/principals/` | Selectable current principal; `crm.read` |
@@ -32,7 +32,7 @@ The CRM gives platform readiness and the bootstrap settings read 75 seconds
 each. A readiness timeout returns the last running check ID (such as `catalog`
 or `crm-settings`) in the `503` response. A settings read timeout returns `CRM_NOT_READY` with a
 stage-specific message. The loopback launcher also bounds the SDK signed-user
-lookup to 10 seconds and returns `LOCAL_SIGN_IN_TIMEOUT` with HTTP `503` if
+lookup to 20 seconds and returns `LOCAL_SIGN_IN_TIMEOUT` with HTTP `503` if
 that lookup stalls. These errors do not expose credentials or partial CRM data.
 A platform Organization Environment UID is distinct from a CRM workspace or
 tenant UID. Assistant identity comes from `.agents/agent_card.json`; CRM YAML
@@ -55,6 +55,8 @@ company-sector, contact-status, deal-category, and task-type choices.
 }
 ```
 
-The platform supplies the authenticated principal. The application neither
-accepts a caller-selected workspace nor maintains a separate user/role store.
+The application's installed request identity supplies the verified caller;
+see [request conventions](conventions.md#identity-and-scope). The application
+neither accepts a caller-selected workspace nor maintains a separate user/role
+store.
 See [persistence and migrations](../delivery/persistence.md).

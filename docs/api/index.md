@@ -16,7 +16,10 @@ the concept you need:
 | [Imports and transfers](transfers.md) | Source connections, staged imports, job state and reports |
 | [Service and settings](service.md) | Readiness, bootstrap, principal, settings, process health |
 
-The API is consumed through Command Center's delegated transport. The API
-does not accept a browser-supplied identity or application tenant selector as authority.
+The API is consumed through Command Center's delegated transport. Main
+Sequence signs the caller of each delegated request and the API verifies that
+proof before any CRM code runs ([request conventions](conventions.md#identity-and-scope)).
+The API does not accept a browser-supplied identity or application tenant
+selector as authority.
 Only mounted routes are documented as available; [delivery status](../delivery/verification.md)
 records the separate live-platform checks still required.

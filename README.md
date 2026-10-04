@@ -41,8 +41,8 @@ uv sync --locked
 ```
 
 For the explicit single-user local browser workflow, run the local entrypoint
-from this repository. It accepts only loopback requests and validates the
-account signed in through this repository's SDK session:
+from this repository. It accepts only loopback requests and presents the
+account signed in through this repository's SDK session as the caller:
 
 ```bash
 set -a
@@ -51,18 +51,25 @@ set +a
 uv run uvicorn api.crm.local:app --host 127.0.0.1 --port 38641
 ```
 
-The deployed FastAPI entrypoint remains `api.crm.main:app`, where the platform
-injects the request user. Local mode represents the one account signed into
-this process; it cannot distinguish different browser users. Do not expose it
-through a public proxy. Vite proxies `/api/` to this loopback listener.
+The deployed FastAPI entrypoint remains `api.crm.main:app`. Its factory
+installs the Main Sequence SDK's request identity
+(`mainsequence.server.fastapi.install_request_identity`) once. Deployed, it
+verifies the platform-signed caller assertion of every request before any CRM
+code runs, and Main Sequence's FastAPI launcher refuses to serve an app
+without it. Protected routes take that caller from `User.get_logged_user()`
+through `authenticated_actor()`. Local mode represents the one account signed
+into this process; it cannot distinguish different browser users. Do not
+expose it through a public proxy. Vite proxies `/api/` to this loopback
+listener.
 The API reports enabled modules in its bootstrap response; the frontend uses
 that response to render Solution Selling, not a frontend environment variable.
 
-`/healthz` checks only the process. Protected `/api/crm/v1/readiness/` requires
-the platform-injected `request.state.user_uid` and reports `not_ready` until
-one settings record, existing policy and directory adapters, an active
-MetaTable catalog, and a default pipeline are available. The API does not
-accept a caller-supplied identity or workspace selector.
+`/healthz` checks only the process; deployed, it needs a verified caller like
+every route outside the declared public ingress. Protected
+`/api/crm/v1/readiness/` reports `not_ready` until one settings record,
+existing policy and directory adapters, an active MetaTable catalog, and a
+default pipeline are available. The API does not accept a caller-supplied
+identity header or workspace selector.
 
 The 26-table migration provider is `src.crm.migrations:migration`. A fresh API
 process resolves its active, provider-owned MetaTables directly from the platform

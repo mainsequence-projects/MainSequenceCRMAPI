@@ -95,6 +95,47 @@ runtime through `configure_local_client()`, reported
 `src.crm.migrations:migration: 0009 (already current)`. Nothing hosted was
 exercised.
 
+Later on 2026-10-04 the API installed the SDK's request identity
+(`install_request_identity`) in `create_app()` and moved its caller lookup,
+`authenticated_actor()`, onto `User.get_logged_user()`. Since
+PodDeploymentOrchestrator `3057764` the platform's FastAPI launcher no longer
+resolves callers itself. It serves an app only when that integration declares
+itself installed, in the caller mode the deployment selects and with exactly
+the deployment's public ingress, so every new revision of the previous code
+stopped at startup while the old one kept serving. The two Google public
+routes are now mounted on the application itself: the locked FastAPI 0.141
+lists an included router in `app.routes` as one entry, so the launcher's own
+`FASTAPI_PUBLIC_INGRESS` check, and the request identity, could not find them.
+That stopped startup too, independently of the identity change. The API
+release's failed runtime activation, recorded below with the Google Workspace
+extension, is consistent with it, but its logs were not inspected. The OpenAPI
+document did not change. Checked locally:
+
+- With a simulated deployment environment (assertion mode, trusted issuer, key
+  URL, release and Environment, and the workflow's public ingress),
+  PodDeploymentOrchestrator's `require_request_identity` and `serve_fastapi`,
+  imported from its checkout, accepted the app. On the previous commit the
+  first raised "Application request identity is not installed" and the second
+  "Invalid FASTAPI_PUBLIC_INGRESS configuration". The launcher's runtime app
+  started, answered `/ms-health-deployment` as ready, rejected requests without
+  a valid caller assertion or with only `X-User-UID` (`401`), passed a request
+  with a platform-signed assertion to CRM code, and served the completion page
+  without a caller only when it was admitted as public ingress.
+- `tests/test_request_identity.py` covers the declaration, signed and local
+  callers, and their rejection; every other HTTP test now authenticates
+  through the same verification. The 165 repository tests and the strict
+  MkDocs build pass.
+- The loopback launcher, run against the local development backend with the
+  saved sign-in, returned the signed-in user from `/principals/`, rejected
+  caller identity headers and served the Google completion page anonymously,
+  as the previous commit's launcher does. Readiness reported the same
+  unavailable catalog on both.
+
+Not verified: a deployed release. It needs Main Sequence's caller-assertion
+signing, published keys and gateway forwarding for this release. Deployed CRM
+routes still fail closed after verification because no hosted policy,
+directory or bootstrap adapter is wired; that predates this change.
+
 On 2026-10-03 the API moved to `mainsequence` 9.0.5 and `mainsequence-metatable`
 0.1.18. Since 0.1.14, MetaTables migrates hosted application databases only
 from a Job in the application's own deployment workflow, so `crm-api.yaml` now
@@ -403,6 +444,9 @@ and the CRM assistant. Push only after the Environment's hosted MetaTables API
 runs 0.1.19 or later. Against an older API the Job fails before it migrates
 anything and neither the API nor the assistant rolls out; see
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
+The API also needs Main Sequence to sign and forward a caller assertion for
+each request to this release: without one, every route outside the declared
+public ingress answers `401`.
 
 ## Moved workflow resources
 

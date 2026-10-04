@@ -4,13 +4,19 @@ These routes are mounted when `extensions.google_workspace.active: true` in
 `config/crm.yaml`.
 The module also needs the [Google Cloud and CRM setup](../google_workspace_module/setup.md)
 and migration `0008`. All routes except the Google callback and its completion
-page use the existing platform-injected CRM identity and require
+page need the verified Main Sequence caller and require
 `crm.transfer.import`. Creating a CRM record additionally requires
 `crm.create`; updating a linked Interaction requires `crm.edit`.
 The callback and completion handlers have no CRM bearer dependency. Deployed
 OAuth additionally needs exact `GET` `public_ingress` pairs on the FastAPI
 release, an active revision with that policy, and external verification. See
 the [public callback setup](../google_workspace_module/setup.md#configure-public-callback-routes-on-main-sequence).
+The application's request identity runs these two routes without a caller only
+when the deployment declares them and the platform gateway admits the request
+as public ingress. Both are mounted on the application itself rather than
+through the module's router: Main Sequence's launcher and the request identity
+look for each declared route in the application's own route list, where
+FastAPI 0.141 shows an included router as a single entry.
 
 | Method | Path | Request and result |
 | --- | --- | --- |

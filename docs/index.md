@@ -16,9 +16,9 @@ This site documents the CRM service in this repository:
   decisions and status.
 
 The frontend is a separate Command Center application. This site does not
-describe an independent CRM login or a second user/role database: the API uses
-the existing platform-injected human identity and policy. There is no
-application-owned workspace or tenant identity.
+describe an independent CRM login or a second user/role database: the API
+verifies the Main Sequence user making each request and relies on the existing
+platform policy. There is no application-owned workspace or tenant identity.
 
 ## Implementation status
 

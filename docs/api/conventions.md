@@ -2,13 +2,32 @@
 
 ## Identity and scope
 
-Protected routes use the human UID injected by the Main Sequence platform.
-An application policy adapter checks the
-required capability (`crm.read`, `crm.create`, `crm.edit`, `crm.archive`,
-`crm.merge`, `crm.transfer.import`, or `crm.configure`). Owner UUIDs are checked
-against the existing platform directory. Do not send user or role headers as a
-substitute for that context. Missing adapters, settings, or catalog state
-fail closed.
+`create_app()` installs the Main Sequence SDK's request identity once. It
+verifies the caller of every request before any CRM middleware or route runs:
+
+- Deployed, Main Sequence's gateway forwards a platform-signed caller
+  assertion (`X-MainSequence-Caller-Assertion`). The SDK checks its Ed25519
+  signature, issuer, audience, this release, the Environment and its lifetime
+  of at most five minutes against the deployment's trusted configuration.
+- Outside a deployment, the request must carry a direct `Authorization:
+  Bearer` token, which the SDK checks with
+  `MAINSEQUENCE_ENDPOINT/api/v1/users/me/`. The
+  [loopback launcher](../delivery/local-development.md#run-the-api-locally)
+  presents its own SDK sign-in this way.
+
+Protected routes read the caller's UID with `User.get_logged_user()` through
+`authenticated_actor()`. A user header (`X-User-UID`, `X-User-ID`) or the
+process's own SDK credential never substitutes for the verified caller, and a
+request without one never reaches CRM code. An application policy adapter
+checks the required capability (`crm.read`, `crm.create`, `crm.edit`,
+`crm.archive`, `crm.merge`, `crm.transfer.import`, or `crm.configure`). Owner
+UUIDs are checked against the existing platform directory. Missing adapters,
+settings, or catalog state fail closed.
+
+Only the routes the deployment declares as public ingress, and the platform
+gateway admits as such, run without a caller: the Google OAuth callback and
+completion page. Credentials are stripped from those requests, and CRM code
+finds no caller there.
 
 ## Collections and discovery
 
@@ -62,17 +81,19 @@ Creates generally return `201`; an accepted import commit or transfer action
 returns `202` and does **not** mean the job is finished. The current exception
 handler wraps most errors in an `error` object with `code`, `message`, and
 `request_uid`; validation errors add safe field paths. Readiness is an
-exception: it returns its readiness body with `200` or `503`.
+exception: it returns its readiness body with `200` or `503`. A request that
+caller verification rejects never reaches that handler: it gets `401`, or
+`503` while verification is unavailable, with only a `detail` message.
 
 | Status | Typical meaning |
 | --- | --- |
-| `401` | Platform-injected human identity absent |
+| `401` | No verified caller: a missing or invalid caller assertion (deployed) or Bearer token (local) |
 | `403` | Caller lacks the required CRM capability |
 | `404` | Record missing |
 | `409` | Version, board, or plan conflict |
 | `413` | Upload or row limit exceeded |
 | `422` | Invalid body, query, owner, or relationship |
-| `503` | Required CRM settings, policy, directory, or catalog unavailable |
+| `503` | Required CRM settings, policy, directory, or catalog unavailable; or caller verification unavailable |
 
 The mounted routes currently emit generic `CRM_REQUEST_ERROR` for many
 non-authentication HTTP exceptions; do not assume more specific error codes

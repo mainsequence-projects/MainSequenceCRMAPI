@@ -17,7 +17,8 @@ imports:
 | Gmail message correspondents | Suggest Contacts from selected message headers; never create them automatically. |
 | Google Calendar events | Review organizers and attendees, then create core [Interactions](../concepts/interactions.md) with optional Company context; update linked Interactions after review. |
 
-The CRM continues to use Main Sequence's injected identity and policy. Google
+The CRM continues to use the Main Sequence caller it verifies and the
+existing policy. Google
 OAuth grants access to the consenting user's Google data; it is not a second
 CRM login. The backend receives Google credentials and calls Google APIs. The
 Command Center frontend has separate **Google Contacts**, **Gmail

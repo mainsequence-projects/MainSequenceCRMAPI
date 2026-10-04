@@ -12,11 +12,12 @@ Read `AGENTS.md`, the relevant module's documentation under `docs/`, and the pro
 - Put **every optional extension API endpoint** under the literal root `/extensions/<extension-slug>/`. Define a router with that prefix and mount it only when its exact backend feature switch is enabled. Do not place extension API endpoints under `/api/crm/v1/`, which is for core CRM endpoints.
 - Existing slugs are `google` and `solution-selling`. The shared core Interaction routes stay under `/api/crm/v1/interactions/`. Frontend page URLs are navigation URLs and do not need to match API routes.
 - Route extension calls through the same Command Center delegated FastAPI transport as core CRM calls. Allow `/extensions/` in the frontend API path guard and local Vite proxy. Never put Google OAuth credentials in the frontend.
-- Keep ordinary extension API routes protected by platform Bearer authentication and application policy. An externally invoked callback cannot use the caller's injected CRM identity; verify provider state, PKCE, signature, or equivalent proof in the handler.
+- Keep ordinary extension API routes protected by the verified platform caller and application policy. An externally invoked callback has no verified CRM caller; verify provider state, PKCE, signature, or equivalent proof in the handler.
 
 ## Public provider ingress
 
 - Add only the exact method and literal path of an external callback or completion page to the FastAPI resource's `spec.public_ingress` in `.mainsequence/workflows/*.yaml`. For Google these are `GET /extensions/google/oauth/callback/` and `GET /extensions/google/oauth/done/`. Do not make OAuth start, attempt status, completion exchange, connection, preview, or import routes public.
+- Mount each declared public route on the application itself with `add_api_route`, as `mount_public_routes` in `api/crm/google_routes.py` does, and keep the extension's other routes in its router. Main Sequence's launcher and the SDK's request identity look for declared routes in `app.routes`, where FastAPI 0.141 shows an included router as one entry; the API does not start when they cannot find one. `tests/test_request_identity.py` checks this.
 - Fetch the exact branch workflow template and validate the complete declaration with `validate-workflow/`. A valid local YAML file does not activate ingress. After deployment, check both desired and `effective_public_ingress` on the active release, derive the redirect URI from its backend-issued `public_url`, and test public admission and protected-path denial without a Bearer token.
 - Google requires `INCLUDE_GOOGLE_WORKSPACE_EXTENSION=true` in the API runtime. Its registered redirect URI must match `/extensions/google/oauth/callback/` exactly, including the trailing slash.
 

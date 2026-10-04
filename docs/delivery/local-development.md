@@ -19,9 +19,8 @@ shown under [verification](verification.md).
 
 ## Run the API locally
 
-The loopback-only launcher is `api.crm.local:app`. It validates the account
-already signed in through this repository's Main Sequence SDK session and
-represents that one human in this process:
+The loopback-only launcher is `api.crm.local:app`. It represents the one
+human already signed in through this repository's Main Sequence SDK session:
 
 ```bash
 set -a
@@ -32,19 +31,32 @@ uv run uvicorn api.crm.local:app --host 127.0.0.1 --port 38641
 
 Keep `.env` private. Do not expose the local launcher through a public proxy:
 it cannot distinguish multiple browser users. The deployed entrypoint remains
-`api.crm.main:app`, where Main Sequence injects the request identity. Vite
+`api.crm.main:app`, which verifies the platform-signed caller of each request
+(see [request conventions](../api/conventions.md#identity-and-scope)). Vite
 proxies `/api/` and `/extensions/` to the local loopback listener during
-frontend development. Core CRM routes use `/api/crm/v1/`; optional module API
-routes use `/extensions/<module>/`.
-The local launcher shares a verified SDK user lookup across requests for at
-most five minutes, then revalidates it. Concurrent requests share the lookup;
-failed lookups are never cached. A responsive `/healthz` only proves the API
-process is running. If protected routes stall, check the Main Sequence
+frontend development without adding a credential. Core CRM routes use
+`/api/crm/v1/`; optional module API routes use `/extensions/<module>/`.
+
+The launcher builds that same application. Outside a deployment its request
+identity runs in local mode, and the launcher refuses to start where
+deployment markers such as `APP_NAME` are set. For each protected loopback
+request the launcher presents this process's SDK sign-in as the
+`Authorization: Bearer` credential. The request identity checks it with
+`MAINSEQUENCE_ENDPOINT/api/v1/users/me/`, binds that user as the caller and
+removes the header before any route runs. A request that brings its own
+`Authorization`, caller assertion or user header is rejected with `401`. The
+signed-in user's details, which the local policy and display name use, are
+cached for at most five minutes and then revalidated; concurrent requests
+share that lookup and failed lookups are never cached. The per-request check
+is not cached. A responsive `/healthz` only proves the API process is running.
+If protected routes stall or return `503`, check the Main Sequence
 `/api/v1/users/me/` response and the SDK sign-in; Google authorization cannot
 start until that identity check succeeds.
-The exact Google callback and completion-page routes bypass this local user
-lookup, matching their public ingress behavior in the deployed API; OAuth
-state and the provider exchange still validate the callback.
+`/healthz` and the exact Google callback and completion-page routes need no
+sign-in. The launcher declares them as public ingress for the application it
+creates and marks their requests as the platform gateway does, so they run
+without a caller, as the Google routes do in the deployed API. OAuth state
+and the provider exchange still validate the callback.
 The backend mounts optional modules from the strict, persisted
 `config/crm.yaml` and reports those same values in bootstrap. Both
 `extensions.solution_selling.active` and `extensions.google_workspace.active`
@@ -64,11 +76,13 @@ attempts platform Agent resolution or reports the assistant unavailable.
 has additional dependencies described in [service and settings API](../api/service.md).
 Bootstrap runs its synchronous platform readiness work in the API worker pool,
 so a slow catalog read does not block the event loop or `/healthz`. The local
-signed-user lookup has a 20-second response deadline; readiness and settings
-reads have 75-second deadlines. When one expires, the protected API returns
-HTTP `503` with the failed stage. The frontend shows the bootstrap path,
-HTTP status, and the failed readiness check. A process-only `/healthz` success
-does not imply that the Main Sequence backend is reachable. SDK calls may
+signed-user lookup has a 20-second response deadline and the request
+identity's check of the sign-in a 10-second one; readiness and settings reads
+have 75-second deadlines. When one expires, the protected API returns HTTP
+`503`, naming the failed stage for the CRM's own deadlines. The frontend
+shows the bootstrap path, HTTP status, and the failed readiness check. A
+process-only `/healthz` success does not imply that the Main Sequence backend
+is reachable. SDK calls may
 continue in their worker after the response deadline; restart the stack after
 fixing a persistent backend or sign-in failure.
 The VS Code local stack checks the protected bootstrap before printing its

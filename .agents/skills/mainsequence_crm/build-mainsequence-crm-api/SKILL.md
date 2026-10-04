@@ -28,7 +28,7 @@ Pinned source IDs: M05, M06, C02, C16, C17, C18, C19, C20. Resolve them through 
 ## Workflow
 
 1. Read the route catalogue, capability map and domain schema. Resolve each canonical contract through the installed manifest and its exact schema/fixtures; do not clone those definitions locally.
-2. Consume `request.state.user_uid` as the authenticated human and use the existing application policy/directory adapters. Fail closed on missing context; never use process credentials or iframe identity as authorization.
+2. Take the authenticated human only from `authenticated_actor()` (`src/crm/platform/runtime.py`), which reads `User.get_logged_user()`. The request identity that `create_app()` installs once has verified that caller before any route runs; see the 2026-10-04 decision in `AGENTS.md`. Use the existing application policy/directory adapters. Fail closed on missing context; never read user headers or `request.state.user_uid`, and never use process credentials or iframe identity as the caller or as authorization.
 3. Implement thin routers with allowlisted typed queries, static subpaths before UUID routes, consistent slash behavior, safe error envelopes and explicit response codes. Do not expose raw import records or validation input dumps in errors.
 4. Produce canonical resource collections and separate discovery. Counts and rows use the same scope/snapshot. Reject presentation parameters on discovery and do not publish a second bulk-metadata endpoint.
 5. Implement application-owned readiness/bootstrap, CRUD, merge, board and transfer contracts from the pack. Propagate expected versions; the CRM no longer requires `Idempotency-Key` or stores command replay receipts. Import/worker calls use the same service boundary.

@@ -74,7 +74,8 @@ authenticated platform skill update installs under
    `/extensions/google/connections/` and the wrong method on a listed path
    remain denied without a bearer token. Public admission supplies no Main
    Sequence user identity; the callback relies on one-time OAuth state and
-   PKCE, while authenticated CRM routes still use platform identity.
+   PKCE, while every other CRM route still requires the verified platform
+   caller.
 
 Only after these checks should you register the exact callback URI in Google
 and set `GOOGLE_OAUTH_REDIRECT_URI` to the same value. Localhost testing
