@@ -55,7 +55,7 @@ def _settings_row():
     }
 
 
-def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch):
+def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch, local_sign_in):
     # Bootstrap resolves the assistant: Tau /ready when a local origin is set,
     # then the platform Agent. Keep both inside the test process.
     monkeypatch.delenv("CRM_LOCAL_TAU_ORIGIN", raising=False)
@@ -67,15 +67,14 @@ def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch):
     monkeypatch.setattr(
         "src.crm.platform.catalog.MetaTable.filter", lambda **filters: _catalog_rows()
     )
-    monkeypatch.setattr(
-        "api.crm.local.User.get_authenticated_user_details",
-        lambda: SimpleNamespace(
+    local_sign_in.as_user(
+        SimpleNamespace(
             uid=str(ACTOR),
             username="local@example.test",
             email="local@example.test",
             first_name="Local",
             last_name="Operator",
-        ),
+        )
     )
     operations = []
 
@@ -122,6 +121,8 @@ def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch):
         "display_name": "CRM assistant",
     }
     assert agent_lookups == ["CRM assistant"]
+    # Each request's caller was the session's user, verified by the backend.
+    assert local_sign_in.backend.lookups == ["Bearer local-session"] * 2
 
 
 def test_local_policy_is_bound_to_authenticated_actor():

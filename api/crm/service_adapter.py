@@ -23,7 +23,7 @@ T = TypeVar("T")
 
 
 def context_for(request: Request) -> CRMContext:
-    actor_uid = authenticated_actor(request)
+    actor_uid = authenticated_actor()
     policy = request_port(request, "crm_policy")
     directory = request_port(request, "crm_directory")
     if policy is None or directory is None:

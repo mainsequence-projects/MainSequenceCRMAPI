@@ -35,7 +35,7 @@ def test_frontend_core_routes_are_registered():
     assert expected <= routes
 
 
-def test_pipeline_stages_returns_active_stage_choices_without_board_cards(monkeypatch):
+def test_pipeline_stages_returns_active_stage_choices_without_board_cards(monkeypatch, signed_caller):
     from src.crm.repositories.deals.board import DealBoard
 
     pipeline_uid = uuid.UUID("00000000-0000-4000-8000-000000000001")
@@ -79,19 +79,15 @@ def test_pipeline_stages_returns_active_stage_choices_without_board_cards(monkey
     app.state.crm_policy = Policy()
     app.state.crm_directory = object()
     app.state.crm_resources = Store()
+    client = TestClient(app, headers=signed_caller(uuid.uuid4()))
 
-    @app.middleware("http")
-    async def inject_identity(request, call_next):
-        request.state.user_uid = uuid.uuid4()
-        return await call_next(request)
-
-    response = TestClient(app).get(f"/api/crm/v1/pipelines/{pipeline_uid}/stages/")
+    response = client.get(f"/api/crm/v1/pipelines/{pipeline_uid}/stages/")
     assert response.status_code == 200
     assert response.json() == PipelineStages.model_validate(result).model_dump(mode="json")
-    assert TestClient(app).get(f"/api/crm/v1/pipelines/{pipeline_uid}/stages/?page_size=25").status_code == 422
+    assert client.get(f"/api/crm/v1/pipelines/{pipeline_uid}/stages/?page_size=25").status_code == 422
 
 
-def test_http_query_validation_stops_before_repository_access():
+def test_http_query_validation_stops_before_repository_access(signed_caller):
     app = create_app()
 
     class Policy:
@@ -101,12 +97,7 @@ def test_http_query_validation_stops_before_repository_access():
     app.state.crm_policy = Policy()
     app.state.crm_directory = object()
 
-    @app.middleware("http")
-    async def inject_identity(request, call_next):
-        request.state.user_uid = uuid.uuid4()
-        return await call_next(request)
-
-    with TestClient(app) as client:
+    with TestClient(app, headers=signed_caller(uuid.uuid4())) as client:
         cases = (
             ("/api/crm/v1/contacts/", {"filters": '{"has_open_tasks":1}'}),
             ("/api/crm/v1/contacts/discovery/", {"page_size": "25"}),

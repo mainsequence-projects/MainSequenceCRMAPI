@@ -65,7 +65,7 @@ class ResourceStore:
         return {"items": [], "pageInfo": {}}
 
 
-def client_for(policy, resources=None, transfers=None):
+def client_for(caller, policy, resources=None, transfers=None):
     app = create_app()
     app.state.crm_policy = policy
     app.state.crm_directory = Directory()
@@ -73,22 +73,18 @@ def client_for(policy, resources=None, transfers=None):
         app.state.crm_resources = resources
     if transfers is not None:
         app.state.crm_transfers = transfers
-
-    @app.middleware("http")
-    async def identity(request, call_next):
-        request.state.user_uid = ACTOR
-        return await call_next(request)
-
-    return TestClient(app)
+    return TestClient(app, headers=caller(ACTOR))
 
 
-def test_http_and_direct_contact_mutations_use_identical_normalized_commands():
+def test_http_and_direct_contact_mutations_use_identical_normalized_commands(signed_caller):
     policy = Policy("crm.create", "crm.edit")
     direct_store, http_store = ResourceStore(), ResourceStore()
     service = CRMOperations(CRMContext(ACTOR, policy, Directory()), resources=direct_store)
     payload = {"first_name": "  Ada  ", "emails": []}
     direct = service.create_resource("contacts", payload)
-    response = client_for(policy, resources=http_store).post("/api/crm/v1/contacts/", json=payload)
+    response = client_for(signed_caller, policy, resources=http_store).post(
+        "/api/crm/v1/contacts/", json=payload
+    )
     assert response.status_code == 201
     assert direct == response.json()
     assert direct_store.calls[0] == http_store.calls[0]
@@ -96,7 +92,7 @@ def test_http_and_direct_contact_mutations_use_identical_normalized_commands():
 
     patch = {"expected_version": 1, "changes": {"first_name": "Grace"}}
     direct = service.update_resource("contacts", CONTACT, patch)
-    response = client_for(policy, resources=http_store).patch(
+    response = client_for(signed_caller, policy, resources=http_store).patch(
         f"/api/crm/v1/contacts/{CONTACT}/", json=patch
     )
     assert response.status_code == 200
@@ -104,18 +100,20 @@ def test_http_and_direct_contact_mutations_use_identical_normalized_commands():
     assert direct_store.calls[-1] == http_store.calls[-1]
 
 
-def test_service_and_http_deny_before_reaching_repository():
+def test_service_and_http_deny_before_reaching_repository(signed_caller):
     policy = Policy()
     store = ResourceStore()
     service = CRMOperations(CRMContext(ACTOR, policy, Directory()), resources=store)
     with pytest.raises(AccessDenied):
         service.create_resource("contacts", {"first_name": "Ada"})
-    response = client_for(policy, resources=store).post(
+    response = client_for(signed_caller, policy, resources=store).post(
         "/api/crm/v1/contacts/", json={"first_name": "Ada"}
     )
     assert response.status_code == 403
     assert (
-        client_for(policy, resources=store).get("/api/crm/v1/contacts/?page_size=-1").status_code
+        client_for(signed_caller, policy, resources=store)
+        .get("/api/crm/v1/contacts/?page_size=-1")
+        .status_code
         == 403
     )
     assert store.calls == []
@@ -129,7 +127,7 @@ def test_service_rejects_invalid_semantic_scope_without_http_parser():
     assert store.calls == []
 
 
-def test_transfer_action_rechecks_direction_capability_in_shared_service():
+def test_transfer_action_rechecks_direction_capability_in_shared_service(signed_caller):
     class TransferStore:
         def __init__(self):
             self.cancelled = False
@@ -147,7 +145,9 @@ def test_transfer_action_rechecks_direction_capability_in_shared_service():
     service = TransferOperations(CRMContext(ACTOR, policy, Directory()), store)
     with pytest.raises(AccessDenied):
         service.transfer_action(TRANSFER, "cancel")
-    response = client_for(policy, transfers=store).post(f"/api/crm/v1/transfers/{TRANSFER}/cancel/")
+    response = client_for(signed_caller, policy, transfers=store).post(
+        f"/api/crm/v1/transfers/{TRANSFER}/cancel/"
+    )
     assert response.status_code == 403
     assert store.cancelled is False
 

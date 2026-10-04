@@ -26,6 +26,7 @@ class ReadyRegistry:
 
 class ReadyPolicy:
     def capabilities(self, actor_uid):
+        assert actor_uid == ACTOR
         return {"crm.read"}
 
 
@@ -59,19 +60,13 @@ class ReadyBootstrap:
         }
 
 
-def ready_app():
+def ready_client(caller):
     app = create_app()
     app.state.crm_registry = ReadyRegistry()
     app.state.crm_policy = ReadyPolicy()
     app.state.crm_directory = ReadyDirectory()
     app.state.crm_bootstrap = ReadyBootstrap()
-
-    @app.middleware("http")
-    async def actor(request, call_next):
-        request.state.user_uid = str(ACTOR)
-        return await call_next(request)
-
-    return app
+    return TestClient(app, headers=caller(ACTOR))
 
 
 def test_persisted_extension_configuration_ignores_old_environment_switches(config_file, monkeypatch):
@@ -92,9 +87,9 @@ def test_invalid_persisted_configuration_fails_at_app_boot(config_file):
         create_app()
 
 
-def test_bootstrap_serializes_readiness_and_unavailable_assistant(monkeypatch):
+def test_bootstrap_serializes_readiness_and_unavailable_assistant(monkeypatch, signed_caller):
     monkeypatch.setattr("api.crm.main.resolve_assistant", lambda origin: _unavailable())
-    response = TestClient(ready_app()).get("/api/crm/v1/bootstrap/")
+    response = ready_client(signed_caller).get("/api/crm/v1/bootstrap/")
     assert response.status_code == 200
     payload = Bootstrap.model_validate(response.json())
     assert payload.readiness.status.value == "ready"

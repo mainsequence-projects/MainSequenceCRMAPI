@@ -7,6 +7,8 @@ from typing import Protocol
 
 from fastapi import HTTPException, Request
 
+from mainsequence.client import RequestIdentityError, User
+
 from .catalog import configured_registry
 
 CAPABILITIES = frozenset(
@@ -49,11 +51,16 @@ class BootstrapPort(Protocol):
     def read(self, actor_uid: uuid.UUID) -> dict: ...
 
 
-def authenticated_actor(request: Request) -> uuid.UUID:
-    raw = getattr(request.state, "user_uid", None)
+def authenticated_actor() -> uuid.UUID:
+    """Return the caller that the application's installed request identity verified.
+
+    ``api.crm.main.create_app`` installs that integration; it rejects a request
+    without a valid caller before any CRM code runs. Outside a verified request
+    (an anonymous public route, or no request at all) this fails closed.
+    """
     try:
-        return uuid.UUID(str(raw))
-    except (TypeError, ValueError, AttributeError) as exc:
+        return uuid.UUID(User.get_logged_user().uid)
+    except RequestIdentityError as exc:
         raise HTTPException(
             status_code=401, detail="Authenticated platform identity required"
         ) from exc

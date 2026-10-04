@@ -147,14 +147,9 @@ def test_render_is_read_only_and_uses_explicit_company():
     assert result == "Hi Maria at Example Capital"
 
 
-def test_prompter_http_create_and_versioned_patch_use_platform_policy():
+def test_prompter_http_create_and_versioned_patch_use_platform_policy(signed_caller):
     app = create_app()
     actor = uuid.uuid4()
-
-    @app.middleware("http")
-    async def signed_actor(request, call_next):
-        request.state.user_uid = actor
-        return await call_next(request)
 
     class Policy:
         def capabilities(self, actor_uid):
@@ -189,7 +184,7 @@ def test_prompter_http_create_and_versioned_patch_use_platform_policy():
     app.state.crm_policy = Policy()
     app.state.crm_directory = Directory()
     app.state.crm_record_store = Store()
-    client = TestClient(app)
+    client = TestClient(app, headers=signed_caller(actor))
     created = client.post(
         "/extensions/solution-selling/prompters/",
         json={"name": "Greeting", "kind": "intro_email", "template": "Hi {{ contact.first_name }}"},

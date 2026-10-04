@@ -29,16 +29,27 @@ def test_dictionary_has_twenty_six_managed_tables_without_application_tenant():
     assert "settings" in MODELS and "workspace" not in MODELS
 
 
-def test_platform_identity_required_even_if_header_is_forged():
+def test_platform_identity_required_even_if_header_is_forged(signed_caller):
     app = create_app()
+
+    class Registry:
+        validated = False
+
+        def validate(self):
+            Registry.validated = True
+
+    app.state.crm_registry = Registry()
     client = TestClient(app)
-    assert client.get("/healthz").status_code == 200
-    response = client.get("/api/crm/v1/readiness/", headers={"X-User-Uid": str(ACTOR)})
-    assert response.status_code == 401
-    Error.model_validate(response.json())
+    for headers in ({}, {"X-User-Uid": str(ACTOR)}, {"X-User-Id": "42"}):
+        response = client.get("/api/crm/v1/readiness/", headers=headers)
+        assert response.status_code == 401
+        assert set(response.json()) == {"detail"}
+    assert client.get("/healthz").status_code == 401
+    assert client.get("/healthz", headers=signed_caller(ACTOR)).status_code == 200
+    assert Registry.validated is False
 
 
-def test_readiness_fails_closed_without_platform_adapters(monkeypatch):
+def test_readiness_fails_closed_without_platform_adapters(signed_caller):
     app = create_app()
 
     class UnavailableRegistry:
@@ -46,13 +57,7 @@ def test_readiness_fails_closed_without_platform_adapters(monkeypatch):
             raise RuntimeError("Catalog unavailable")
 
     app.state.crm_registry = UnavailableRegistry()
-
-    @app.middleware("http")
-    async def platform_identity(request, call_next):
-        request.state.user_uid = ACTOR
-        return await call_next(request)
-
-    client = TestClient(app)
+    client = TestClient(app, headers=signed_caller(ACTOR))
     response = client.get("/api/crm/v1/readiness/")
     assert response.status_code == 503
     payload = response.json()
@@ -71,7 +76,7 @@ def test_readiness_fails_closed_without_platform_adapters(monkeypatch):
     Readiness.model_validate(bootstrap.json()["readiness"])
 
 
-def test_policy_denial_does_not_disclose_readiness_checks(monkeypatch):
+def test_policy_denial_does_not_disclose_readiness_checks(signed_caller):
     app = create_app()
 
     class Registry:
@@ -85,15 +90,10 @@ def test_policy_denial_does_not_disclose_readiness_checks(monkeypatch):
 
     class Deny:
         def capabilities(self, actor_uid):
+            assert actor_uid == ACTOR
             return set()
 
     app.state.crm_policy = Deny()
-
-    @app.middleware("http")
-    async def platform_identity(request, call_next):
-        request.state.user_uid = ACTOR
-        return await call_next(request)
-
-    response = TestClient(app).get("/api/crm/v1/readiness/")
+    response = TestClient(app, headers=signed_caller(ACTOR)).get("/api/crm/v1/readiness/")
     assert response.status_code == 403
     assert "checks" not in response.json()

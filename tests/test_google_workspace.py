@@ -232,14 +232,24 @@ def test_oauth_state_replay_completion_actor_and_no_url_secret(monkeypatch):
     assert store.connection_row["refresh_ciphertext"] is None
 
 
-def test_callback_route_does_not_require_crm_identity():
+def test_callback_route_does_not_require_crm_identity(signed_caller, deployment_public_ingress):
     app = create_app()
     app.state.crm_google_service = GoogleWorkspaceService(store=MemoryStore(), config=config())
-    response = TestClient(app).get("/extensions/google/oauth/callback/?state=unknown&code=no", follow_redirects=False)
+    client = TestClient(app)
+    # The platform gateway marks a request it admitted through declared public ingress.
+    public = {"X-Public-Ingress": "1"}
+    response = client.get(
+        "/extensions/google/oauth/callback/?state=unknown&code=no",
+        headers=public,
+        follow_redirects=False,
+    )
     assert response.status_code == 303
     assert response.headers["location"].endswith("google_status=invalid_state")
-    assert TestClient(app).get("/extensions/google/oauth/done/").status_code == 200
-    assert TestClient(app).get("/extensions/google/connections/").status_code == 401
+    assert client.get("/extensions/google/oauth/done/", headers=public).status_code == 200
+    # Without that admission, or on any undeclared route, a verified caller is required.
+    assert client.get("/extensions/google/oauth/done/").status_code == 401
+    assert client.get("/extensions/google/connections/", headers=public).status_code == 401
+    assert client.post("/extensions/google/oauth/start/", headers=public).status_code == 401
 
 
 def test_denied_google_consent_finishes_attempt_without_exchanging_code():

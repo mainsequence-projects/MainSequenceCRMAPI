@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from functools import lru_cache
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,20 +49,33 @@ def oauth_start(request: Request):
     return invoke(lambda: _service(request).start(actor))
 
 
-@router.get("/oauth/callback/", include_in_schema=True)
 def oauth_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None):
     # Google redirects here outside the delegated Command Center transport.
     destination = _service(request).callback(code=code, state=state, error=error)
     return RedirectResponse(destination, status_code=303, headers={"Cache-Control": "no-store"})
 
 
-@router.get("/oauth/done/", response_class=HTMLResponse)
 def oauth_done(google_status: str = "failed"):
     message = "Google authorization finished. Return to the CRM window and close this tab." if google_status == "ready" else "Google authorization did not finish. Return to the CRM window and try again."
     return HTMLResponse(
         "<!doctype html><html lang='en'><meta charset='utf-8'><title>Google connection</title>"
         f"<main><h1>Google connection</h1><p>{message}</p></main></html>",
         headers={"Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; style-src 'none'; frame-ancestors 'none'"},
+    )
+
+
+def mount_public_routes(application: FastAPI) -> None:
+    """Mount Google's redirect target and the completion page on the application.
+
+    The deployment declares exactly these two as public ingress
+    (``.mainsequence/workflows/crm-api.yaml``). The Main Sequence launcher and
+    the installed request identity look for each declared route in
+    ``app.routes``, where FastAPI 0.141 lists an included router as one entry
+    instead of its routes. Every other Google route stays in ``router``.
+    """
+    application.add_api_route(f"{router.prefix}/oauth/callback/", oauth_callback, methods=["GET"])
+    application.add_api_route(
+        f"{router.prefix}/oauth/done/", oauth_done, methods=["GET"], response_class=HTMLResponse
     )
 
 

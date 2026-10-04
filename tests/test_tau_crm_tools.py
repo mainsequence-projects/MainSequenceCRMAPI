@@ -68,29 +68,23 @@ def tools_for(policy, store):
     }
 
 
-def client_for(policy, store):
+def client_for(caller, policy, store):
     app = create_app()
     app.state.crm_policy = policy
     app.state.crm_directory = Directory()
     app.state.crm_resources = store
-
-    @app.middleware("http")
-    async def identity(request, call_next):
-        request.state.user_uid = ACTOR
-        return await call_next(request)
-
-    return TestClient(app)
+    return TestClient(app, headers=caller(ACTOR))
 
 
 def run(tool, arguments):
     return anyio.run(tool.execute, "call-1", arguments)
 
 
-def test_tau_contact_create_update_match_http_shared_commands():
+def test_tau_contact_create_update_match_http_shared_commands(signed_caller):
     policy = Policy("crm.create", "crm.edit")
     tool_store, http_store = Store(), Store()
     tools = tools_for(policy, tool_store)
-    client = client_for(policy, http_store)
+    client = client_for(signed_caller, policy, http_store)
     create = {"first_name": "  Ada  ", "emails": []}
     result = run(tools["crm_contacts_create"], {"payload": create})
     http = client.post("/api/crm/v1/contacts/", json=create)
