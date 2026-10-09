@@ -52,14 +52,16 @@ class BootstrapPort(Protocol):
 
 
 def authenticated_actor() -> uuid.UUID:
-    """Return the caller that the application's installed request identity verified.
+    """Return the verified requester on delegated calls, otherwise the caller.
 
     ``api.crm.main.create_app`` installs that integration; it rejects a request
     without a valid caller before any CRM code runs. Outside a verified request
     (an anonymous public route, or no request at all) this fails closed.
     """
     try:
-        return uuid.UUID(User.get_logged_user().uid)
+        caller = User.get_logged_user()
+        requester = User.get_requester()
+        return uuid.UUID((requester if requester is not None else caller).uid)
     except RequestIdentityError as exc:
         raise HTTPException(
             status_code=401, detail="Authenticated platform identity required"

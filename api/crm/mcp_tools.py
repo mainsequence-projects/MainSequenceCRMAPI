@@ -1,4 +1,4 @@
-"""Tau's typed transport adapters for the shared CRM operation boundary.
+"""MCP typed transport adapters for the shared CRM operation boundary.
 
 The runtime supplier is host-owned. Tool arguments never contain an actor,
 policy, directory, connection, or capability grant.
@@ -7,16 +7,14 @@ policy, directory, connection, or capability grant.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
 import anyio
+from mcp.types import CallToolResult, TextContent, Tool, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
-from tau_agent.messages import TextContent
-from tau_agent.tools import AgentTool, AgentToolResult, ToolCancellationToken
-from tau_agent.types import JSONValue
 
 from src.crm.contracts import DomainValidationError, model_for
 from src.crm.models.affiliations import AffiliationCreate, AffiliationPatch, AffiliationTransition
@@ -60,11 +58,6 @@ RuntimeProvider = Callable[[], CRMToolRuntime]
 MAX_RESULT_CHARS = 128_000
 
 
-def unavailable_runtime() -> CRMToolRuntime:
-    """Default until the host supplies validated per-turn identity and ports."""
-    raise ServiceUnavailable("Trusted CRM caller binding is unavailable")
-
-
 class _Arguments(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -105,7 +98,7 @@ class _NoArguments(_Arguments):
     pass
 
 
-def _result(code: str, *, data: Any = None, message: str | None = None) -> AgentToolResult:
+def tool_result(code: str, *, data: Any = None, message: str | None = None) -> CallToolResult:
     details: dict[str, Any] = {"code": code}
     if data is not None:
         details["data"] = data
@@ -118,10 +111,17 @@ def _result(code: str, *, data: Any = None, message: str | None = None) -> Agent
             "message": "Narrow the CRM query or read a specific record",
         }
         serialized = json.dumps(details)
-    return AgentToolResult(
-        content=[TextContent(text=serialized)],
-        details=details,
+    return CallToolResult(
+        content=[TextContent(type="text", text=serialized)],
+        structuredContent=json.loads(serialized),
+        isError=details["code"] != "ok",
     )
+
+
+@dataclass(frozen=True)
+class CRMTool:
+    definition: Tool
+    invoke: Callable[[Mapping[str, Any]], Awaitable[CallToolResult]]
 
 
 def _tool(
@@ -132,33 +132,28 @@ def _tool(
     runtime_provider: RuntimeProvider,
     *,
     mutation: bool = False,
-) -> AgentTool:
-    async def execute(
-        tool_call_id: str,
-        arguments: Mapping[str, JSONValue],
-        signal: ToolCancellationToken | None = None,
-        on_update: Any = None,
-    ) -> AgentToolResult:
-        del tool_call_id, on_update
-        if signal is not None and signal.is_cancelled():
-            return _result("cancelled", message="The command was not started")
+) -> CRMTool:
+    async def execute(arguments: Mapping[str, Any]) -> CallToolResult:
         try:
             parsed = arguments_model.model_validate(dict(arguments))
         except (ValidationError, TypeError, ValueError):
-            return _result("invalid_arguments", message="Invalid tool arguments")
+            return tool_result("invalid_arguments", message="Invalid tool arguments")
 
         def call() -> Any:
             service = runtime_provider().operations()
             return operation(service, parsed)
 
+        # Cancellation before dispatch starts no work. Once a synchronous write
+        # starts, wait for it; a lost/cancelled response never proves rollback.
+        await anyio.lowlevel.checkpoint()
         try:
             data = await anyio.to_thread.run_sync(call, abandon_on_cancel=False)
         except AccessDenied:
-            return _result("forbidden", message="CRM access denied")
+            return tool_result("forbidden", message="CRM access denied")
         except ServiceUnavailable:
-            return _result("unavailable", message="CRM runtime is unavailable")
+            return tool_result("unavailable", message="CRM runtime is unavailable")
         except DomainValidationError as exc:
-            return _result(
+            return tool_result(
                 "validation_error",
                 data={
                     "fields": [
@@ -168,39 +163,37 @@ def _tool(
                 },
             )
         except ResourceNotFound:
-            return _result("not_found", message="CRM record not found")
+            return tool_result("not_found", message="CRM record not found")
         except ResourceConflict:
-            return _result("conflict", message="CRM state changed; reread before retrying")
+            return tool_result("conflict", message="CRM state changed; reread before retrying")
         except Exception:
-            return _result("internal_error", message="CRM operation failed")
-        if signal is not None and signal.is_cancelled():
-            return _result(
-                "outcome_unknown" if mutation else "cancelled",
-                message=(
-                    "Read the current CRM record before any retry"
-                    if mutation
-                    else "The read was cancelled"
-                ),
-            )
-        return _result("ok", data=data)
+            return tool_result("internal_error", message="CRM operation failed")
+        return tool_result("ok", data=data)
 
-    return AgentTool(
-        name=name,
-        label=name.replace("_", " "),
-        description=description,
-        parameters=arguments_model.model_json_schema(),
-        execute_fn=execute,
-        execution_mode="sequential" if mutation else "parallel",
+    return CRMTool(
+        definition=Tool(
+            name=name,
+            description=description,
+            inputSchema=arguments_model.model_json_schema(),
+            annotations=ToolAnnotations(
+                readOnlyHint=not mutation,
+                destructiveHint=mutation,
+                idempotentHint=not mutation,
+                openWorldHint=False,
+            ),
+            _meta={"mainsequence.ai/timeout-seconds/v1": 60},
+        ),
+        invoke=execute,
     )
 
 
-def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[AgentTool, ...]:
+def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
     """Build tools for operations already implemented in ``src/crm``.
 
     Destructive commands are omitted until trusted confirmation evidence can
     be checked by the shared service. Unimplemented CRM operations are omitted.
     """
-    tools: list[AgentTool] = []
+    tools: list[CRMTool] = []
 
     def add(
         name: str,

@@ -127,22 +127,16 @@ Hosted environments are migrated only by the deployment workflow's
 `migrate-crm` Job, before the API and the CRM assistant roll out; see
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
 Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
-Before this branch is pushed, the Environment's hosted MetaTables API must be
-upgraded to 0.1.19 or later; 0.1.18 is not enough. This repository's 0.1.20
-client rejects the `/runtime-context/` response of an older API
-([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)),
-so the Job would fail before it migrates anything, and neither the API nor the
-assistant would roll out.
+Before rollout, verify the hosted MetaTables API and its system migrations
+against client 0.1.27 and complete the CRM Team/namespace setup documented in
+[persistence](persistence.md#migration-and-runtime-boundary). A failed migration
+Job prevents the API and assistant from rolling out.
 
-The local runtime checks the migration history, not the running CRM API. The
-loopback launcher does not call `configure_local_client()`, so its MetaTables
-client discovers the Environment's hosted MetaTables API, and the CRM's
-governed queries are written in PostgreSQL SQL. That client rejects the
-runtime context of a hosted API older than 0.1.19, but the launcher's catalog
-lookup and governed operations do not read it: in an offline replay of a
-0.1.18-shaped API they were unaffected (see
-[verification](verification.md#evidence-boundaries)). The upgrade is needed
-before the push, for the migration Job.
+The isolated local runtime checks the migration history and catalog binding,
+not the running CRM API. The CRM loopback launcher does not call
+`configure_local_client()`, so it discovers the Environment's hosted MetaTables
+API, and its business queries use PostgreSQL SQL. SQLite verification does not
+prove those production commands or hosted table permissions.
 
 ## Optional Google Workspace extension
 
@@ -181,14 +175,16 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 1.2.14 is locked to its release tag `v1.2.14` in `pyproject.toml` and
+`ms-tau-sdk` 2.0.9 is locked to its release tag `v2.0.9` in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
 exclude Tau's coding tools and Main Sequence MCP in the process environment:
 
 ```bash
+TAU_LOCAL_MODE=true MAINSEQUENCE_AUTH_MODE=jwt \
 TAU_EXCLUDE_BASE_TOOLS=true TAU_EXCLUDE_MAINSEQUENCE_MCP=true \
+CRM_LOCAL_API_ORIGIN=http://127.0.0.1:38641 \
   uv run uvicorn api.tau.main:app --host 127.0.0.1 --port 38642
 ```
 
@@ -204,35 +200,44 @@ Task history.
 The same variables apply to the `ms-tau` command. Both default to `false`,
 so the exclusion depends on how the agent process is launched.
 
-The version-matched coding guidance is synchronized with
-`uv run ms-tau skills sync --path .` into `.agents/skills/ms_tau_sdk/`.
+The installed SDK provides coding guidance that can be synchronized with
+`uv run ms-tau skills sync --path .` into `.agents/skills/ms_tau_sdk/` when that
+separate repository update is requested.
 Project-owned runtime behavior belongs under `.tau/`. The typed CRM
 tools and their authorization requirements are in
-[ADR 0003](../crm_core/adrs/0003-tau-crm-agent-tools.md). The
+[ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). The
 project `.tau/SYSTEM.md` replaces Tau's packaged general prompt so the chat
 speaks as a CRM application assistant. Restart Tau or start a new session after
 changing it, then inspect the effective session prompt. The Agent Card controls
 the display name; the process settings intentionally exclude general coding
 and Main Sequence MCP tools. Those settings are independent of the prompt.
-The `.tau/extensions/crm.py` project extension registers tools for the shared
-operations that currently exist. Mounted HTTP routes call those operations in
-`src/crm/services/operations.py` and `src/crm/services/transfers.py` for
-business validation, policy, and governed persistence. The installed Tau
-extension API does not expose its validated caller to project tools, and this
-entrypoint does not supply CRM policy or directory ports. Valid CRM tool calls
-therefore return `unavailable`; they cannot use the process SDK credential as
-the human caller. This is a fail-closed catalogue, not an operational CRM
-agent. The managed Agent release succeeded on 2026-09-26. This prompt change
-still requires deployment and verification; the separate trusted caller
-binding work is not part of a prompt overlay.
+The `.tau/extensions/crm.py` extension registers only `crm__list_tools` and
+`crm__call_tool` in local mode. They use the official MCP client against the
+loopback API's `/mcp`; `CRM_LOCAL_API_ORIGIN` defaults to
+`http://127.0.0.1:38641`. Start `api.crm.local:app` first. That launcher supplies
+its saved sign-in to the API's request verification and connects local policy
+and directory adapters. The bridge accepts no credentials or endpoint from
+model arguments and never retries a tool call. It contains no business schemas
+or persistence logic. The API catalogue contains 46 tools with Solution Selling
+disabled, 66 with it enabled; see the [MCP contract](../api/mcp.md).
 
-With both exclusions, the agent's business tools are those registered under
-`.tau/extensions/`. Tau also retains its required A2A Task controls. There
-are currently 46 CRM project tools with Solution Selling disabled, or 66 with
-it enabled. Managed deployments set the two values
-in `harness_agent.spec.env_vars`, regardless of whether they launch the CLI
-or the ASGI entrypoint. The entrypoint has been deployed as a platform Agent;
-its trusted CRM caller binding remains unimplemented.
+In hosted mode the project extension registers nothing: Tau's declared
+application MCP supplies the same two discovery/call tools with per-turn
+access. The workflow enables requester delegation and grants the assistant view
+access to the CRM application. Hosted CRM business tools require the signed
+requester and existing CRM policy/directory adapters. Missing adapters still
+return `unavailable`; workload access alone never substitutes for the person.
+The managed MCP path has not yet been deployed or verified live.
+
+Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
+replace general coding tools with Tau's skill-scoped `read`; A2A Task controls
+remain. These exclusions do not disable application MCP.
+
+In hosted mode Tau 2.0.9 verifies platform-signed caller assertions and
+requires the launcher's projected workload identity token file for its runtime
+credential exchange. Those hosting settings belong to the platform launcher;
+they are not local-mode flags or repository credentials. The updated hosted
+entrypoint has not been verified in a deployed run.
 
 Running `ms-tau` or `api.tau.main:app` locally needs `TAU_LOCAL_MODE=true`,
 `MAINSEQUENCE_AUTH_MODE=jwt`, an explicit provider and model, and the signed-in
@@ -248,6 +253,6 @@ directory removes it. Tau's `/health` reports the source in
 `mainsequence_auth_source`. Do not put tokens or provider credentials in the
 repository or `.tau` files. Local mode
 still calls the live Main Sequence provider services; the CRM agent profile
-above excludes MCP. Deploy the Tau runtime separately from
-`api.crm.main:app` after a trusted per-turn identity/policy binding and the
-confirmation contract are implemented and verified.
+above excludes broad Main Sequence MCP, while CRM application MCP remains
+available. Deploy Tau separately from `api.crm.main:app` using the workflow
+and rollout checks in ADR 0005. Confirmation-dependent operations remain absent.

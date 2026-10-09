@@ -54,7 +54,7 @@ def deployment_public_ingress(monkeypatch) -> tuple[tuple[str, str], ...]:
     workflow = yaml.safe_load(
         (ROOT / ".mainsequence" / "workflows" / "crm-api.yaml").read_text(encoding="utf-8")
     )
-    api = next(item for item in workflow["resources"] if item["key"] == "crm-api")
+    api = next(item for item in workflow["resources"] if item["key"] == "crm")
     routes = api["spec"]["public_ingress"]
     monkeypatch.setenv("FASTAPI_PUBLIC_INGRESS", json.dumps(routes))
     return tuple((route["method"], route["path"]) for route in routes)
@@ -104,6 +104,8 @@ class SignedCaller:
             "sub": str(user_uid),
             "resource_release_uid": RELEASE_UID,
             "organization_environment_uid": ENVIRONMENT_UID,
+            "team_uids": [],
+            "is_organization_admin": False,
             "iat": now,
             "nbf": now,
             "exp": now + 120,

@@ -26,7 +26,8 @@ offer repository editing, tests, server control, or deployment as CRM chat work.
 
 ## CRM actions
 
-- Use the CRM tools available in this session for the requested operation.
+- Discover the available CRM operations with `crm__list_tools`, then use
+  `crm__call_tool` with the returned tool name and exact input schema.
   Match the tool to the record type and action; use bounded searches and exact
   record identifiers. Tool names alone do not prove an action succeeded.
 - Follow the signed-in user's effective CRM permissions. Never take an actor

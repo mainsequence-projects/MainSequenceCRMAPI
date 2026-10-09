@@ -213,12 +213,11 @@ bound runtime release, return the unavailable assistant variant and
 report a safe operational diagnostic. Do not choose a same-named Agent from
 another Environment or default to production. The core CRM remains available.
 
-Local Tau currently has healthy chat/provider startup but its project CRM
-tools still fail closed without trusted caller, policy, and directory binding,
-as recorded in [ADR 0003](0003-tau-crm-agent-tools.md). Enabling local chat
-does not bypass that boundary. The user interface must not present an
-unverified business action as available merely because `assistant.enabled` is
-true.
+[ADR 0005](0005-crm-application-mcp.md) now places business tools in the API's
+MCP endpoint. Local Tau uses a generic loopback MCP bridge; hosted Tau discovers
+the declared CRM application and calls for the signed requester. API policy and
+directory adapters still must be available. Chat readiness does not prove MCP
+business access, and `assistant.enabled` never guarantees a mutation can run.
 
 ## Implementation and verification
 
@@ -258,5 +257,6 @@ machine's provider TLS certificate validation failed; a chat reply remains
 unverified. The Agent Card and automatic `harness_agent` workflow are declared.
 The managed Agent release deployed successfully on 2026-09-26, but the CRM API
 runtime deployment failed before its platform bootstrap could be checked.
-Local chat does not grant CRM tool authorization;
-the caller, policy, and directory binding gap in ADR 0003 remains.
+These are historical deployment observations. ADR 0005 implements the MCP
+caller binding in source; hosted policy/directory wiring and live business
+calls still require verification. The bootstrap contract is unchanged.

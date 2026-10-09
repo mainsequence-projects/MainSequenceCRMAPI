@@ -53,7 +53,7 @@ def test_api_and_assistant_deploy_only_after_the_migration_job():
     assert workflow["api_version"] == "2.3.0"
     resources = {item["key"]: item for item in workflow["resources"]}
     assert {key: item["kind"] for key, item in resources.items()} == {
-        "crm-api": "fastapi",
+        "crm": "fastapi",
         "migrate-crm": "job",
         "crm-assistant": "harness_agent",
     }
@@ -62,16 +62,25 @@ def test_api_and_assistant_deploy_only_after_the_migration_job():
     # Every connected step must be admitted by the same promotion policy.
     for item in resources.values():
         assert item["spec"]["automatic_redeployment"] == EVERY_PUSH
+        if item["kind"] != "harness_agent":
+            assert item["access"] == {
+                "branches": [{"repository": "MetaTables", "level": "view"}]
+            }
+    assert resources["crm"]["spec"]["mcp_enabled"] is True
+    assert resources["crm-assistant"]["acts_for_requester"] is True
+    assert resources["crm-assistant"]["access"] == {
+        "resources": [{"key": "crm", "level": "view"}]
+    }
     assert workflow["execution"] == {
         "steps": {
-            "image": {"prepare_image": "crm-api"},
+            "image": {"prepare_image": "crm"},
             "migrate": {"run_job": "migrate-crm", "image_from": "image", "needs": ["image"]},
-            "deploy_api": {"deploy": "crm-api", "image_from": "image", "needs": ["migrate"]},
+            "deploy_api": {"deploy": "crm", "image_from": "image", "needs": ["migrate"]},
             "image_assistant": {"prepare_image": "crm-assistant"},
             "deploy_assistant": {
                 "deploy": "crm-assistant",
                 "image_from": "image_assistant",
-                "needs": ["migrate", "image_assistant"],
+                "needs": ["deploy_api", "image_assistant"],
             },
         }
     }
@@ -107,6 +116,7 @@ def test_the_assistant_kept_its_declaration_when_it_moved_into_this_file():
     resources = {item["key"]: item for item in _workflow()["resources"]}
     assert resources["crm-assistant"]["spec"] == {
         "source_path": "api/tau/main.py",
+        "mcp_applications": [{"resource": "crm"}],
         "llm_provider": "openai",
         "llm_model": "gpt-5.4",
         "llm_thinking": "medium",

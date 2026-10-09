@@ -79,11 +79,13 @@ and removes `workspace_uid` from all CRM record tables; it seeds defaults on an
 empty provider. Nothing migrates at HTTP startup. Hosted environments are
 migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
 `.mainsequence/workflows/crm-api.yaml` runs before it deploys the API and the
-CRM assistant. That file is the repository's only workflow file. Push only
-after the Environment's hosted MetaTables API runs 0.1.19 or later: this
-repository's 0.1.20 client rejects an older API's runtime context, so the Job
-would fail before migrating and nothing would roll out
-([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)).
+CRM assistant. That file is the repository's only workflow file. The API now
+uses Main Sequence 9.0.19 and MetaTables 0.1.27. Before rollout, verify the
+hosted MetaTables API and its system migrations against that client version,
+and provision the CRM Team's namespace access described in
+[persistence and migrations](docs/delivery/persistence.md#migration-and-runtime-boundary).
+The historical 0.1.19 API minimum only addressed the removed runtime-switch
+fields; it is not proof of compatibility with the current client.
 Local development applies revisions to the MetaTables local SQLite runtime:
 
 ```bash
@@ -93,3 +95,10 @@ uv run metatables --local migrations upgrade --provider src.crm.migrations:migra
 See [persistence and migrations](docs/delivery/persistence.md). Governed
 mutation safety must be checked separately before a mutation release;
 readiness does not certify it.
+
+The optional Tau 2.0.9 assistant now discovers the API's typed CRM tools through
+application MCP at `/mcp`. Local development uses the same endpoint through a
+loopback transport bridge. See [ADR 0005](docs/crm_core/adrs/0005-crm-application-mcp.md)
+for authorization and the pending resource-key cutover: `crm-api` → `crm`
+creates a new API release identity, requiring frontend and OAuth updates at
+rollout. No hosted deployment has been performed for this migration.

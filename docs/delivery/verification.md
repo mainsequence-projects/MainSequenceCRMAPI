@@ -17,6 +17,102 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+On 2026-10-09 the CRM assistant's business tools moved from native Tau
+extensions to the API-owned authenticated `/mcp` endpoint, as recorded in
+[ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). The installed versions
+are Main Sequence 9.0.19, MetaTables 0.1.27, Tau 2.0.9 and MCP 1.30.0. Canonical
+`mainsequence code-repository sync --path .` refreshed dependency artifacts;
+`ms-tau skills sync --path .` refreshed all five Tau skills to 2.0.9.
+
+Executed after the migration:
+
+- All **178 API repository tests** passed. Protocol tests exercise initialize,
+  catalogue discovery and tool calls through ASGI, using signed test assertions
+  and fake policy/directory/stores. REST/MCP create and update parity, strict
+  arguments, permission denial, missing or malformed requester, concurrent
+  requester isolation, unavailable adapters, disabled modules, bounded results,
+  cancellation, and redacted failures are covered. These are not live database
+  mutation proofs.
+- The official MCP client traversed the local bridge and loopback launcher's
+  verified identity boundary in-process. Its sign-in and persistence were test
+  fixtures. The extension loader exposes only two generic tools locally and no
+  native business tools when hosted. A lost write response is not retried.
+- Ruff passed for `api/crm`, `api/tau`, `src/crm` and `tests`; strict MkDocs and
+  `git diff --check` passed. The catalogue's operation bindings and schemas
+  match the previous transport, with 66 tools enabled or 46 without Solution
+  Selling.
+- The current local platform's `validate-workflow` endpoint accepted the
+  actual updated `crm-api.yaml`: workflow API 2.3.0, `valid: true`, no errors or
+  warnings, and `applicable: null`. This validates the declaration without
+  applying it or establishing deployment permissions.
+
+No MCP migration commit, push, deployment, hosted migration or real provider
+turn was performed. Before rollout, verify hosted policy/directory wiring,
+admin-approved requester delegation, MetaTables compatibility and table grants.
+The API key changes from `crm-api` to `crm`, so applying the workflow creates a
+new API release identity. Coordinate the frontend release UID, Google OAuth
+callbacks, replacement workload Team membership and grants; then verify a real
+requester read/write and denial through the deployed assistant. The current
+frontend release UID has deliberately not been replaced with a guessed value.
+
+On 2026-10-09 the optional Tau dependency advanced from 1.2.14 to the
+published `v2.0.9` release. The two frontend packages advanced to Command
+Center SDK 0.5.17 and Command Center AI 0.0.11. The locked Python and npm
+dependencies installed locally; all 167 CRM API tests, all 10 frontend tests,
+and the frontend application build passed. The upgraded local Assistant was
+also exercised against a disposable browser fixture: it sent a message,
+displayed the response, and restored both after reload. The fixture servers
+were stopped afterwards. These checks do not prove that the new Tau version
+starts in a hosted Agent or that the updated frontend works against a deployed
+Command Center session. The Tau coding-skill copy was subsequently refreshed
+to 2.0.9 as part of the authorized MCP migration.
+
+On 2026-10-09 the CRM API upgraded to `mainsequence` 9.0.19 and
+`mainsequence-metatable` 0.1.27, the latest stable releases reported by the SDK
+release check and PyPI. Both minimum dependency versions, `uv.lock`, the local
+environment and `requirements.txt` now agree. The MetaTables client skills were
+refreshed in both CRM projects. SDK-owned skills remain pinned to 9.0.6; their
+separate refresh and the managed `AGENTS.md` refresh were not requested. The
+installed 9.0.19 SDK code and bundled guidance were used for this upgrade.
+
+The SDK now requires signed `team_uids` and `is_organization_admin` caller
+claims. The HTTP fixtures supply those platform facts, and malformed team or
+admin facts are rejected by the real verifier. The 167 repository tests pass,
+including all CRM migrations on isolated SQLite; Ruff and the strict MkDocs
+build pass. No CRM model,
+revision, route or business rule changed.
+
+Both projects retain exactly one workflow file. The API keeps the
+`prepare_image` → `run_job` → `deploy` graph, with the API and assistant waiting
+for the migration. Each workload now declares view access to the `MetaTables`
+branch for discovery, as the current client deployment guidance requires. The
+frontend adds an explicit `deploy_site` step to `crm-site.yaml`. The configured
+local backend's branch-scoped `workflow-template/` and `validate-workflow/`
+endpoints were called for both repositories. They advertise API 2.3.0 and
+accepted both final files with `valid: true`, no errors and no warnings.
+Validation returned `applicable: null`; it did not apply a workflow or verify
+release readiness. Resource keys, workflow paths and every-push policies stay
+the same.
+
+The installed MetaTables 0.1.27 API was also exercised on a fresh isolated
+local SQLite runtime, with system revision `0012_table_creator`. The CRM
+provider applied `0001`–`0009` and finalized 27 catalog entries: all active,
+none reserved or failed. A fresh process bound all 26 CRM tables at `0009`.
+Explicit SQLite governed reads found the default settings row and six seeded
+pipeline stages. Running `jobs/migrate_crm.py` against that same local runtime
+then reported `0009 (already current)`.
+
+The CRM's unmodified `CatalogRegistry.validate_settings()` probe emits the
+default PostgreSQL operation dialect. Calling it against SQLite returned
+`422 compiled_sql_dialect_mismatch`; the explicit SQLite reads above do not
+certify CRM readiness or its PostgreSQL business commands. No hosted governed
+write, rollback or deployed caller assertion was exercised.
+
+The hosted MetaTables API version, CRM Team membership and namespace Writer
+grant still need verification before rollout; see
+[persistence](persistence.md#migration-and-runtime-boundary). No hosted migration,
+deployment, commit or push was performed for this update.
+
 Revision `0009` changes Interactions to a participant list and optional Company.
 It has not been applied to a hosted environment. The deployment workflow's
 migration Job applies it before the API that serves this contract rolls out.
@@ -433,6 +529,11 @@ both public messages from Tau's history API. This verifies local Message
 send and persisted history through the Vite proxy, not a deployed Agent run.
 
 ## Publishing
+
+> The following consolidation notes describe the earlier move of the assistant
+> declaration. The new MCP migration additionally renames API resource `crm-api`
+> to `crm`; its release identity and frontend/OAuth bindings must change on
+> rollout. Follow [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md).
 
 Since SDK 9.0.5, `mainsequence code-repository sync` only refreshes the local
 dependency files: `uv lock`, `uv sync` and

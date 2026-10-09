@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from api.crm.affiliation_routes import router as affiliation_router
 from api.crm.google_routes import mount_public_routes as mount_google_public_routes
 from api.crm.google_routes import router as google_router
+from api.crm.mcp_server import install_crm_mcp
 from api.crm.record_routes import core_router, module_router
 from api.crm.resource_routes import router as resource_router
 from api.crm.routes import router as crm_router
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     # middleware or route: a platform-signed caller assertion when deployed, a
     # direct Bearer token locally. authenticated_actor() reads the result.
     install_request_identity(application)
+    install_crm_mcp(application)
     return application
 
 

@@ -9,14 +9,19 @@ verifies the caller of every request before any CRM middleware or route runs:
   assertion (`X-MainSequence-Caller-Assertion`). The SDK checks its Ed25519
   signature, issuer, audience, this release, the Environment and its lifetime
   of at most five minutes against the deployment's trusted configuration.
+  SDK 9.0.19 also requires the signed `team_uids` list and Boolean
+  `is_organization_admin` claim. Missing or malformed caller facts are rejected
+  before CRM code runs; the platform supplies these claims.
 - Outside a deployment, the request must carry a direct `Authorization:
   Bearer` token, which the SDK checks with
   `MAINSEQUENCE_ENDPOINT/api/v1/users/me/`. The
   [loopback launcher](../delivery/local-development.md#run-the-api-locally)
   presents its own SDK sign-in this way.
 
-Protected routes read the caller's UID with `User.get_logged_user()` through
-`authenticated_actor()`. A user header (`X-User-UID`, `X-User-ID`) or the
+Protected routes use `authenticated_actor()`: it reads the verified caller
+with `User.get_logged_user()` and selects the signed `User.get_requester()`
+when present. Hosted [MCP business tools](mcp.md) additionally require a
+requester and never fall back to the agent's permissions. A user header (`X-User-UID`, `X-User-ID`) or the
 process's own SDK credential never substitutes for the verified caller, and a
 request without one never reaches CRM code. An application policy adapter
 checks the required capability (`crm.read`, `crm.create`, `crm.edit`,

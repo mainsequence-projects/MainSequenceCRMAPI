@@ -1,10 +1,15 @@
 api_version: "2.3.0"
 name: crm-api
 resources:
-  - key: crm-api
+  - key: crm
     kind: fastapi
+    access:
+      branches:
+        - repository: MetaTables
+          level: view
     spec:
       source_path: api/crm/main.py
+      mcp_enabled: true
       cpu_request: "0.5"
       memory_request: 1Gi
       spot: false
@@ -21,6 +26,10 @@ resources:
 
   - key: migrate-crm
     kind: job
+    access:
+      branches:
+        - repository: MetaTables
+          level: view
     spec:
       name: CRM migrations
       description: Applies the CRM MetaTables migrations before the CRM API and assistant roll out.
@@ -35,8 +44,15 @@ resources:
 
   - key: crm-assistant
     kind: harness_agent
+    acts_for_requester: true
+    access:
+      resources:
+        - key: crm
+          level: view
     spec:
       source_path: api/tau/main.py
+      mcp_applications:
+        - resource: crm
       llm_provider: openai
       llm_model: gpt-5.4
       llm_thinking: medium
@@ -59,13 +75,13 @@ resources:
 execution:
   steps:
     image:
-      prepare_image: crm-api
+      prepare_image: crm
     migrate:
       run_job: migrate-crm
       image_from: image
       needs: [image]
     deploy_api:
-      deploy: crm-api
+      deploy: crm
       image_from: image
       needs: [migrate]
     image_assistant:
@@ -73,4 +89,4 @@ execution:
     deploy_assistant:
       deploy: crm-assistant
       image_from: image_assistant
-      needs: [migrate, image_assistant]
+      needs: [deploy_api, image_assistant]

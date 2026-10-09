@@ -10,7 +10,7 @@ from tau_coding.context import discover_project_context
 from tau_coding.resources import discover_system_prompt_resources
 from tau_coding.system_prompt import BuildSystemPromptOptions, build_system_prompt
 
-from api.tau.crm_tools import build_crm_tools, unavailable_runtime
+from api.tau.local_mcp import local_mcp_tools
 
 
 def _entrypoint_tool_settings(base: str, mcp: str) -> tuple[bool, bool]:
@@ -55,7 +55,7 @@ def test_runtime_replaces_packaged_general_prompt_with_crm_prompt(tmp_path):
     prompt = build_system_prompt(
         BuildSystemPromptOptions(
             cwd=root,
-            tools=build_crm_tools(unavailable_runtime),
+            tools=local_mcp_tools(),
             custom_prompt=resources.custom_prompt,
             context_files=context_files,
         )

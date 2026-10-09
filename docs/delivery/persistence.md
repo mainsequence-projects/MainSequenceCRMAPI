@@ -128,11 +128,11 @@ file, finalization hook, or path variable is required by the CLI or API.
 
 Hosted environments are migrated only by the deployment workflow.
 `.mainsequence/workflows/crm-api.yaml` is the repository's only workflow file.
-It declares the CRM API (`crm-api`), the CRM assistant (`crm-assistant`) and
+It declares the CRM API (`crm`), the CRM assistant (`crm-assistant`) and
 the `migrate-crm` Job, which runs `jobs/migrate_crm.py` from the candidate
 image. The Job calls
 `metatables.upgrade_application("src.crm.migrations:migration")` and prints the
-resulting revision. Its graph prepares the `crm-api` image, runs the Job from
+resulting revision. Its graph prepares the `crm` image, runs the Job from
 it, and deploys the API and the assistant only after the Job succeeds. A
 deployment must use its own resource's image step, so the assistant has its
 own:
@@ -140,30 +140,27 @@ own:
 ```yaml
 execution:
   steps:
-    image: {prepare_image: crm-api}
+    image: {prepare_image: crm}
     migrate: {run_job: migrate-crm, image_from: image, needs: [image]}
-    deploy_api: {deploy: crm-api, image_from: image, needs: [migrate]}
+    deploy_api: {deploy: crm, image_from: image, needs: [migrate]}
     image_assistant: {prepare_image: crm-assistant}
-    deploy_assistant: {deploy: crm-assistant, image_from: image_assistant, needs: [migrate, image_assistant]}
+    deploy_assistant: {deploy: crm-assistant, image_from: image_assistant, needs: [deploy_api, image_assistant]}
 ```
 
 A database already at head is left unchanged. A failed migration blocks both
 rollouts and the previous releases keep serving. Do not run
 `metatables migrations upgrade` or `downgrade` against a hosted runtime by
-hand. The assistant's CRM tools call the same governed operations on the CRM
-tables as the API. They currently fail closed before any table access; the
-gate keeps the assistant on a migrated schema once they are enabled.
+hand. The assistant calls the API-owned MCP tools, so its deployment waits
+for the API deployment as well as its own prepared image. All business writes
+continue through the API's governed CRM operations.
 
-The Job needs the Environment's hosted MetaTables API on 0.1.19 or later, so
-upgrade that API before pushing this branch; 0.1.18 is not enough. This
-repository locks `mainsequence-metatable` 0.1.20, whose `RuntimeContext`
-rejects fields it does not know, and an API on 0.1.18 or older still sends
-`runtime_switch_available`, `runtime_switch_error` and
-`hosted_environment_target` in its `/runtime-context/` response
-([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33)).
-`upgrade_application()` reads that response before it migrates anything, so
-against an older API the Job fails, `deploy_api` and `deploy_assistant` never
-run, and the rollout stops.
+The repository locks `mainsequence-metatable` 0.1.27. Before rollout, verify
+the Environment's hosted API and its system migrations against this version.
+The historical 0.1.19 minimum addressed only the removal of runtime-switch
+fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));
+it does not establish current compatibility. `upgrade_application()` reads the
+runtime context before migrating. An incompatible API or missing permissions
+fails the Job and blocks both deployments.
 
 Every API, agent and scheduled Job of this repository belongs in that one
 file, because steps can only reference resources in their own file. A
@@ -171,6 +168,24 @@ scheduled Job stays out of `execution.steps`: the backend gives a
 step-referenced Job its new image when the workflow run is admitted, before the
 migration runs, so a step could not make its schedule wait. The repository has
 no scheduled Job today.
+
+The API and migration Job declare
+`access.branches: [{repository: MetaTables, level: view}]` for hosted API
+discovery. This platform access does not grant table access. With MetaTables
+0.1.27, an Organization admin must create the `mainsequence-crm` namespace in
+each Environment and grant Writer to its CRM Team. That Team needs the workload
+Users of the migration Job and API as members. The assistant accesses the
+CRM application and no longer needs direct table permissions for these tools. Use a separate Team
+per Environment, and add replacement workload Users when resources are
+recreated. This setup has not been verified or changed by the package upgrade.
+
+The current local backend accepted this API workflow and the sibling
+frontend's single `crm-site.yaml` on 2026-10-09, using workflow API 2.3.0 with
+no errors or warnings. The frontend has an explicit `deploy_site` step; its
+Static Site build is owned by that deployment. The MCP migration renames the API resource key from `crm-api` to `crm`,
+changing its release identity when applied. Coordinate frontend, OAuth and
+workload grants as described in [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md).
+Validation does not apply either workflow or verify a rollout.
 
 Local development applies the same revisions to the MetaTables local SQLite
 runtime, after `metatables --local runtime status` confirms Local mode and

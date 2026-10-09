@@ -18,6 +18,7 @@ nav:
       - Interactions: concepts/interactions.md
       - Tags and activity: concepts/tags-activity.md
       - Transfers: concepts/transfers.md
+      - Assistant: concepts/assistant.md
   - API:
       - Overview: api/index.md
       - Conventions: api/conventions.md
@@ -30,6 +31,7 @@ nav:
       - Google Workspace: api/google-workspace.md
       - Imports and transfers: api/transfers.md
       - Service and settings: api/service.md
+      - Application MCP: api/mcp.md
   - Delivery:
       - Local development: delivery/local-development.md
       - Persistence and migrations: delivery/persistence.md
@@ -39,6 +41,7 @@ nav:
       - '0002: Google Workspace intake (moved)': crm_core/adrs/0002-google-workspace-intake.md
       - '0003: Tau CRM agent tools': crm_core/adrs/0003-tau-crm-agent-tools.md
       - '0004: Single bootstrap and assistant runtime': crm_core/adrs/0004-single-bootstrap-and-assistant-runtime.md
+      - '0005: CRM application MCP': crm_core/adrs/0005-crm-application-mcp.md
   - Google Workspace module:
       - Overview: google_workspace_module/index.md
       - Set up Google access: google_workspace_module/setup.md

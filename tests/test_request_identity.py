@@ -145,6 +145,8 @@ def _rejected_headers(signed_caller, case):
             resource_release_uid=other_release,
         ),
         "other_environment": signed_caller(ACTOR, organization_environment_uid=str(uuid.uuid4())),
+        "invalid_teams": signed_caller(ACTOR, team_uids="not-a-list"),
+        "invalid_admin_flag": signed_caller(ACTOR, is_organization_admin="true"),
         "unknown_signer": signed_caller(ACTOR, signing_key=Ed25519PrivateKey.generate()),
         "duplicate": [*signed_caller(ACTOR).items(), *signed_caller(ACTOR).items()],
         "uid_header_only": {"X-User-UID": str(ACTOR)},
@@ -160,6 +162,8 @@ def _rejected_headers(signed_caller, case):
         "expired",
         "other_release",
         "other_environment",
+        "invalid_teams",
+        "invalid_admin_flag",
         "unknown_signer",
         "duplicate",
         "uid_header_only",
@@ -235,3 +239,12 @@ def test_authenticated_actor_fails_closed_outside_a_verified_request():
     with pytest.raises(HTTPException) as caught:
         authenticated_actor()
     assert caught.value.status_code == 401
+
+
+def test_delegated_rest_uses_verified_requester(signed_caller):
+    response, policy = principals(signed_caller(OTHER, requester={
+        "sub": str(ACTOR), "team_uids": [], "is_organization_admin": False,
+    }))
+    assert response.status_code == 200
+    assert response.json()["items"][0]["uid"] == str(ACTOR)
+    assert policy.actors == [ACTOR]

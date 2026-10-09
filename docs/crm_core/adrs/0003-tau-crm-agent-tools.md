@@ -1,6 +1,6 @@
 # ADR 0003: A Tau agent uses the CRM's governed operations
 
-- **Status:** In progress; managed Agent deployed, trusted caller binding and live tool verification pending
+- **Status:** Transport and caller binding superseded by [ADR 0005](0005-crm-application-mcp.md)
 - **Date:** 2026-09-24
 - **Scope:** Optional CRM agent runtime and its business tools
 - **Sources:** Sibling project's
@@ -9,9 +9,14 @@
   `1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6`;
   upstream [ADR 0011](https://github.com/mainsequence-sdk/ms-tau-sdk/blob/1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6/docs/adrs/0011-independent-base-tool-and-main-sequence-mcp-exclusion.md)
 
+> Historical decision: the implementation details and delivery observations below
+> describe the former in-process Tau tool catalogue. ADR 0005 moves those tools
+> to application MCP and defines the current caller and runtime boundary. The
+> shared CRM services, version checks and confirmation requirements remain.
+
 The repository also contains historical `v4` tags for the earlier
-`mainsequence-astro` distribution. The latest tag for the current
-`ms-tau-sdk` package is `v1.2.8` at the commit above.
+`mainsequence-astro` distribution. The tag selected at the time for the
+`ms-tau-sdk` package was `v1.2.8` at the commit above.
 
 ## Context
 

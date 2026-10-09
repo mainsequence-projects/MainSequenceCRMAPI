@@ -1,4 +1,4 @@
-"""Transport-independent CRM operations shared by HTTP and Tau tool adapters.
+"""Transport-independent CRM operations shared by REST and MCP adapters.
 
 Callers supply a platform-authenticated actor and trusted policy/directory
 ports. No model-provided actor or capability value is accepted here.

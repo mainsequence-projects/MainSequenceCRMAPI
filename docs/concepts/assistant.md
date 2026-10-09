@@ -1,0 +1,21 @@
+# CRM assistant
+
+The optional assistant can find and explain CRM records and perform supported
+creates and versioned edits with the signed-in person's CRM permissions.
+It uses the same business rules as the forms and lists. An ordinary requested
+edit reads current state and supplies its version; a conflict requires another
+read before proceeding.
+
+The available operations depend on the deployed catalogue and enabled modules.
+Archive/restore, merge execution and import commit are not exposed until their
+required confirmation flow can be verified. The assistant can prepare a
+proposal or run an available preview without claiming the action was completed.
+
+A healthy chat connection does not prove access to business tools. The
+assistant must report a refused or unavailable operation accurately. A timed-out
+write may already have completed; check current CRM state before trying again.
+The rest of CRM remains usable when the assistant or its provider is unavailable.
+
+The API owns the [MCP tool contract](../api/mcp.md), and the separate Tau runtime
+owns the conversation. Hosted deployment and live tool verification remain
+pending; see [release evidence](../delivery/verification.md).

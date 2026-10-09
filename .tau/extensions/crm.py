@@ -1,13 +1,8 @@
-"""Project-owned Tau CRM catalogue.
+"""Local MCP transport only; hosted application tools are supplied by Tau."""
 
-The SDK currently does not pass its validated caller to project extensions.
-Consequently each tool fails closed until the host supplies a trusted runtime
-provider; no model argument or process SDK credential can enable CRM access.
-"""
-
-from api.tau.crm_tools import build_crm_tools, unavailable_runtime
+from api.tau.local_mcp import local_mcp_tools
 
 
 def setup(tau) -> None:
-    for tool in build_crm_tools(unavailable_runtime):
+    for tool in local_mcp_tools():
         tau.register_tool(tool)
