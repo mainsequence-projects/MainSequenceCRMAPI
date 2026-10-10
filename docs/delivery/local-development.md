@@ -128,9 +128,33 @@ Hosted environments are migrated only by the deployment workflow's
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
 Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
 Before rollout, verify the hosted MetaTables API and its system migrations
-against client 0.1.27 and complete the CRM Team/namespace setup documented in
+against client 0.1.31 and complete the CRM Team/namespace setup documented in
 [persistence](persistence.md#migration-and-runtime-boundary). A failed migration
 Job prevents the API and assistant from rolling out.
+
+After a local upgrade, use a fresh client process to verify the same catalog
+and settings check used by CRM readiness:
+
+```bash
+uv run python - <<'PY'
+from metatables import configure_local_client
+configure_local_client()
+from metatables.runtime_context import get_runtime_context
+from src.crm.platform.catalog import CatalogRegistry
+
+runtime = get_runtime_context()
+assert runtime.local_mode and runtime.dialect == "sqlite"
+registry = CatalogRegistry()
+registry.validate_settings()
+print(f"{len(registry.bindings)} active CRM bindings; singleton settings ready")
+PY
+```
+
+The settings query infers the dialect from that runtime and fails if it no
+longer matches the catalog's DataSource. Repeat migration runs must still check
+physical contracts even when they report `already current`. See the
+[0.1.31 metadata-refresh limitation](persistence.md#migration-and-runtime-boundary)
+before relying on a metadata-only model change.
 
 The isolated local runtime checks the migration history and catalog binding,
 not the running CRM API. The CRM loopback launcher does not call

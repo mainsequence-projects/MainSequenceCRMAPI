@@ -5,6 +5,7 @@ from __future__ import annotations
 import runpy
 from pathlib import Path
 
+import pytest
 import yaml
 
 import metatables
@@ -29,19 +30,30 @@ def _ancestors(steps: dict, key: str) -> set[str]:
     return seen
 
 
-def test_migration_job_upgrades_only_the_crm_provider(monkeypatch, capsys):
+@pytest.mark.parametrize("migrated,state", [(False, "already current"), (True, "migrated")])
+def test_migration_job_upgrades_only_the_crm_provider(monkeypatch, capsys, migrated, state):
     calls = []
 
     def upgrade_application(provider):
         calls.append(provider)
-        return {"migrated": False, "revision": "0009", "data_source_uid": "source-uid"}
+        return {"migrated": migrated, "revision": "0009", "data_source_uid": "source-uid"}
 
     monkeypatch.setattr(metatables, "upgrade_application", upgrade_application)
     runpy.run_path(str(ROOT / "jobs" / "migrate_crm.py"), run_name="__main__")
     assert calls == ["src.crm.migrations:migration"]
     assert capsys.readouterr().out == (
-        "src.crm.migrations:migration: 0009 (already current) on source-uid\n"
+        f"src.crm.migrations:migration: 0009 ({state}; catalog reconciled) on source-uid\n"
     )
+
+
+def test_migration_job_propagates_finalization_failure(monkeypatch, capsys):
+    def upgrade_application(provider):
+        raise RuntimeError("physical_table_missing")
+
+    monkeypatch.setattr(metatables, "upgrade_application", upgrade_application)
+    with pytest.raises(RuntimeError, match="physical_table_missing"):
+        runpy.run_path(str(ROOT / "jobs" / "migrate_crm.py"), run_name="__main__")
+    assert capsys.readouterr().out == ""
 
 
 def test_the_repository_has_one_workflow_file():

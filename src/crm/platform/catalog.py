@@ -6,7 +6,10 @@ import uuid
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 
+from sqlalchemy import select
+
 from metatables import MetaTable
+from metatables.compiled_sql.v1 import compile_sqlalchemy_statement
 
 from ..metatables import MODELS
 
@@ -90,17 +93,15 @@ class CatalogRegistry:
     def validate_settings(self) -> None:
         """Require one initialized application-settings row."""
         binding = self.binding("settings")
-        response = MetaTable.execute_operation(
-            {
-                "operation": "select",
-                "statement": {
-                    "sql": f'SELECT key FROM "{binding.physical_table_name}" LIMIT 2',
-                    "parameters": {},
-                },
-                "data_source_uid": self.data_source_uid,
-                "limits": {"max_rows": 2, "statement_timeout_ms": 5000},
-            }
+        # Infer the dialect from the selected runtime and require it to match
+        # the validated catalog's source. Never borrow another source's dialect.
+        operation = compile_sqlalchemy_statement(
+            select(MODELS["settings"].__table__.c.key).limit(2),
+            operation="select",
+            data_source_uid=binding.data_source_uid,
+            limits={"max_rows": 2, "statement_timeout_ms": 5000},
         )
+        response = MetaTable.execute_operation(operation)
         rows = response.get("rows")
         if not isinstance(rows, list) or len(rows) != 1 or rows[0].get("key") != "default":
             raise RuntimeError("CRM settings are not initialized")

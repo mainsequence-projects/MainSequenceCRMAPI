@@ -17,6 +17,75 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### MetaTables 0.1.31 upgrade (2026-10-10)
+
+PyPI reported `mainsequence-metatable` 0.1.31 as the latest stable release
+(published 2026-10-10). `pyproject.toml`, `uv.lock`, the local environment and
+the canonical `requirements.txt` export now use it. Main Sequence remains
+9.0.19 and Tau remains 2.0.9. The six managed MetaTables skills were refreshed
+from the installed 0.1.31 package in both CRM repositories; the frontend has
+no MetaTables runtime dependency to upgrade.
+
+The CRM migration Job now enables the package's phase timings and explicitly
+reports catalog reconciliation, including when Alembic is already current.
+The fresh-process settings check now compiles for the API's advertised dialect,
+requires the catalog's DataSource to match, and retains its bounded read.
+The PostgreSQL-only probe failure recorded below for 0.1.27 is fixed.
+Provider identity, namespace, version table, revisions `0001`–`0009`, workflow
+ordering and public API response contracts are unchanged. ADR 0004's readiness
+boundary and ADR 0005's deployment boundary still apply; no ADR amendment or
+new schema revision is needed for these implementation fixes.
+
+Executed checks:
+
+- **183 tests pass**, including real SQLite Alembic history/backfill checks
+  and mocked tests for both query dialects, a changed runtime DataSource,
+  current/new migration outcomes and failure propagation. Ruff and the strict
+  MkDocs build pass; documentation contract tests also pass.
+- An isolated API running 0.1.31 opened the previous 0.1.27 test database,
+  verified Local/SQLite/system revision `0012_table_creator`, and reconciled
+  `0009` with all 27 entries active and their UIDs preserved. A fresh process
+  bound all 26 application tables and passed `validate_settings()`.
+- A second, fresh isolated SQLite runtime was explicitly initialized to
+  `0012_table_creator`. The actual Job applied `0001`–`0009`, emitted phase
+  timing logs and finalized 27 entries in three successful HTTP requests.
+  Fresh-process governed reads verified singleton settings and six stages.
+  A repeat upgrade reported `migrated=False` and preserved catalog UIDs.
+
+Two upstream MetaTables limitations were reproduced against its installed API,
+separately from the passing CRM tests:
+
+1. **Authored metadata is not refreshed on a repeated upgrade.** With an active
+   settings table, changing `Settings.__metatable_description__` in an isolated
+   test process and calling `upgrade_application("src.crm.migrations:migration")`
+   returned `migrated=False`, revision `0009`, but a fresh
+   `MetaTable.get_by_uid(...)` still returned the original description. The
+   client's `prepare_for_alembic()` reuses active rows, and finalization sends
+   UIDs and revision facts without changed authored metadata. This contradicts
+   the bundled migration guide. The test restored the authored value; CRM
+   metadata was not changed in source.
+2. **Dropping tables during a local downgrade can fail finalization.** On the
+   fresh, empty fixture,
+   `metatables --local migrations downgrade 0007 --provider src.crm.migrations:migration`
+   applied the DDL, then failed the first `/meta-tables/finalize-managed/` batch
+   with HTTP 400 `ordinary_table_required`. `migrations current` confirmed
+   `0007`: the failed command had already changed the physical schema.
+   The API's SQLite access validator raises that code for missing physical
+   tables. This is an API/finalization failure, not a CRM Alembic failure;
+   broader hosted behavior was not tested. After inspecting the actual
+   revision, a normal local upgrade restored `0009` successfully; a fresh
+   process verified all 27 entries active and singleton settings ready. Do not
+   describe the new removal handling as end-to-end verified for CRM downgrades.
+
+No package internals or applied CRM revisions were patched to hide these
+failures. They need resolution in MetaTables; no upstream issue was posted.
+Hosted PostgreSQL operations, deployed permissions and shared API performance
+remain unverified. No Production mutation or deployment was performed.
+The earlier deployment is still awaiting approval for the Production CRM
+Team/namespace Writer grant, and the Git push guard remains in place.
+
+### Earlier MCP and dependency verification (2026-10-09)
+
 On 2026-10-09 the CRM assistant's business tools moved from native Tau
 extensions to the API-owned authenticated `/mcp` endpoint, as recorded in
 [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). The installed versions

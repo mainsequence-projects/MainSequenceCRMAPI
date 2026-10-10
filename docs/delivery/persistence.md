@@ -125,6 +125,11 @@ namespace, provider, revision, physical names and one data source, then caches
 the typed bindings in memory. Governed operations select that data source. It
 must not register tables or repair schema during a request. No CRM bindings
 file, finalization hook, or path variable is required by the CLI or API.
+The singleton-settings readiness read uses the public SQLAlchemy compiler to
+take the SQL dialect from the API's current runtime. It requires that runtime
+to match the validated catalog's DataSource, with a two-row limit and a
+five-second statement timeout. This check works with local SQLite and hosted
+PostgreSQL; it does not make the CRM's PostgreSQL business commands portable.
 
 Hosted environments are migrated only by the deployment workflow.
 `.mainsequence/workflows/crm-api.yaml` is the repository's only workflow file.
@@ -132,7 +137,11 @@ It declares the CRM API (`crm`), the CRM assistant (`crm-assistant`) and
 the `migrate-crm` Job, which runs `jobs/migrate_crm.py` from the candidate
 image. The Job calls
 `metatables.upgrade_application("src.crm.migrations:migration")` and prints the
-resulting revision. Its graph prepares the `crm` image, runs the Job from
+resulting revision and successful catalog reconciliation. It enables INFO
+logging for `metatables.migrations.runner`, which reports preparation, database
+setup, table checks, Alembic execution, finalization and total duration.
+Measure these separately from platform scheduling and workflow delays.
+Its graph prepares the `crm` image, runs the Job from
 it, and deploys the API and the assistant only after the Job succeeds. A
 deployment must use its own resource's image step, so the assistant has its
 own:
@@ -147,20 +156,49 @@ execution:
     deploy_assistant: {deploy: crm-assistant, image_from: image_assistant, needs: [deploy_api, image_assistant]}
 ```
 
-A database already at head is left unchanged. A failed migration blocks both
+At the current head, the Job still checks physical tables and reconciles
+catalog bindings; `migrated=False` only means the revision did not change.
+Never skip the upgrade helper or finalization based on that flag. A failed migration blocks both
 rollouts and the previous releases keep serving. Do not run
 `metatables migrations upgrade` or `downgrade` against a hosted runtime by
 hand. The assistant calls the API-owned MCP tools, so its deployment waits
 for the API deployment as well as its own prepared image. All business writes
 continue through the API's governed CRM operations.
 
-The repository locks `mainsequence-metatable` 0.1.27. Before rollout, verify
+The repository locks `mainsequence-metatable` 0.1.31. Before rollout, verify
 the Environment's hosted API and its system migrations against this version.
 The historical 0.1.19 minimum addressed only the removal of runtime-switch
 fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));
 it does not establish current compatibility. `upgrade_application()` reads the
 runtime context before migrating. An incompatible API or missing permissions
 fails the Job and blocks both deployments.
+
+Version 0.1.31 uses batched table inventories and physical inspection. Client
+finalization sends at most ten tables per request, starting with the version
+table: the CRM's 27 catalog entries need three requests. After a partial
+finalization failure, inspect the failed tables and rerun the same upgrade;
+committed revisions are not reapplied. The client now explicitly names removed
+models or tables dropped during a downgrade, distinguishing them from
+unexpectedly missing tables. CRM's local downgrade still failed finalization
+with `ordinary_table_required` after committing the DDL; this removal path
+requires an upstream fix before it can be considered verified.
+Do not delete catalog bindings to repair an unexpected absence. Misplaced
+provider tables or inaccessible owners require database-administrator repair,
+not stamping or rewriting CRM revisions.
+
+The client also waits up to five minutes for hosted API discovery during a
+migration. Client changes need a rebuilt CRM image; shared API reflection
+improvements require deploying the MetaTables API too. The package upgrade
+does not deploy that shared service.
+
+**Known 0.1.31 limitation:** although the bundled guidance promises metadata
+refresh on repeated upgrades, the installed client reuses active registrations
+without sending changed model descriptions. A local reproduction left an
+authored description change unapplied at revision `0009`; see the
+[verification evidence](verification.md#metatables-0131-upgrade-2026-10-10).
+Physical reconciliation succeeds, but automatic authored-metadata refresh is
+not a verified guarantee. Keep the public upgrade path; do not add private
+registration helpers or rewrite revisions to work around this package defect.
 
 Every API, agent and scheduled Job of this repository belongs in that one
 file, because steps can only reference resources in their own file. A
@@ -172,7 +210,7 @@ no scheduled Job today.
 The API and migration Job declare
 `access.branches: [{repository: MetaTables, level: view}]` for hosted API
 discovery. This platform access does not grant table access. With MetaTables
-0.1.27, an Organization admin must create the `mainsequence-crm` namespace in
+0.1.31, an Organization admin must create the `mainsequence-crm` namespace in
 each Environment and grant Writer to its CRM Team. That Team needs the workload
 Users of the migration Job and API as members. The assistant accesses the
 CRM application and no longer needs direct table permissions for these tools. Use a separate Team
