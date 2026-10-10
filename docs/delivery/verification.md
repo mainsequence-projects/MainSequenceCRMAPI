@@ -78,7 +78,11 @@ separately from the passing CRM tests:
    describe the new removal handling as end-to-end verified for CRM downgrades.
 
 No package internals or applied CRM revisions were patched to hide these
-failures. They need resolution in MetaTables; no upstream issue was posted.
+failures. After checking for duplicates, both were reported in MetaTables:
+[issue #57](https://github.com/mainsequence-projects/MetaTables/issues/57)
+tracks authored-description refresh, and
+[issue #58](https://github.com/mainsequence-projects/MetaTables/issues/58)
+tracks SQLite downgrade finalization. Both were verified open on 2026-10-10.
 Hosted PostgreSQL operations, deployed permissions and shared API performance
 remain unverified. No Production mutation or deployment was performed.
 The earlier deployment is still awaiting approval for the Production CRM
