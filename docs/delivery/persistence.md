@@ -165,7 +165,7 @@ hand. The assistant calls the API-owned MCP tools, so its deployment waits
 for the API deployment as well as its own prepared image. All business writes
 continue through the API's governed CRM operations.
 
-The repository locks `mainsequence-metatable` 0.1.31. Before rollout, verify
+The repository locks `mainsequence-metatable` 0.1.33. Before rollout, verify
 the Environment's hosted API and its system migrations against this version.
 The historical 0.1.19 minimum addressed only the removal of runtime-switch
 fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));
@@ -173,15 +173,15 @@ it does not establish current compatibility. `upgrade_application()` reads the
 runtime context before migrating. An incompatible API or missing permissions
 fails the Job and blocks both deployments.
 
-Version 0.1.31 uses batched table inventories and physical inspection. Client
+Version 0.1.33 uses batched table inventories and physical inspection. Client
 finalization sends at most ten tables per request, starting with the version
 table: the CRM's 27 catalog entries need three requests. After a partial
 finalization failure, inspect the failed tables and rerun the same upgrade;
 committed revisions are not reapplied. The client now explicitly names removed
 models or tables dropped during a downgrade, distinguishing them from
-unexpectedly missing tables. CRM's local downgrade still failed finalization
-with `ordinary_table_required` after committing the DDL; this removal path
-requires an upstream fix before it can be considered verified.
+unexpectedly missing tables. The previous SQLite downgrade-finalization defect
+is fixed in 0.1.33: the isolated CRM fixture downgraded to `0007`, removed only
+its two OAuth bindings, and returned to `0009` through the normal upgrade.
 Do not delete catalog bindings to repair an unexpected absence. Misplaced
 provider tables or inaccessible owners require database-administrator repair,
 not stamping or rewriting CRM revisions.
@@ -191,14 +191,14 @@ migration. Client changes need a rebuilt CRM image; shared API reflection
 improvements require deploying the MetaTables API too. The package upgrade
 does not deploy that shared service.
 
-**Known 0.1.31 limitation:** although the bundled guidance promises metadata
-refresh on repeated upgrades, the installed client reuses active registrations
-without sending changed model descriptions. A local reproduction left an
-authored description change unapplied at revision `0009`; see the
-[verification evidence](verification.md#metatables-0131-upgrade-2026-10-10).
-Physical reconciliation succeeds, but automatic authored-metadata refresh is
-not a verified guarantee. Keep the public upgrade path; do not add private
-registration helpers or rewrite revisions to work around this package defect.
+Authored metadata refresh at an unchanged head is verified with client/API
+0.1.33. Description, labels and column metadata changes were read back through
+the API with the same table UID; a repeat upgrade succeeded and the fixture's
+original metadata was restored. The earlier 0.1.31 defects are tracked by
+MetaTables issues #57 and #58, now closed. See the
+[verification evidence](verification.md#metatables-0133-upgrade-and-push-preflight-2026-10-10).
+Both the client and API need the fix. Keep the public upgrade path without
+private registration helpers or revision changes for descriptive metadata.
 
 Every API, agent and scheduled Job of this repository belongs in that one
 file, because steps can only reference resources in their own file. A
@@ -210,7 +210,7 @@ no scheduled Job today.
 The API and migration Job declare
 `access.branches: [{repository: MetaTables, level: view}]` for hosted API
 discovery. This platform access does not grant table access. With MetaTables
-0.1.31, an Organization admin must create the `mainsequence-crm` namespace in
+0.1.33, an Organization admin must create the `mainsequence-crm` namespace in
 each Environment and grant Writer to its CRM Team. That Team needs the workload
 Users of the migration Job and API as members. The assistant accesses the
 CRM application and no longer needs direct table permissions for these tools. Use a separate Team

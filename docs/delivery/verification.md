@@ -17,6 +17,74 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### MetaTables 0.1.33 upgrade and push preflight (2026-10-10)
+
+The two reported MetaTables issues are closed, and PyPI publishes client/API
+0.1.33. The CRM minimum requirement, lockfile, environment and canonical runtime
+export now use this version. The canonical SDK update command completed;
+Main Sequence 9.0.19 remains the latest published SDK and was already installed.
+Tau remains 2.0.9. MetaTables' managed guidance was refreshed in both CRM
+projects. The SDK-owned guidance remains pinned to 9.0.6; the updater reports
+that mismatch and leaves it untouched because no SDK scaffold refresh was
+requested.
+
+Executed verification:
+
+- The 183 API tests pass, including the real SQLite migration-history/backfill
+  test. Ruff passes. Frontend verification from `npm ci` and the committed
+  lockfile on Node 24 passes all ten tests, documentation checks, TypeScript,
+  Vite and Docusaurus builds.
+- **Issue #57:** on the verified isolated SQLite API, an authored description,
+  table-label and column-description/label change at `0009` persisted through
+  `upgrade_application()` and fresh API reads. `migrated=False`, the same table
+  UID and a successful repeat upgrade were verified. Original metadata was
+  restored through the same public helper.
+- **Issue #58:** the same real API-backed downgrade `0009` to `0007` now
+  succeeds. Exactly the two explicitly dropped OAuth bindings disappear,
+  leaving 25 active entries at `0007`. The actual migration Job restores
+  `0009`, with 27 active entries, 26 fresh application bindings and singleton
+  settings readable. Another upgrade at head succeeds.
+- The current backend accepts both single workflow files under API 2.3.0 with
+  `valid: true`, no errors and no warnings. `applicable: null` is validation
+  evidence, not an applied deployment.
+- Read-only hosted verification reports the Production Environment, system
+  revision `0012_table_creator`, and OpenAPI support for `authored_metadata`
+  and `removed_meta_table_uids`. These advertised fields establish the relevant
+  wire compatibility; they do not identify the exact running package version
+  or prove PostgreSQL migration behavior.
+
+The remaining blockers are in CRM deployment setup, rather than the two fixed
+MetaTables bugs:
+
+1. **Production ownership is missing.** Namespace search returns no
+   `mainsequence-crm`, and the platform Team list contains no CRM owning Team.
+   The migration Job and API workload Users need membership in a Production
+   CRM Team with namespace Writer. The old API has no active revision, and
+   `migrate-crm` has not yet been created by a workflow push. The earlier
+   automatic approval review refused creation of this persistent Production
+   permission grant without explicit approval; that approval is still pending.
+2. **Frontend release binding needs coordinated rollout.** The site workflow
+   still builds with `VITE_CRM_FASTAPI_RELEASE_UID=e3cfd6ae-8fd1-4060-9a55-efb0ca9768b8`.
+   The candidate API resource key `crm` replaces `crm-api`, which creates a
+   new release UID. Publish the frontend only after that UID is resolved and
+   its workflow binding, OAuth callbacks and required access are coordinated.
+   A successful static build does not validate this live binding.
+3. **Hosted application services are not wired.** `api.crm.main.create_app()`
+   installs identity and mounts REST/MCP but supplies no `crm_policy`,
+   `crm_directory` or `crm_bootstrap` adapter. The only assignments to those
+   ports in application source are in `api.crm.local`. The hosted bootstrap
+   and business tools consequently retain their fail-closed readiness checks.
+   Connect those ports to the existing platform services and verify signed
+   caller/requester authorization before declaring the application usable.
+
+Both local branches have no remote divergence. The API was 29 commits ahead
+of `origin/main`, and the frontend five ahead, before this update's commit.
+Both local Git remotes still have the explicit
+`PUSH-DISABLED-during-mt014-wave` push guard. No push or Production mutation
+was performed during these checks. Do not interpret passing local tests and
+workflow validation as a guarantee that the deployment workflow will succeed
+while these blockers remain.
+
 ### MetaTables 0.1.31 upgrade (2026-10-10)
 
 PyPI reported `mainsequence-metatable` 0.1.31 as the latest stable release

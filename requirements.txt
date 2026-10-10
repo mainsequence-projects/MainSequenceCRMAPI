@@ -139,7 +139,7 @@ mainsequence==9.0.19
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi
-mainsequence-metatable==0.1.31
+mainsequence-metatable==0.1.33
     # via mainsequencecrmapi
 mako==1.4.1
     # via alembic
