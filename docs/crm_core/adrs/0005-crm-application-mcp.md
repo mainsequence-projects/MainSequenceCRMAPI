@@ -81,7 +81,7 @@ Main Sequence MCP. Tau retains its skill-scoped `read` and A2A Task controls.
 The model discovers schemas with `crm__list_tools` and executes them through
 `crm__call_tool`; there are no native per-business-operation Tau tools.
 
-Tau's application catalogue is hosted-only in 2.0.10. Locally, the project
+Tau's application catalogue is hosted-only in 2.0.11. Locally, the project
 extension registers just those same two generic transport tools, using the
 official MCP client against the loopback CRM launcher. The launcher supplies
 its saved sign-in to request verification. `CRM_LOCAL_API_ORIGIN` defaults to
@@ -101,13 +101,16 @@ can discover the deployed Agent. The assistant declares view access to `crm`
 for application MCP. These access declarations do not add execution dependencies
 or grant the assistant storage access or permission to act for a person.
 
-The 2026-10-11 dependency amendment pins Tau 2.0.10 and requires Main Sequence
+The 2026-10-11 dependency amendment pins Tau 2.0.11 and requires Main Sequence
 9.0.20. The public SDK sender now uses the A2A `ROLE_USER` / `ROLE_AGENT`
 wire roles. Tau waits within a bounded deadline when application admission says
 the runtime is waking, refreshing its access proof before dispatch. This changes
 readiness handling, not the authorization or persistence boundary. An uncertain
 business write still requires a fresh server read before another attempt; the
-CRM does not add a retry loop. No new architectural decision is required.
+CRM does not add a retry loop. Tau 2.0.11 carries each finite MCP response
+deadline through its HTTP transport without the earlier shorter backend read
+cap. This repairs client timeout handling and preserves the same uncertain-write
+boundary. No new architectural decision is required.
 
 The platform uses the resource key as the MCP application name and rejects
 hyphens. Rename the API resource from `crm-api` to `crm`, retaining the workflow

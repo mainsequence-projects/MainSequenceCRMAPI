@@ -167,7 +167,7 @@ more-itertools==11.1.0
     # via
     #   jaraco-classes
     #   jaraco-functools
-ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@39c144f24695b7aaf2fc245e25e13cb51c4ce665
+ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@7a17e86293d14120fe79c8165bc74054c4279c36
     # via mainsequencecrmapi
 numpy==2.5.3
     # via

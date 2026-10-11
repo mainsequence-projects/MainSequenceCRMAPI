@@ -199,7 +199,7 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 2.0.10 is locked to its release tag `v2.0.10` in `pyproject.toml` and
+`ms-tau-sdk` 2.0.11 is locked to its release tag `v2.0.11` in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
@@ -265,14 +265,20 @@ Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
 replace general coding tools with Tau's skill-scoped `read`; A2A Task controls
 remain. These exclusions do not disable application MCP.
 
-In hosted mode Tau 2.0.10 verifies platform-signed caller assertions and
+In hosted mode Tau 2.0.11 verifies platform-signed caller assertions and
 requires the launcher's projected workload identity token file for its runtime
 credential exchange. Those hosting settings belong to the platform launcher;
 they are not local-mode flags or repository credentials. The hosted entrypoint
 served the earlier verified Chat MCP turn; that proof does not establish the
-fresh updated-runtime test. Tau 2.0.10 waits for a waking application
+fresh updated-runtime test. Tau 2.0.11 waits for a waking application
 within a bounded readiness deadline before admitting its MCP calls; it does not
 retry an uncertain business write.
+
+Tau 2.0.11 also honors a finite MCP per-call response deadline through its HTTP
+transport. A longer explicit tool deadline is no longer cut short by the
+default backend HTTP read timer. Startup/catalog and connection limits remain
+bounded. A timeout or disconnect still leaves the remote write outcome unknown;
+read current CRM state before issuing another write.
 
 Running `ms-tau` or `api.tau.main:app` locally needs `TAU_LOCAL_MODE=true`,
 `MAINSEQUENCE_AUTH_MODE=jwt`, an explicit provider and model, and the signed-in

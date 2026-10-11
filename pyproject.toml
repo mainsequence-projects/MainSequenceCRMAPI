@@ -14,7 +14,7 @@ dependencies = [
   "jinja2>=3.1.6,<4",
   "mainsequence[mcp]>=9.0.20,<10",
   "mainsequence-metatable>=0.1.33,<0.2",
-  "ms-tau-sdk==2.0.10",
+  "ms-tau-sdk==2.0.11",
   "mcp>=1.30,<2",
   "pydantic[email]>=2.13,<3",
   "PyYAML>=6,<7",
@@ -93,4 +93,4 @@ dev = [
 testpaths = ["tests"]
 
 [tool.uv.sources]
-ms-tau-sdk = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git", rev = "v2.0.10" }
+ms-tau-sdk = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git", rev = "v2.0.11" }

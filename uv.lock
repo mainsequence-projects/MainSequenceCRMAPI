@@ -871,7 +871,7 @@ requires-dist = [
     { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.20,<10" },
     { name = "mainsequence-metatable", specifier = ">=0.1.33,<0.2" },
     { name = "mcp", specifier = ">=1.30,<2" },
-    { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.10" },
+    { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.11" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.13,<3" },
     { name = "pyjwt", specifier = ">=2.10,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
@@ -1193,8 +1193,8 @@ wheels = [
 
 [[package]]
 name = "ms-tau-sdk"
-version = "2.0.10"
-source = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.10#39c144f24695b7aaf2fc245e25e13cb51c4ce665" }
+version = "2.0.11"
+source = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.11#7a17e86293d14120fe79c8165bc74054c4279c36" }
 dependencies = [
     { name = "anyio" },
     { name = "concurrent-log-handler" },

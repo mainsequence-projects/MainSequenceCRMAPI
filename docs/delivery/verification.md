@@ -17,6 +17,37 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Tau 2.0.11 and restored runtime access (2026-10-11)
+
+[Tau issue #90](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/90) is
+closed and its fix is released as
+[v2.0.11](https://github.com/mainsequence-sdk/ms-tau-sdk/releases/tag/v2.0.11),
+commit `7a17e86293d14120fe79c8165bc74054c4279c36`. The repository pins that
+release and the canonical dependency sync refreshed `uv.lock`, the local
+environment and deployment `requirements.txt`. Main Sequence remains 9.0.20
+and MetaTables remains 0.1.33. All 201 CRM tests and Ruff pass. The existing
+migration-gated workflow and `openai-codex/gpt-5.6-luna/medium` default remain.
+
+[Platform issue #932](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/932)
+is also closed. The maintainer reports redundant billing allocation work
+occupying the existing worker; its producer fix and graceful worker restart
+restored ordinary initial and scale-from-zero admission. This owner evidence
+does not attribute every historical delay to that work.
+
+Independent public session entries recovered the earlier uncertain turn's
+final error: only `crm__list_tools` ran, and no business create or update was
+executed. A fresh authenticated REST contact search for the exact earlier
+marker returned HTTP 200, no items and `totalItems=0`. This resolves the prior
+unknown outcome without replaying its message. A new bounded verification
+uses a new owned session and unique fixture marker; its MCP and independent
+MetaTables read-back evidence will be recorded with the exact runtime revisions.
+
+Tau's timeout repair changes no CRM wire contract, authorization, schema or
+write-retry policy. [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md)
+is amended for dependency and timeout behavior; no new ADR is needed.
+Managed Main Sequence/Tau skill copies remain pinned to 9.0.6/2.0.9; the
+installed 2.0.11 package guidance was read without refreshing those namespaces.
+
 ### Public A2A fixes and Tau 2.0.10 uptake (2026-10-11)
 
 [Platform issue #931](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/931)
