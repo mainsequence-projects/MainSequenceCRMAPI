@@ -17,7 +17,7 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
-### Tau 2.0.11 and restored runtime access (2026-10-11)
+### Tau 2.0.11 and the MCP persistence retest (2026-10-11)
 
 [Tau issue #90](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/90) is
 closed and its fix is released as
@@ -29,9 +29,9 @@ and MetaTables remains 0.1.33. All 201 CRM tests and Ruff pass. The existing
 migration-gated workflow and `openai-codex/gpt-5.6-luna/medium` default remain.
 
 [Platform issue #932](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/932)
-is also closed. The maintainer reports redundant billing allocation work
+was closed after the maintainer repaired redundant billing allocation work
 occupying the existing worker; its producer fix and graceful worker restart
-restored ordinary initial and scale-from-zero admission. This owner evidence
+reportedly restored ordinary initial and scale-from-zero admission. This owner evidence
 does not attribute every historical delay to that work.
 
 Independent public session entries recovered the earlier uncertain turn's
@@ -39,8 +39,57 @@ final error: only `crm__list_tools` ran, and no business create or update was
 executed. A fresh authenticated REST contact search for the exact earlier
 marker returned HTTP 200, no items and `totalItems=0`. This resolves the prior
 unknown outcome without replaying its message. A new bounded verification
-uses a new owned session and unique fixture marker; its MCP and independent
-MetaTables read-back evidence will be recorded with the exact runtime revisions.
+used owned session `ac48ff04-8bf5-4310-b341-c81cf0db33f2`, a new unique fixture
+marker and message `1df84d82-96ae-4578-aacd-8950bcb2751a`. Its Tau 2.0.11 sender
+outlived the previous 60-second cutoff, then received structured HTTP 502
+`a2a_transport_outcome_ambiguous` after 118.75 seconds, correlation
+`d21852d9988d4aa79fcd7725933b8dde`. The message was not replayed. Operational
+events proved that the original turn continued, and public session entries
+recovered successful CRM MCP list/create/update/get calls and the final answer.
+Contact `ac06d52f-298a-41b2-9dc6-c04ace99e0af` advanced from version 1 to 2 with
+title `MCP updated and persisted`; both attribution fields identify the human
+requester `e2a4f38a-1b5f-40a3-974f-70bc8f065b3f`.
+
+This retest used the new 2.0.11 **sender** against the still-active Tau 2.0.10
+assistant revision `3a389ee8-e6ff-46a9-aff0-44e74be22ed5` and API revision
+`3d740d54-39f5-4c28-a9b5-d23008bf370d`. The recovered turn's MCP results and
+the independent read-back are separate evidence: the fresh external detail
+read was blocked before its REST request at 10:51:05 UTC by another
+`The runtime activation could not be scheduled.` refusal. A second attempt
+recorded public operation `6b209537-6469-4a44-b17a-953c9c5cd1ef`, created
+10:53:37 UTC and failed without a start time at 10:54:37 UTC. Admission became
+`unavailable`, with `can_request=false` and replicas 0/0. Issue #932 is reopened
+with this exact recurrence; its fresh internal cause is not established.
+Admission subsequently recovered in operation
+`dd662d44-39f2-4d76-8890-415ca07a9c90`, with the caller ready at 11:07:55 UTC.
+The admitted contact detail read nevertheless returned HTTP 500 at 11:09:04 UTC
+after 66.940 seconds, request `c1e542cb1e404248f24b4af6cfefd8e2`.
+Public API logs identify `ApiResolutionError` and two approximately 20-second
+timeouts reaching the MetaTables release's platform runtime-access endpoint.
+This establishes the failing dependency path, not the platform's internal cause.
+A further read-only attempt after catalog reconciliation failed admission at
+11:16:35 UTC. Operation `1c90c639-0ca4-4a57-9c12-8c4c1261cb51` failed without
+a start time after approximately 61 seconds. No additional business write
+or archive was issued.
+Independent persistence confirmation and fixture cleanup remain unverified.
+
+The dependency update was pushed as `be0e5fc0943dc65a28ac373e2615a974323632ae`.
+Its workflow `d21a34c8-58af-4f99-bfce-f8d97e0abfa6` completed both candidate
+images; both full build logs confirm Main Sequence 9.0.20, MetaTables 0.1.33
+and Tau 2.0.11. Migration Job `832cacc7-ca36-46b7-8238-5a126b31f142` reported
+`0009 (already current; catalog reconciled)` at 11:07:01 UTC, total 538.849
+seconds. The graph confirmed migration success, and both release deployment
+runs succeeded. Both
+releases subsequently reached their intended active and desired revisions:
+API `8e88bf90-65fd-44a1-84c6-004eff66db6f` and assistant
+`1d078f53-565c-4336-92e8-f01862127d77`. The public Agent record independently
+confirms `openai-codex/gpt-5.6-luna/medium`. This verifies Tau 2.0.11 promotion;
+the earlier successful business turn remains scoped to its recorded 2.0.10
+host, and fresh updated-runtime persistence verification remains blocked.
+The older documentation
+push `7df453c` failed at its migration Job before the reported platform repair,
+because MetaTables runtime discovery timed out. Neither that older failure nor
+the new release promotion establishes uninterrupted runtime availability.
 
 Tau's timeout repair changes no CRM wire contract, authorization, schema or
 write-retry policy. [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md)

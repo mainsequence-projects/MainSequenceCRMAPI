@@ -255,10 +255,13 @@ Unavailable storage or failed authorization still fails closed; workload
 access alone never substitutes for the person.
 Hosted Contact create/update and independent persistence read-back have been
 verified through Command Center Chat with GPT-5.6 Luna on its recorded runtime.
-Main Sequence 9.0.20 and Tau 2.0.10 were deployed successfully. The fresh
-supported-sender test remains unverified after an admitted sender timeout and
-platform runtime activation failure; read the existing uncertain fixture before
-another write. See
+Main Sequence 9.0.20 and Tau 2.0.10 were deployed successfully. The new Tau
+2.0.11 sender recovered a successful MCP create/update/get turn after the
+platform returned an ambiguous HTTP 502. Independent external read-back is
+blocked by recurrent runtime activation failure and MetaTables discovery
+timeouts; keep the marked fixture and read its current state before another
+write. Both hosted releases now point to the intended 2.0.11 revisions, but
+that promotion does not resolve the read-back or cleanup blocker. See
 [verification evidence](verification.md).
 
 Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
