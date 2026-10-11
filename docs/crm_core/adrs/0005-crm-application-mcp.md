@@ -41,9 +41,27 @@ requester. A workload alone cannot perform these tools. The policy checks
 the person's CRM capability on every invocation. Missing, malformed, expired
 or denied delegation never falls back to workload permissions. No tool accepts
 an actor, capability, caller proof, token or connection argument. The receiving
-API cannot forward the requester's identity to platform APIs: its trusted
-policy/directory adapters remain a required integration, not a new permission
-database or a process-credential substitute.
+API cannot forward the requester's identity to platform directory APIs.
+
+The 2026-10-11 amendment connects the hosted policy and directory in
+`src/crm/platform/hosted_runtime.py`. Every operation evaluates the effective
+identity's signed Team UIDs and Organization admin flag. Existing platform
+Teams can be selected with `CRM_READER_TEAM_UIDS` and `CRM_WRITER_TEAM_UIDS`
+(comma-separated UUIDs). Reader Teams grant `crm.read`; Writer Teams grant
+the implemented business capabilities except configuration and export.
+Verified Organization admins also get `crm.configure`. Export remains hidden
+until its immutable-output live gate passes. Empty Team configuration grants
+no Team access. The owning storage Team is independent of these human-facing
+Team selections. There is no application membership database or permission
+fallback to the workload.
+
+The directory resolves self from the verified identity. Direct hosted requests
+look up other active human owners inside SDK `reads_as_caller()`, so visibility
+comes from the caller. Requester-bound calls can select only that signed person;
+other owner selection fails closed until the platform supports a requester
+directory read. No workload-scoped directory query substitutes for it. The
+bootstrap adapter uses the existing governed settings store. These adapters
+do not run migrations or read settings at application startup.
 
 The catalogue retains 66 tools with Solution Selling enabled, 46 without it.
 It omits archive/restore, merge execution and import commit until shared

@@ -60,6 +60,12 @@ def _secret(name: str) -> str:
 
 def _configured_url(name: str, *, callback: bool) -> str:
     value = os.environ.get(name, "").strip()
+    if not value and callback:
+        # Main Sequence supplies the actual release URL, including after a key
+        # rename. Never construct a hostname or reuse the former release's UID.
+        public_base = os.environ.get("FASTAPI_PUBLIC_BASE_URL", "").strip()
+        if public_base:
+            value = public_base.rstrip("/") + "/extensions/google/oauth/callback/"
     parsed = urlsplit(value)
     loopback = parsed.hostname in {"localhost", "127.0.0.1"}
     if not value or parsed.scheme not in ({"https", "http"} if loopback else {"https"}):

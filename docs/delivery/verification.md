@@ -17,6 +17,48 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Hosted adapter repair and controlled provisioning (2026-10-11)
+
+The hosted entrypoint now installs policy, directory and bootstrap adapters.
+Six new signed-request tests exercise default bootstrap wiring, Writer/Reader
+Team decisions, Organization admin access, Team removal between MCP calls,
+requester isolation from an admin workload, self-only delegated ownership and
+caller-scoped direct owner reads. Settings and business stores in those tests
+are stand-ins; they do not prove hosted persistence. The real SDK verifies the
+test assertions, using a test signing key.
+
+The one workflow retains its validated migration-before-deploy graph and
+automatic promotion policy. A proposed paused provisioning variant failed
+backend validation: disabling initial deployment requires pinned image UIDs
+for both services. That variant was restored and was not committed or pushed.
+No image UIDs were selected to work around the contract. The local push guard
+remains pending explicit Production grant approval. A rollout helper is ready
+to replace the frontend binding only after the backend advertises the new API's
+active MCP revision in this branch Environment; the old inactive release is
+rejected before any file change.
+
+Read-only Production inspection still finds no CRM namespace or owning Team.
+Automatic approval review rejected creating `mainsequence-crm-production` and
+its namespace Writer grant: the broad repair instruction was not accepted as
+explicit approval of that exact persistent organizational permission change.
+No Team, namespace or grant was created. The required approval is Writer only
+on Production namespace `mainsequence-crm`, with membership limited to the
+migration Job and CRM API workload Users. The assistant gets no storage grant.
+Hosted migrations and operational requester calls remain pending that setup.
+
+Executed checks pass: all 201 API tests, Ruff and strict MkDocs. The twelve
+rollout/callback tests cover inactive or unrelated releases, revision and
+Environment mismatches, idempotent binding updates and safe callback URL
+selection. Both current workflow files pass live backend validation with no
+errors or warnings. The live binding preflight rejects the existing inactive,
+non-MCP release before changing the frontend file. No push was performed, and
+the frontend's live binding still awaits the new active API release.
+
+The authored-metadata and downgrade fixes verified with MetaTables 0.1.33 on
+2026-10-10 remain the dependency baseline. Main Sequence remains 9.0.19 and
+Tau 2.0.9. The application authorization amendment is in
+[ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md).
+
 ### MetaTables 0.1.33 upgrade and push preflight (2026-10-10)
 
 The two reported MetaTables issues are closed, and PyPI publishes client/API

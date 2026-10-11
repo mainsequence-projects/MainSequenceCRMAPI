@@ -36,6 +36,11 @@ supplied by the loopback launcher for the local bridge. Both paths use
 `CRMOperations` and the existing policy/directory, validation, version fences,
 and governed repository writes. See [identity conventions](conventions.md).
 Missing policy or directory wiring returns `unavailable`.
+The hosted adapters are now installed by the API entrypoint. They evaluate
+only the requester's signed Team/admin facts, never the agent's facts. Owner
+selection in a delegated tool is limited to the requester; another owner
+returns `validation_error` without querying the workload's directory. See
+[the authorization amendment](../crm_core/adrs/0005-crm-application-mcp.md).
 
 Archive/restore, merge execution and import commit are absent. Merge preview,
 ordinary typed create/update, task completion/reopen, pipeline reads, deal

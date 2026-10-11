@@ -249,8 +249,10 @@ In hosted mode the project extension registers nothing: Tau's declared
 application MCP supplies the same two discovery/call tools with per-turn
 access. The workflow enables requester delegation and grants the assistant view
 access to the CRM application. Hosted CRM business tools require the signed
-requester and existing CRM policy/directory adapters. Missing adapters still
-return `unavailable`; workload access alone never substitutes for the person.
+requester. The hosted policy/directory/bootstrap adapters are installed by
+`api.crm.main.create_app()`; see the [hosted authorization decision](../crm_core/adrs/0005-crm-application-mcp.md).
+Unavailable storage or failed authorization still fails closed; workload
+access alone never substitutes for the person.
 The managed MCP path has not yet been deployed or verified live.
 
 Both tool exclusions remain enabled. They omit broad Main Sequence MCP and

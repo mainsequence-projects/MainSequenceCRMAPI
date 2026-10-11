@@ -20,6 +20,7 @@ from src.crm.assistant_runtime import resolve_assistant
 from src.crm.config import crm_config
 from src.crm.google_workspace.config import google_workspace_enabled
 from src.crm.models.bootstrap import Bootstrap
+from src.crm.platform.hosted_runtime import install_platform_services
 from src.crm.platform.runtime import authenticated_actor, readiness, request_port
 from src.crm.solution_selling.config import solution_selling_enabled
 
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     crm_config()  # Fail before route mounting if the persisted configuration is invalid.
     application = FastAPI(title="Main Sequence CRM", version="0.1.0")
     application.state.crm_local_tau_origin = None
+    install_platform_services(application)
 
     @application.middleware("http")
     async def request_uid(request: Request, call_next):

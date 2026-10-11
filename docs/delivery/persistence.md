@@ -173,6 +173,32 @@ it does not establish current compatibility. `upgrade_application()` reads the
 runtime context before migrating. An incompatible API or missing permissions
 fails the Job and blocks both deployments.
 
+The API installs the hosted policy, directory and governed bootstrap adapters;
+see [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). No startup migration
+or workload-permission fallback is added. The workflow retains automatic
+promotion and its migration-before-deploy graph. Keep the local push guard
+until the Production namespace Writer grant is explicitly approved. A tested
+provisioning variant with initial automatic deployment disabled was rejected
+by the backend because new services then require pinned image UIDs; that
+invalid variant was not committed or pushed.
+
+After the API has an active MCP revision, run the API project's rollout helper:
+
+```bash
+.venv/bin/python -m scripts.bind_crm_frontend \
+  ../main-sequence-crm-5f1b0619-9997-449c-b986-36990ae49e14/.mainsequence/workflows/crm-site.yaml --apply
+```
+
+It resolves the active CRM release from the current Git branch, checks the
+Environment and advertised MCP revision, and replaces only the frontend
+workflow's release binding. It rejects the old inactive release and never
+creates a release, grants access or pushes a repository. Validate and build
+that frontend before its push. The helper also reports the callback URI from
+the backend's MCP URL for Google-side registration. Hosted Google OAuth can
+use the launcher's actual `FASTAPI_PUBLIC_BASE_URL` when no explicit
+`GOOGLE_OAUTH_REDIRECT_URI` is set; an explicit URI still takes precedence and
+must be updated if it names a former release.
+
 Version 0.1.33 uses batched table inventories and physical inspection. Client
 finalization sends at most ten tables per request, starting with the version
 table: the CRM's 27 catalog entries need three requests. After a partial

@@ -51,6 +51,9 @@ def test_platform_identity_required_even_if_header_is_forged(signed_caller):
 
 def test_readiness_fails_closed_without_platform_adapters(signed_caller):
     app = create_app()
+    app.state.crm_policy = None
+    app.state.crm_directory = None
+    app.state.crm_bootstrap = None
 
     class UnavailableRegistry:
         def validate(self):

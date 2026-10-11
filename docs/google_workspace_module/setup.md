@@ -41,7 +41,7 @@ authenticated platform skill update installs under
 
 1. Resolve the exact CodeRepositoryBranch and fetch its backend
    `workflow-template/`. Use the returned API version (currently `2.3.0`).
-   Maintain the existing `crm-api` declaration for `api/crm/main.py`:
+   Maintain the `crm` resource key in `crm-api.yaml` for `api/crm/main.py`:
 
    ```yaml
    public_ingress:
@@ -80,6 +80,10 @@ authenticated platform skill update installs under
 Only after these checks should you register the exact callback URI in Google
 and set `GOOGLE_OAUTH_REDIRECT_URI` to the same value. Localhost testing
 through `api/crm/local.py` is separate from deployed gateway admission.
+If no explicit redirect URI is configured, the hosted API uses the launcher's
+actual `FASTAPI_PUBLIC_BASE_URL` plus the exact callback path. This follows a
+recreated release's backend-issued URL; Google still needs that URI registered.
+An explicit URI takes precedence and must not retain a former release's URL.
 
 ## Google Cloud Console steps
 

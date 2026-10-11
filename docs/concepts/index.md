@@ -33,13 +33,14 @@ the wire.
 
 The optional assistant follows the same model and version rules. Its target
 tool catalogue and current gaps are recorded in
-[ADR 0003](../crm_core/adrs/0003-tau-crm-agent-tools.md). The agent runtime is
-installed and declares typed CRM business tools. The API and agent
-adapters share the operations in `src/crm` as their single business source.
-Mounted HTTP routes now use that source; Tau CRM calls return `unavailable`
-until the runtime supplies a trusted principal, policy, and directory. A CRM agent deployment can exclude Tau's coding
-tools and Main Sequence MCP through runtime settings, leaving project-declared
-business tools and the SDK's A2A Task controls.
+[ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). REST and the API-owned
+MCP tools share the operations in `src/crm`. Hosted operations check the
+effective person's platform-signed Team membership or Organization admin
+status on every call. The assistant's storage or platform permissions do not
+authorize a person. A delegated call can select that person as owner; direct
+requests can also select active human owners visible in the caller's directory.
+The CRM agent excludes Tau's coding tools and broad Main Sequence MCP while
+retaining application MCP and the SDK's A2A Task controls.
 The runtime's [CRM conversation directives](../crm_core/adrs/0003-tau-crm-agent-tools.md#runtime-answer-and-prompt-boundary)
 are in `.tau/SYSTEM.md`. They define the assistant's CRM role and response
 style independently of the intentionally restricted tool profile.

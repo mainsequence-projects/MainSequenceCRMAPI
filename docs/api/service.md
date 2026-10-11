@@ -3,7 +3,7 @@
 | Method | Path | Behavior |
 | --- | --- | --- |
 | `GET` | `/healthz` | Process-only status; no CRM readiness guarantee. Deployed, it needs a verified caller |
-| `GET` | `/api/crm/v1/readiness/` | Protected readiness body; `200` ready or `503` not ready |
+| `GET` | `/api/crm/v1/readiness/` | Protected readiness body; `200` ready, `403` read denied or `503` not ready |
 | `GET` | `/api/crm/v1/bootstrap/` | One authorized startup snapshot with readiness and assistant runtime |
 | `GET` | `/api/crm/v1/principals/` | Selectable current principal; `crm.read` |
 | `GET` | `/api/crm/v1/settings/` | CRM application settings; `crm.read` |
@@ -59,4 +59,13 @@ The application's installed request identity supplies the verified caller;
 see [request conventions](conventions.md#identity-and-scope). The application
 neither accepts a caller-selected workspace nor maintains a separate user/role
 store.
+Hosted defaults evaluate the effective identity's signed Team UIDs and
+Organization admin flag. Existing Teams selected by `CRM_READER_TEAM_UIDS`
+grant read access; `CRM_WRITER_TEAM_UIDS` grants implemented business writes.
+Only verified Organization admins receive `crm.configure`; export remains
+unavailable. The comma-separated Team UUID configuration grants nothing when
+empty. It is independent of the owning storage Team's namespace Writer grant.
+Direct requests can select other active human owners through the caller's
+platform directory. Delegated requests can select only their signed requester;
+another owner is rejected with `422` rather than using workload visibility.
 See [persistence and migrations](../delivery/persistence.md).
