@@ -74,10 +74,15 @@ def test_api_and_assistant_deploy_only_after_the_migration_job():
     # Every connected step must be admitted by the same promotion policy.
     for item in resources.values():
         assert item["spec"]["automatic_redeployment"] == EVERY_PUSH
-        if item["kind"] != "harness_agent":
-            assert item["access"] == {
-                "branches": [{"repository": "MetaTables", "level": "view"}]
-            }
+    assert resources["migrate-crm"]["access"] == {
+        "branches": [{"repository": "MetaTables", "level": "view"}]
+    }
+    # Bootstrap discovers only this assistant; this view grant is not a
+    # requester or storage grant and does not change the deployment graph.
+    assert resources["crm"]["access"] == {
+        "branches": [{"repository": "MetaTables", "level": "view"}],
+        "resources": [{"key": "crm-assistant", "level": "view"}],
+    }
     assert resources["crm"]["spec"]["mcp_enabled"] is True
     assert resources["crm-assistant"]["acts_for_requester"] is True
     assert resources["crm-assistant"]["access"] == {

@@ -1,6 +1,6 @@
 # ADR 0005: Serve CRM tools through application MCP
 
-- **Status:** Implemented in source; hosted deployment and live governed tool verification pending
+- **Status:** Deployed; live governed tool verification pending
 - **Date:** 2026-10-09
 - **Supersedes:** The in-process Tau business-tool transport and caller binding in
   [ADR 0003](0003-tau-crm-agent-tools.md). Its shared service, version, permission,
@@ -96,6 +96,10 @@ The workflow remains the sole `.mainsequence/workflows/crm-api.yaml` file.
 Each service has its own image step; migration precedes API deployment, and
 the assistant waits for API deployment. The migration Job still owns hosted
 schema updates. This change creates no migration and performs no startup DDL.
+The API declares view access to its own `crm-assistant` resource so bootstrap
+can discover the deployed Agent. The assistant declares view access to `crm`
+for application MCP. These access declarations do not add execution dependencies
+or grant the assistant storage access or permission to act for a person.
 
 The platform uses the resource key as the MCP application name and rejects
 hyphens. Rename the API resource from `crm-api` to `crm`, retaining the workflow

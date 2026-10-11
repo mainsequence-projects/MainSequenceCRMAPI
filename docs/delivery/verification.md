@@ -29,30 +29,73 @@ test assertions, using a test signing key.
 
 The one workflow retains its validated migration-before-deploy graph and
 automatic promotion policy. A proposed paused provisioning variant failed
-backend validation: disabling initial deployment requires pinned image UIDs
-for both services. That variant was restored and was not committed or pushed.
-No image UIDs were selected to work around the contract. The local push guard
-remains pending explicit Production grant approval. A rollout helper is ready
-to replace the frontend binding only after the backend advertises the new API's
-active MCP revision in this branch Environment; the old inactive release is
-rejected before any file change.
+backend validation because disabling initial deployment requires pinned image
+UIDs. It was restored without selecting image UIDs or publishing that variant.
 
-Read-only Production inspection still finds no CRM namespace or owning Team.
-Automatic approval review rejected creating `mainsequence-crm-production` and
-its namespace Writer grant: the broad repair instruction was not accepted as
-explicit approval of that exact persistent organizational permission change.
-No Team, namespace or grant was created. The required approval is Writer only
-on Production namespace `mainsequence-crm`, with membership limited to the
-migration Job and CRM API workload Users. The assistant gets no storage grant.
-Hosted migrations and operational requester calls remain pending that setup.
+On 2026-10-11 the user explicitly approved the Production owning Team and
+namespace grant. Team `mainsequence-crm-production`
+(`6b4a3104-e2e3-4c09-b746-418283f3720e`) has Writer only on namespace
+`mainsequence-crm` (`ca53e776-00bd-4ee9-ad83-dc0f49f798b1`). Its verified
+members are the new API workload User
+`c9b66783-8ce0-48d3-9b92-415a1b26fdec` and migration Job workload User
+`8c307bb6-a7b2-4ef0-8617-e47e9c055340`. The assistant has no storage grant.
+The earlier automatic approval rejection is superseded by that explicit approval.
 
-Executed checks pass: all 201 API tests, Ruff and strict MkDocs. The twelve
-rollout/callback tests cover inactive or unrelated releases, revision and
-Environment mismatches, idempotent binding updates and safe callback URL
-selection. Both current workflow files pass live backend validation with no
-errors or warnings. The live binding preflight rejects the existing inactive,
-non-MCP release before changing the frontend file. No push was performed, and
-the frontend's live binding still awaits the new active API release.
+API commit `4705782` was pushed through the existing GitHub remote. The push
+webhook created workflow run `58fce803-5bbf-473c-9870-8259ff2b1203` for that
+exact commit. Its image preparation completed and migration Job run
+`9fb62849-8cb8-4b09-b5f7-8694019561b0` succeeded against the verified Production
+MetaTables runtime: PostgreSQL advanced `0008` to `0009` and all application
+catalog bindings were reconciled. All five workflow steps succeeded, including
+API deployment `f8d88cb3-d8dd-48e3-9730-ef082bebb497` and assistant deployment
+`780a777e-8f91-4abe-af2f-08df58729bb1`.
+
+API release `2de75e21-bfe1-4b77-b668-6916488ed317` has active MCP revision
+`8b8985d9-f7e2-4465-96be-6f293f37955a`. A real authenticated readiness call
+returned HTTP 200 with all six checks ready; bootstrap also returned 200 and
+the verified human identity. The official MCP client initialized the hosted
+endpoint, listed 66 tools including `crm_contacts_create`, and verified that a
+business read without a signed requester returns `forbidden`. These checks
+prove admission and fail-closed delegation, **not successful MCP writes**.
+
+Bootstrap still reported the assistant disabled. Public sharing inspection
+confirmed the API workload has no view grant on the assistant Agent or release.
+The workflow now declares API view access to `crm-assistant` for discovery;
+backend validation accepts it without errors or warnings. Its applied grant
+and a fresh bootstrap response still need verification after publication.
+
+The bounded real write test created an owned AgentSession
+`199f74fe-6397-4714-a410-2fb2d3460973`, then the SDK's public A2A sender failed
+with HTTP 400: `A2A v1 Message role must be ROLE_USER or ROLE_AGENT`.
+Main Sequence 9.0.19 emits the internal `ROLE_REQUESTER`, while Tau 2.0.9 accepts
+the public roles. This matches the open
+[SDK issue #211](https://github.com/mainsequence-sdk/mainsequence-sdk/issues/211).
+That direct request failed before a model turn or CRM write. The user then
+completed the supported CLI browser login. Tau's credential-owning
+`MainSequenceMCPClient` invoked canonical `a2a.send_message` in Message mode,
+using the same owned session and stable message identity. It returned HTTP 500
+with correlation ID `0c6137c8cfbb4a218b703d3640f1d37c`, now tracked in
+[platform issue #931](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/931).
+No retry followed that uncertain outcome. The public session remained
+`pending`, and a fresh authenticated REST search through the governed
+MetaTables store returned zero contacts for the exact verification marker.
+These checks do not establish successful MCP persistence or the platform's
+dispatch outcome. No runtime assertion, token or SDK role was patched to
+bypass these boundaries.
+
+Frontend commit `bfa90b0` binds its build to the active API UID above. Workflow
+`03a4e19e-1529-4505-884d-389b7222fd40` and Static Site deployment
+`7243e9c7-66a4-4638-919c-67df680a666c` succeeded. The active frontend revision
+is `f4485067-625e-4909-b41b-9905dfc0b11f`. Real browser embedding, Google OAuth
+provider registration and requester MCP create/update/persistence remain
+unverified.
+
+Executed checks pass: all 201 API tests, Ruff and strict MkDocs. Both current
+workflow files pass live backend validation with no errors or warnings. The
+rollout helper replaces the frontend binding only after the backend advertises
+the new API's active MCP revision in this branch Environment. It resolved and
+applied that binding. The frontend's ten tests, documentation checks,
+TypeScript, Vite and Docusaurus builds passed with the new release UID.
 
 The authored-metadata and downgrade fixes verified with MetaTables 0.1.33 on
 2026-10-10 remain the dependency baseline. Main Sequence remains 9.0.19 and
@@ -95,8 +138,9 @@ Executed verification:
   wire compatibility; they do not identify the exact running package version
   or prove PostgreSQL migration behavior.
 
-The remaining blockers are in CRM deployment setup, rather than the two fixed
-MetaTables bugs:
+The following deployment blockers were recorded at this preflight and resolved
+by the 2026-10-11 work above; they are retained as historical evidence rather
+than current status:
 
 1. **Production ownership is missing.** Namespace search returns no
    `mainsequence-crm`, and the platform Team list contains no CRM owning Team.

@@ -4,6 +4,9 @@ resources:
   - key: crm
     kind: fastapi
     access:
+      resources:
+        - key: crm-assistant
+          level: view
       branches:
         - repository: MetaTables
           level: view
