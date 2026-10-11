@@ -34,11 +34,50 @@ the public response role. No CRM role override, credential fallback or write
 retry was added. New conversation defaults remain
 `openai-codex/gpt-5.6-luna/medium`.
 
-All 201 API tests and Ruff pass with the new dependencies. The sole existing
-migration-gated workflow will publish the API and assistant; its updated hosted
-runtime and a fresh supported-sender MCP write/read-back remain pending at
-publication. The earlier successful Chat persistence proof below remains valid
-for its recorded runtime. The version and readiness amendment belongs in
+All 201 API tests, Ruff, strict MkDocs and the documentation contract pass with
+the new dependencies. Commit `82aae9b9c245612c8b199078b9ff35226682808a` was
+pushed. Workflow `8dd2983c-9846-409e-a7fd-095e704cb372` succeeded in all five
+steps at 08:38:05 UTC, including migration Job run
+`17ba919c-0473-45eb-bdc2-6bf5eee1b2fc`: schema `0009` was already current and
+the application catalog was reconciled. Both completed image logs confirm
+Main Sequence 9.0.20, MetaTables 0.1.33 and Tau 2.0.10. The API active and desired
+revision became `3d740d54-39f5-4c28-a9b5-d23008bf370d`; the assistant's became
+`3a389ee8-e6ff-46a9-aff0-44e74be22ed5`. Fresh authenticated readiness and
+bootstrap returned HTTP 200 around 08:55–08:57 UTC, with all six checks ready,
+the human identity and `assistant.enabled=true`. No GitHub check runs were
+configured for that commit; these are executed local and platform checks.
+
+The fresh canonical platform MCP sender test used owned session
+`b17527e1-4d74-49bb-8f24-8826b4005f67` and message
+`dede0066-e2d6-450e-a19b-d7f5f3e6f6ab`. Its first attempt received structured
+HTTP 409 `a2a_runtime_submission_blocked`, with `can_submit=false`, rather than
+the old masked HTTP 500. Only after that explicit pre-dispatch refusal and
+public admission becoming ready was the same message identity sent once.
+The admitted call then raised `ReadTimeout` after approximately 60 seconds,
+despite its 420-second per-call MCP deadline. Tau's platform MCP client keeps
+the backend HTTP read timeout independently of that per-call session timeout;
+this separate surface is tracked in
+[Tau issue #90](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/90).
+The application MCP timeout fixes are not shown to have regressed.
+
+The server-side turn survived the sender timeout. Its operational log records
+`runtime.mcp_application.failed` with `BackendError` at 09:02:44 UTC, and public
+session reads continued to report `running`. Independent read-back was blocked
+before the REST request: supported API runtime admission failed with
+`The runtime activation could not be scheduled.` around 09:05:52 and again
+09:16:38 UTC. Public snapshots showed a queued wake with `can_request=false`.
+The runtime scheduling/access incident is tracked in
+[platform issue #932](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/932);
+its internal cause remains unverified. The API and migration workload Team
+membership and approved namespace grant were checked unchanged.
+
+No admitted or uncertain write was replayed. The new fixture's existence and
+persistence remain **unverified** because normal read-back could not be
+admitted; this requires reading the existing marked fixture and turn outcome
+after access is restored, before any new write. The earlier successful Chat
+persistence proof below remains valid for its recorded runtime. A successful
+deployment or transient readiness does not establish later runtime availability
+or completion of this new MCP test. The version and readiness amendment belongs in
 [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md), without a new ADR.
 Managed Main Sequence and Tau guidance remain pinned to 9.0.6 and 2.0.9;
 the installed 9.0.20 and 2.0.10 package source and guidance were used without

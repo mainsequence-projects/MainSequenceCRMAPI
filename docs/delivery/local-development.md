@@ -254,8 +254,11 @@ requester. The hosted policy/directory/bootstrap adapters are installed by
 Unavailable storage or failed authorization still fails closed; workload
 access alone never substitutes for the person.
 Hosted Contact create/update and independent persistence read-back have been
-verified through Command Center Chat with GPT-5.6 Luna. The supported A2A sender
-is being retested after the Main Sequence 9.0.20 and Tau 2.0.10 update; see
+verified through Command Center Chat with GPT-5.6 Luna on its recorded runtime.
+Main Sequence 9.0.20 and Tau 2.0.10 were deployed successfully. The fresh
+supported-sender test remains unverified after an admitted sender timeout and
+platform runtime activation failure; read the existing uncertain fixture before
+another write. See
 [verification evidence](verification.md).
 
 Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
@@ -266,7 +269,8 @@ In hosted mode Tau 2.0.10 verifies platform-signed caller assertions and
 requires the launcher's projected workload identity token file for its runtime
 credential exchange. Those hosting settings belong to the platform launcher;
 they are not local-mode flags or repository credentials. The hosted entrypoint
-has served the verified Chat MCP turn. Tau 2.0.10 waits for a waking application
+served the earlier verified Chat MCP turn; that proof does not establish the
+fresh updated-runtime test. Tau 2.0.10 waits for a waking application
 within a bounded readiness deadline before admitting its MCP calls; it does not
 retry an uncertain business write.
 
