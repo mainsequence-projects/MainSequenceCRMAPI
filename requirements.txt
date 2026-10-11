@@ -135,7 +135,7 @@ linkify-it-py==2.2.0
     # via markdown-it-py
 loguru==0.7.3
     # via fastembed
-mainsequence==9.0.19
+mainsequence==9.0.20
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi
@@ -167,7 +167,7 @@ more-itertools==11.1.0
     # via
     #   jaraco-classes
     #   jaraco-functools
-ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@6e93372b393f242af737893df19f4d0ea33bbac8
+ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@39c144f24695b7aaf2fc245e25e13cb51c4ce665
     # via mainsequencecrmapi
 numpy==2.5.3
     # via

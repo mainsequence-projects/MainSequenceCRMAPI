@@ -199,7 +199,7 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 2.0.9 is locked to its release tag `v2.0.9` in `pyproject.toml` and
+`ms-tau-sdk` 2.0.10 is locked to its release tag `v2.0.10` in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
@@ -253,17 +253,22 @@ requester. The hosted policy/directory/bootstrap adapters are installed by
 `api.crm.main.create_app()`; see the [hosted authorization decision](../crm_core/adrs/0005-crm-application-mcp.md).
 Unavailable storage or failed authorization still fails closed; workload
 access alone never substitutes for the person.
-The managed MCP path has not yet been deployed or verified live.
+Hosted Contact create/update and independent persistence read-back have been
+verified through Command Center Chat with GPT-5.6 Luna. The supported A2A sender
+is being retested after the Main Sequence 9.0.20 and Tau 2.0.10 update; see
+[verification evidence](verification.md).
 
 Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
 replace general coding tools with Tau's skill-scoped `read`; A2A Task controls
 remain. These exclusions do not disable application MCP.
 
-In hosted mode Tau 2.0.9 verifies platform-signed caller assertions and
+In hosted mode Tau 2.0.10 verifies platform-signed caller assertions and
 requires the launcher's projected workload identity token file for its runtime
 credential exchange. Those hosting settings belong to the platform launcher;
-they are not local-mode flags or repository credentials. The updated hosted
-entrypoint has not been verified in a deployed run.
+they are not local-mode flags or repository credentials. The hosted entrypoint
+has served the verified Chat MCP turn. Tau 2.0.10 waits for a waking application
+within a bounded readiness deadline before admitting its MCP calls; it does not
+retry an uncertain business write.
 
 Running `ms-tau` or `api.tau.main:app` locally needs `TAU_LOCAL_MODE=true`,
 `MAINSEQUENCE_AUTH_MODE=jwt`, an explicit provider and model, and the signed-in

@@ -764,7 +764,7 @@ wheels = [
 
 [[package]]
 name = "mainsequence"
-version = "9.0.19"
+version = "9.0.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
@@ -786,9 +786,9 @@ dependencies = [
     { name = "typer" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/03/6578aaee2005ba51ca96fc5c49289084db42eb234496e2a4649e978288f5/mainsequence-9.0.19.tar.gz", hash = "sha256:8ee23f5a9f4ba51d2dc4921258b7f5fd8c6e5477922647f3e59d17d215ab7c92", size = 329691, upload-time = "2026-10-08T06:20:11.401Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/f5/ba701cea655a2071a7677d5f3799819ae72ce1fa0d575ce9e786eb331305/mainsequence-9.0.20.tar.gz", hash = "sha256:ff6bba2ab62295755561acf37b28f27121baccfaff1b81f6acc61b50727bf14f", size = 329805, upload-time = "2026-10-11T07:51:50.441Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/21/9e71126928a83170e84f9473955f8f1573d22c7ca5d0a5bba1ac197cd34b/mainsequence-9.0.19-py3-none-any.whl", hash = "sha256:24d58a5adfd88fb33886f520b5b9ab8cb2319f2f477cb823aadb896954806fae", size = 272539, upload-time = "2026-10-08T06:20:09.727Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/26/56f1a92f9a8f0002afadd4e1a6260f41bfb0a9826f5cc8093a1b147bfa6a/mainsequence-9.0.20-py3-none-any.whl", hash = "sha256:8005bb785137623dea476ab9b96fd402d3a2a9b200473f3fac61b0204378855b", size = 272676, upload-time = "2026-10-11T07:51:48.42Z" },
 ]
 
 [package.optional-dependencies]
@@ -868,10 +868,10 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110,<1" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "jinja2", specifier = ">=3.1.6,<4" },
-    { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.19,<10" },
+    { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.20,<10" },
     { name = "mainsequence-metatable", specifier = ">=0.1.33,<0.2" },
     { name = "mcp", specifier = ">=1.30,<2" },
-    { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.9" },
+    { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.10" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.13,<3" },
     { name = "pyjwt", specifier = ">=2.10,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
@@ -1193,8 +1193,8 @@ wheels = [
 
 [[package]]
 name = "ms-tau-sdk"
-version = "2.0.9"
-source = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.9#6e93372b393f242af737893df19f4d0ea33bbac8" }
+version = "2.0.10"
+source = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.10#39c144f24695b7aaf2fc245e25e13cb51c4ce665" }
 dependencies = [
     { name = "anyio" },
     { name = "concurrent-log-handler" },

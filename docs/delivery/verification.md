@@ -17,6 +17,33 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Public A2A fixes and Tau 2.0.10 uptake (2026-10-11)
+
+[Platform issue #931](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/931)
+and [SDK issue #211](https://github.com/mainsequence-sdk/mainsequence-sdk/issues/211)
+are closed. The platform maintainer reports that the sender uses public A2A
+roles and preserves structured runtime rejection instead of masking it during
+HTTP stream cleanup. This is upstream evidence, not a new CRM persistence test.
+
+The canonical SDK update and repository sync installed Main Sequence 9.0.20
+and pinned Tau to [v2.0.10](https://github.com/mainsequence-sdk/ms-tau-sdk/releases/tag/v2.0.10),
+commit `39c144f24695b7aaf2fc245e25e13cb51c4ce665`. MetaTables remains 0.1.33.
+Tau adds bounded waiting for waking application runtimes and preserves MCP
+timeouts. The installed Main Sequence sender emits `ROLE_USER` and validates
+the public response role. No CRM role override, credential fallback or write
+retry was added. New conversation defaults remain
+`openai-codex/gpt-5.6-luna/medium`.
+
+All 201 API tests and Ruff pass with the new dependencies. The sole existing
+migration-gated workflow will publish the API and assistant; its updated hosted
+runtime and a fresh supported-sender MCP write/read-back remain pending at
+publication. The earlier successful Chat persistence proof below remains valid
+for its recorded runtime. The version and readiness amendment belongs in
+[ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md), without a new ADR.
+Managed Main Sequence and Tau guidance remain pinned to 9.0.6 and 2.0.9;
+the installed 9.0.20 and 2.0.10 package source and guidance were used without
+silently refreshing those separately managed namespaces.
+
 ### Hosted adapter repair and controlled provisioning (2026-10-11)
 
 The hosted entrypoint now installs policy, directory and bootstrap adapters.
@@ -73,7 +100,7 @@ The bounded real write test created an owned AgentSession
 `199f74fe-6397-4714-a410-2fb2d3460973`, then the SDK's public A2A sender failed
 with HTTP 400: `A2A v1 Message role must be ROLE_USER or ROLE_AGENT`.
 Main Sequence 9.0.19 emits the internal `ROLE_REQUESTER`, while Tau 2.0.9 accepts
-the public roles. This matches the open
+the public roles. This matched the then-open
 [SDK issue #211](https://github.com/mainsequence-sdk/mainsequence-sdk/issues/211).
 That direct request failed before a model turn or CRM write. The user then
 completed the supported CLI browser login. Tau's credential-owning
@@ -143,8 +170,9 @@ applied that binding. The frontend's ten tests, documentation checks,
 TypeScript, Vite and Docusaurus builds passed with the new release UID.
 
 The authored-metadata and downgrade fixes verified with MetaTables 0.1.33 on
-2026-10-10 remain the dependency baseline. Main Sequence remains 9.0.19 and
-Tau 2.0.9. The application authorization amendment is in
+2026-10-10 remain the MetaTables dependency baseline. Main Sequence 9.0.20 and
+Tau 2.0.10 supersede the client/runtime versions used for this recorded proof.
+The application authorization amendment is in
 [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md).
 
 ### MetaTables 0.1.33 upgrade and push preflight (2026-10-10)
