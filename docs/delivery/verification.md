@@ -17,6 +17,57 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Mandatory local agent pre-push check (2026-10-11)
+
+The user requires a real local-mode agent test before every push. The
+repository now provides `scripts/verify_local_agent.py` and the executable
+`.githooks/pre-push` gate, installed per checkout with
+`git config --local core.hooksPath .githooks`. The live check uses the workflow's
+real provider/model, the project prompt and local CRM MCP bridge, verifies an
+actual governed read, then restarts Tau and the CRM API to check persisted
+local history and independent read-back. CRM calls are read-only; hosted
+storage and credentials are not replaced by mocks. See the
+[local check procedure](local-development.md#required-live-check-before-every-push).
+
+The first executed 2.0.11 local run failed during startup with
+`Main Sequence JWT refresh failed`. Tau was reading legacy access/refresh
+entries from `.env` rather than the current saved CLI sign-in. No chat turn
+or CRM tool ran, and nothing was pushed. The supported CLI `refresh-token`
+removed those legacy entries and renewed the saved session without printing
+credential values.
+
+The next real local turn used Tau 2.0.11 and
+`openai-codex/gpt-5.6-luna/medium`, discovered CRM MCP, then called
+`crm_contacts_get` once for the existing owned verification record. Its bridge
+returned `outcome_unknown` after 60 seconds. The completed public local history
+was recovered after restarting Tau; it proves the call failed the verification
+gate, even though the turn itself completed. No write or retry was sent.
+
+The protected bootstrap preflight then returned HTTP 503 `CRM_NOT_READY` with
+an unavailable catalog. Read-only diagnostics verified the intended Production
+Environment and the same human UID used by the hosted MCP test. Both the current
+GET filter and supported body filter returned zero of the 26 required CRM
+tables. The namespace's only grant is Writer to the approved API/migration
+workload Team; the human has no table-read contribution. Adding Reader for the
+developer requires a separate access decision. This local failure is therefore
+an access prerequisite, not evidence of another SDK defect. A passing end-to-end
+local run and fresh read-back remain unverified; no changes from this gate task
+have been pushed.
+
+All 27 focused Tau, MCP, local-auth and documentation tests passed; Ruff and
+strict MkDocs also passed. The installed hook rejected an uncommitted checkout,
+and the gate correctly rejected the recovered real `outcome_unknown` result.
+These checks do not substitute for the still-blocked live end-to-end check.
+
+After the user reported the Django repair, another local run at approximately
+12:27 UTC started Tau 2.0.11 with the real Luna provider successfully. Protected
+CRM bootstrap still returned HTTP 503 `CRM_NOT_READY` at the catalog check, so
+no chat or business call was dispatched by this run. Fresh namespace inspection
+confirmed the existing workload Team assignments were unchanged, with no human
+read contribution; the signed-in developer still sees zero of the 26 CRM tables.
+The previously requested Reader approval remains pending. No grant was added,
+and this failure continues to block pushing the pre-push gate changes.
+
 ### Tau 2.0.11 and the MCP persistence retest (2026-10-11)
 
 [Tau issue #90](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/90) is
@@ -29,10 +80,16 @@ and MetaTables remains 0.1.33. All 201 CRM tests and Ruff pass. The existing
 migration-gated workflow and `openai-codex/gpt-5.6-luna/medium` default remain.
 
 [Platform issue #932](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/932)
-was closed after the maintainer repaired redundant billing allocation work
-occupying the existing worker; its producer fix and graceful worker restart
-reportedly restored ordinary initial and scale-from-zero admission. This owner evidence
-does not attribute every historical delay to that work.
+was initially closed after the maintainer repaired redundant billing allocation
+work. Its final resolution at 12:19:40 UTC corrected that diagnosis: the billing
+change removed unnecessary load, while the worker restart temporarily drained
+overlapping runtime-monitor passes. The monitor's 60-second target lock was not
+renewed during long passes, so overlapping chains occupied worker slots and
+delayed activation claims. The maintainer reports
+[issue #934's fix](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/934),
+commit `487f4512d`, renews each running pass's existing lock without changing
+public contracts, permissions or migrations. This is owner evidence of the
+internal cause; the consumer read-back below verifies the repaired path.
 
 Independent public session entries recovered the earlier uncertain turn's
 final error: only `crm__list_tools` ran, and no business create or update was
@@ -58,8 +115,8 @@ read was blocked before its REST request at 10:51:05 UTC by another
 `The runtime activation could not be scheduled.` refusal. A second attempt
 recorded public operation `6b209537-6469-4a44-b17a-953c9c5cd1ef`, created
 10:53:37 UTC and failed without a start time at 10:54:37 UTC. Admission became
-`unavailable`, with `can_request=false` and replicas 0/0. Issue #932 is reopened
-with this exact recurrence; its fresh internal cause is not established.
+`unavailable`, with `can_request=false` and replicas 0/0. Issue #932 was reopened
+with this exact recurrence; its fresh internal cause was not established then.
 Admission subsequently recovered in operation
 `dd662d44-39f2-4d76-8890-415ca07a9c90`, with the caller ready at 11:07:55 UTC.
 The admitted contact detail read nevertheless returned HTTP 500 at 11:09:04 UTC
@@ -71,7 +128,21 @@ A further read-only attempt after catalog reconciliation failed admission at
 11:16:35 UTC. Operation `1c90c639-0ca4-4a57-9c12-8c4c1261cb51` failed without
 a start time after approximately 61 seconds. No additional business write
 or archive was issued.
-Independent persistence confirmation and fixture cleanup remain unverified.
+Those attempts left independent persistence confirmation and fixture cleanup
+unverified. After the final Django repair, the same contact was read without
+replaying its original message or business writes. Runtime admission operation
+`f6b0c32d-0fd1-4326-bc16-e36bed7103b7` was requested at 12:27:46 UTC and started
+at 12:27:48 UTC; the client observed `can_request=true` at 12:28:59 UTC.
+Independent REST read-back returned HTTP 200 against API revision
+`11ec7117-d090-47e0-b302-9548a81e1d7b`, with the exact marker, updated title,
+version 2 and both attribution fields set to the human requester. This confirms
+that the earlier MCP create and update persisted outside their original turn.
+After a fresh exact-state check, one archive with `expected_version=2` returned
+HTTP 200 and version 3 at 12:33:15 UTC. An independent detail read confirmed
+the archive, and an exact-marker active collection read returned no items and
+`totalItems=0`. The fixture is cleaned up; no original create/update or uncertain
+write was replayed. Hosted MCP persistence and cleanup are now verified. The
+developer's local-mode table-access prerequisite above remains unresolved.
 
 The dependency update was pushed as `be0e5fc0943dc65a28ac373e2615a974323632ae`.
 Its workflow `d21a34c8-58af-4f99-bfce-f8d97e0abfa6` completed both candidate
@@ -85,7 +156,9 @@ API `8e88bf90-65fd-44a1-84c6-004eff66db6f` and assistant
 `1d078f53-565c-4336-92e8-f01862127d77`. The public Agent record independently
 confirms `openai-codex/gpt-5.6-luna/medium`. This verifies Tau 2.0.11 promotion;
 the earlier successful business turn remains scoped to its recorded 2.0.10
-host, and fresh updated-runtime persistence verification remains blocked.
+host. The later updated API runtime's independent persistence and cleanup
+verification passed as recorded above; no new business write was sent through
+the 2.0.11 assistant during this retest.
 The older documentation
 push `7df453c` failed at its migration Job before the reported platform repair,
 because MetaTables runtime discovery timed out. Neither that older failure nor

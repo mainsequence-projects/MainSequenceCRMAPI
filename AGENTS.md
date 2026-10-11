@@ -16,6 +16,20 @@ Target: Python FastAPI, Main Sequence MetaTables, Vite React/TypeScript and the 
 
 Implement tickets in dependency order. Prove atomic governed commands and fresh-process catalog binding before completing mutations. Report executed checks separately from specified, mocked or unexecuted tests.
 
+User-required pre-push gate (2026-10-11): always run the actual CRM agent in
+Tau local mode with the workflow's real provider/model before pushing. Run
+`.venv/bin/python scripts/verify_local_agent.py`; unit tests, ASGI imports,
+health alone, mocked providers and hosted-only tests do not satisfy this gate.
+The check must exercise the real CRM MCP bridge, inspect actual successful tool
+results, preserve local history across restart, and compare a fresh API read.
+Keep CRM smoke-test calls read-only. If the live check fails or is unavailable,
+fix or report the failure and do not push or bypass the gate with `--no-verify`.
+Install the repository hook with `git config --local core.hooksPath .githooks`.
+For changes to mutations, also verify an explicitly owned disposable fixture
+through create/update/read-back and clean it up after confirming current state;
+never replay an uncertain write. Retain failed-run evidence under ignored
+`.local/agent-pre-push/` and distinguish a local-mode agent from hosted CRM data.
+
 Current repository decision (2026-09-23): Alembic `0003` removes `command_receipt`; CRM commands no longer require `Idempotency-Key` or promise replay. Older handoff text mandating receipts is superseded for this repository. Keep version fences and governed atomic writes, and read server state before retrying an uncertain write.
 
 Current repository decision (2026-09-23): Alembic `0004` removes the CRM application workspace table and every `workspace_uid` column. The CRM has singleton settings and direct record foreign keys; platform-injected identity/policy remain authoritative. Older handoff instructions for workspace-scoped keys, a workspace UID resolver, or a workspace mutation epoch are superseded. Do not reintroduce them.

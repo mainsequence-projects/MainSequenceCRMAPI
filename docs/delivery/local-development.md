@@ -180,6 +180,44 @@ local consent testing, never the production client.
 
 ## Optional Tau runtime
 
+### Required live check before every push
+
+Run the actual local-mode agent before publishing:
+
+```bash
+.venv/bin/python scripts/verify_local_agent.py
+git config --local core.hooksPath .githooks
+```
+
+The repository's executable `.githooks/pre-push` runs this check on every push
+and rejects a failed check. It tests the checked-out revision being pushed;
+commit pending changes first. Do not bypass it with `--no-verify`.
+
+The check starts the real `api.tau.main:app` and `api.crm.local:app` on unused
+loopback ports. It selects the workflow's provider, model and thinking level
+(currently `openai-codex/gpt-5.6-luna/medium`), keeps broad coding and platform
+MCP tools excluded, and uses the existing Main Sequence CLI sign-in. Protected
+CRM bootstrap must report ready before it sends one real chat turn that
+discovers CRM MCP and performs a uniquely scoped,
+read-only contact search. Actual successful MCP tool results are required;
+an assistant's success claim alone does not pass. Both processes are restarted
+to verify local conversation persistence and compare a fresh CRM API read.
+`--contact-uid <UID>` instead verifies one explicitly selected record.
+
+Tau's state and private process logs stay under ignored
+`.local/agent-pre-push/<run>/`; each `report.json` records the version, model,
+result and evidence boundary. Tau runs locally, but its provider and user
+authentication are real remote services, and CRM business reads still use the
+Environment's hosted PostgreSQL MetaTables. This check creates no CRM fixture
+and runs no migration. An unavailable provider, sign-in or database blocks the
+push. If legacy credentials in `.env` override the saved CLI login, repair
+the sign-in with `.venv/bin/mainsequence refresh-token`; never print or copy
+the token values. The developer also needs Reader access to the CRM namespace
+for this read-only gate: workload Team grants do not grant the developer access,
+and administrator rights to manage grants do not grant table reads. Obtain the
+namespace owner's approval for any additional grant. Tests and ASGI imports
+remain useful separate checks.
+
 The sibling static site's sole VS Code launch entry runs `scripts/dev-stack.mjs`.
 It starts this API on `127.0.0.1:38641`, Tau on `127.0.0.1:38642`, the guide
 on `127.0.0.1:38643`, and Vite on `127.0.0.1:38644`. Before startup the
