@@ -17,5 +17,8 @@ write may already have completed; check current CRM state before trying again.
 The rest of CRM remains usable when the assistant or its provider is unavailable.
 
 The API owns the [MCP tool contract](../api/mcp.md), and the separate Tau runtime
-owns the conversation. Hosted deployment and live tool verification remain
-pending; see [release evidence](../delivery/verification.md).
+owns the conversation. New conversations default to GPT-5.6 Luna through the
+Codex subscription provider, with medium reasoning. The signed-in person needs
+an active credential for that provider; an existing session keeps its own model
+selection. The hosted API and assistant are deployed. Successful hosted tool
+writes remain unverified; see [release evidence](../delivery/verification.md).

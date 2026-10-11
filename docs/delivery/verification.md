@@ -50,7 +50,7 @@ catalog bindings were reconciled. All five workflow steps succeeded, including
 API deployment `f8d88cb3-d8dd-48e3-9730-ef082bebb497` and assistant deployment
 `780a777e-8f91-4abe-af2f-08df58729bb1`.
 
-API release `2de75e21-bfe1-4b77-b668-6916488ed317` has active MCP revision
+API release `2de75e21-bfe1-4b77-b668-6916488ed317` initially activated MCP revision
 `8b8985d9-f7e2-4465-96be-6f293f37955a`. A real authenticated readiness call
 returned HTTP 200 with all six checks ready; bootstrap also returned 200 and
 the verified human identity. The official MCP client initialized the hosted
@@ -58,11 +58,16 @@ endpoint, listed 66 tools including `crm_contacts_create`, and verified that a
 business read without a signed requester returns `forbidden`. These checks
 prove admission and fail-closed delegation, **not successful MCP writes**.
 
-Bootstrap still reported the assistant disabled. Public sharing inspection
-confirmed the API workload has no view grant on the assistant Agent or release.
-The workflow now declares API view access to `crm-assistant` for discovery;
-backend validation accepts it without errors or warnings. Its applied grant
-and a fresh bootstrap response still need verification after publication.
+Bootstrap initially reported the assistant disabled. Public sharing inspection
+confirmed the API workload had no view grant on the assistant Agent. Commit
+`fa5ef89` added API view access to `crm-assistant` for discovery. Workflow
+`3e1ea9c6-2fdd-4264-acfa-70fccbe60b21` succeeded in all five steps, including
+migration Job run `e41d8659-0ab5-4345-89c2-a6014ea562c7`. The API's active and
+desired revision became `949a023b-4472-48ad-8ecb-6cca3f20551d`; the assistant's
+became `32778bb1-bd6f-45de-a510-705fcf63b131`. The applied Agent view grant and
+a fresh authenticated bootstrap with `assistant.enabled=true` are verified.
+All six readiness checks pass. The assistant's API view grant and
+`acts_for_requester=true` were also verified through public platform reads.
 
 The bounded real write test created an owned AgentSession
 `199f74fe-6397-4714-a410-2fb2d3460973`, then the SDK's public A2A sender failed
@@ -82,6 +87,24 @@ MetaTables store returned zero contacts for the exact verification marker.
 These checks do not establish successful MCP persistence or the platform's
 dispatch outcome. No runtime assertion, token or SDK role was patched to
 bypass these boundaries.
+
+The supported Command Center Chat reached a real model turn in owned session
+`954916fc-bc49-4cb5-ae45-cea2a6b18f0f`, using the existing Codex subscription
+and GPT-5.6 Sol. At 07:29 UTC, while the deployment above was still finishing,
+`crm__list_tools` returned `Main Sequence could not provide access to the crm
+application.` No business tool ran in that turn. Its operational log records
+`runtime.mcp_application.failed` with `BackendError`; the cause remains
+unclassified pending a check after deployment. A platform-advertised
+GPT-6 Astra selection previously failed before tools because Tau's installed
+model catalogue does not include it; that mismatch is tracked in
+[Tau issue #89](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/89).
+
+At the user's request, the workflow now selects `openai-codex`,
+`gpt-5.6-luna` and `medium` for new conversations. Tau 2.0.9's installed
+catalogue includes that model and reasoning level. The exact workflow passes
+live backend validation without errors or warnings. Its publication, applied
+default and live model execution still need verification. Existing sessions
+retain their selected model.
 
 Frontend commit `bfa90b0` binds its build to the active API UID above. Workflow
 `03a4e19e-1529-4505-884d-389b7222fd40` and Static Site deployment

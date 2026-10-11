@@ -134,8 +134,8 @@ def test_the_assistant_kept_its_declaration_when_it_moved_into_this_file():
     assert resources["crm-assistant"]["spec"] == {
         "source_path": "api/tau/main.py",
         "mcp_applications": [{"resource": "crm"}],
-        "llm_provider": "openai",
-        "llm_model": "gpt-5.4",
+        "llm_provider": "openai-codex",
+        "llm_model": "gpt-5.6-luna",
         "llm_thinking": "medium",
         "automatic_deployment": True,
         "automatic_redeployment": EVERY_PUSH,
