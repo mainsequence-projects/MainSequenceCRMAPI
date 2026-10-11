@@ -93,8 +93,10 @@ The supported Command Center Chat reached a real model turn in owned session
 and GPT-5.6 Sol. At 07:29 UTC, while the deployment above was still finishing,
 `crm__list_tools` returned `Main Sequence could not provide access to the crm
 application.` No business tool ran in that turn. Its operational log records
-`runtime.mcp_application.failed` with `BackendError`; the cause remains
-unclassified pending a check after deployment. A platform-advertised
+`runtime.mcp_application.failed` with `BackendError`. At 07:38 UTC, after
+startup, a read-only discovery succeeded and exposed create, update and get.
+The earlier access failure is no longer reproducible after that startup;
+the logs do not establish its exact cause. A platform-advertised
 GPT-6 Astra selection previously failed before tools because Tau's installed
 model catalogue does not include it; that mismatch is tracked in
 [Tau issue #89](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/89).
@@ -102,16 +104,36 @@ model catalogue does not include it; that mismatch is tracked in
 At the user's request, the workflow now selects `openai-codex`,
 `gpt-5.6-luna` and `medium` for new conversations. Tau 2.0.9's installed
 catalogue includes that model and reasoning level. The exact workflow passes
-live backend validation without errors or warnings. Its publication, applied
-default and live model execution still need verification. Existing sessions
-retain their selected model.
+live backend validation without errors or warnings. Commit `c813a6d` was
+pushed, and a public Agent read confirms those exact applied defaults.
+Its migration-gated workflow `90f09ddd-ee88-4998-a50d-a071d8b47aab` was still
+running when this evidence was recorded. Existing sessions retain their
+selected model.
+
+The browser session then selected `openai-codex/gpt-5.6-luna/medium`, confirmed
+by a fresh public AgentSession read. A real turn created exactly one marked
+disposable Contact through application MCP, updated only its title with the
+current version, and read it back. Contact
+`f173c54f-1234-4274-a1f3-9fde344d9355` advanced from version 1 to 2 with title
+`MCP updated and persisted`. Both attribution fields contain the signed
+human requester UID `e2a4f38a-1b5f-40a3-974f-70bc8f065b3f`, rather than a
+workload User. A separate authenticated Python process performed a fresh REST
+detail read through the API's governed MetaTables store and independently
+confirmed the UID, exact marker, version, title and both attribution fields.
+This proves hosted MCP create/update persistence for that Contact path. It
+does not establish every tool, Team permission combination or transfer gate.
+After read-back, the exact fixture was soft-archived through the REST version
+command at expected version 2. A fresh detail read confirms `archived_at` and
+version 3, and the default active collection has zero matches for its exact
+marker. No other record was changed.
 
 Frontend commit `bfa90b0` binds its build to the active API UID above. Workflow
 `03a4e19e-1529-4505-884d-389b7222fd40` and Static Site deployment
 `7243e9c7-66a4-4638-919c-67df680a666c` succeeded. The active frontend revision
-is `f4485067-625e-4909-b41b-9905dfc0b11f`. Real browser embedding, Google OAuth
-provider registration and requester MCP create/update/persistence remain
-unverified.
+is `f4485067-625e-4909-b41b-9905dfc0b11f`. Real CRM frontend embedding and
+Google OAuth provider registration remain unverified. The browser proof above
+uses Command Center Chat with the deployed CRM assistant, rather than the
+CRM Static Site's embedded chat.
 
 Executed checks pass: all 201 API tests, Ruff and strict MkDocs. Both current
 workflow files pass live backend validation with no errors or warnings. The

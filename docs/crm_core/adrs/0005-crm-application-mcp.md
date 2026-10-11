@@ -1,6 +1,6 @@
 # ADR 0005: Serve CRM tools through application MCP
 
-- **Status:** Deployed; live governed tool verification pending
+- **Status:** Deployed; hosted requester create/update/persistence verified
 - **Date:** 2026-10-09
 - **Supersedes:** The in-process Tau business-tool transport and caller binding in
   [ADR 0003](0003-tau-crm-agent-tools.md). Its shared service, version, permission,

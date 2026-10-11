@@ -20,5 +20,6 @@ The API owns the [MCP tool contract](../api/mcp.md), and the separate Tau runtim
 owns the conversation. New conversations default to GPT-5.6 Luna through the
 Codex subscription provider, with medium reasoning. The signed-in person needs
 an active credential for that provider; an existing session keeps its own model
-selection. The hosted API and assistant are deployed. Successful hosted tool
-writes remain unverified; see [release evidence](../delivery/verification.md).
+selection. A real hosted create, versioned update and independent persisted
+read were verified with Luna; see [release evidence](../delivery/verification.md)
+for the exact scope and remaining checks.
