@@ -81,7 +81,7 @@ Main Sequence MCP. Tau retains its skill-scoped `read` and A2A Task controls.
 The model discovers schemas with `crm__list_tools` and executes them through
 `crm__call_tool`; there are no native per-business-operation Tau tools.
 
-Tau's application catalogue is hosted-only in 2.0.11. Locally, the project
+Tau's application catalogue is hosted-only in 2.0.12. Locally, the project
 extension registers just those same two generic transport tools, using the
 official MCP client against the loopback CRM launcher. The launcher supplies
 its saved sign-in to request verification. `CRM_LOCAL_API_ORIGIN` defaults to
@@ -111,6 +111,18 @@ CRM does not add a retry loop. Tau 2.0.11 carries each finite MCP response
 deadline through its HTTP transport without the earlier shorter backend read
 cap. This repairs client timeout handling and preserves the same uncertain-write
 boundary. No new architectural decision is required.
+
+A later 2026-10-11 dependency amendment pins Tau 2.0.12 and requires Main
+Sequence 9.0.22 and MetaTables 0.1.34. A hosted direct A2A Message now has the
+platform's 90-second limit. When it expires, Tau stops the turn and answers
+HTTP 504 `DEADLINE_EXCEEDED` with reason `MESSAGE_RESPONSE_LIMIT_EXCEEDED`, and
+the SDK raises `A2AMessageLimitExceededError`. The stopped turn's work is
+neither rolled back nor replayed, so an uncertain business write still requires
+a fresh server read. Each CRM tool still declares 60 seconds, but the limit
+covers the whole turn, including model time and every tool call, so longer
+work uses Task mode. Chat, streams and Task turns are unchanged, and
+MetaTables 0.1.34 changes only server-side hypertable finalization. No new
+architectural decision is required.
 
 The platform uses the resource key as the MCP application name and rejects
 hyphens. Rename the API resource from `crm-api` to `crm`, retaining the workflow

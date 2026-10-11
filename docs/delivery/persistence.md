@@ -165,7 +165,7 @@ hand. The assistant calls the API-owned MCP tools, so its deployment waits
 for the API deployment as well as its own prepared image. All business writes
 continue through the API's governed CRM operations.
 
-The repository locks `mainsequence-metatable` 0.1.33. Before rollout, verify
+The repository locks `mainsequence-metatable` 0.1.34. Before rollout, verify
 the Environment's hosted API and its system migrations against this version.
 The historical 0.1.19 minimum addressed only the removal of runtime-switch
 fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));
@@ -199,7 +199,7 @@ use the launcher's actual `FASTAPI_PUBLIC_BASE_URL` when no explicit
 `GOOGLE_OAUTH_REDIRECT_URI` is set; an explicit URI still takes precedence and
 must be updated if it names a former release.
 
-Version 0.1.33 uses batched table inventories and physical inspection. Client
+Since 0.1.33, MetaTables uses batched table inventories and physical inspection. Client
 finalization sends at most ten tables per request, starting with the version
 table: the CRM's 27 catalog entries need three requests. After a partial
 finalization failure, inspect the failed tables and rerun the same upgrade;
@@ -236,12 +236,14 @@ no scheduled Job today.
 The API and migration Job declare
 `access.branches: [{repository: MetaTables, level: view}]` for hosted API
 discovery. This platform access does not grant table access. With MetaTables
-0.1.33, an Organization admin must create the `mainsequence-crm` namespace in
+0.1.34, an Organization admin must create the `mainsequence-crm` namespace in
 each Environment and grant Writer to its CRM Team. That Team needs the workload
 Users of the migration Job and API as members. The assistant accesses the
 CRM application and no longer needs direct table permissions for these tools. Use a separate Team
 per Environment, and add replacement workload Users when resources are
-recreated. This setup has not been verified or changed by the package upgrade.
+recreated. The Production Team, grant and members are recorded in the
+[verification evidence](verification.md#hosted-adapter-repair-and-controlled-provisioning-2026-10-11);
+package upgrades do not change them.
 
 The current local backend accepted this API workflow and the sibling
 frontend's single `crm-site.yaml` on 2026-10-09, using workflow API 2.3.0 with

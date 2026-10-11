@@ -128,7 +128,7 @@ Hosted environments are migrated only by the deployment workflow's
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
 Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
 Before rollout, verify the hosted MetaTables API and its system migrations
-against client 0.1.33 and complete the CRM Team/namespace setup documented in
+against client 0.1.34 and complete the CRM Team/namespace setup documented in
 [persistence](persistence.md#migration-and-runtime-boundary). A failed migration
 Job prevents the API and assistant from rolling out.
 
@@ -237,7 +237,7 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 2.0.11 is locked to its release tag `v2.0.11` in `pyproject.toml` and
+`ms-tau-sdk` 2.0.12 is locked to its release tag `v2.0.12` in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
@@ -295,31 +295,36 @@ Hosted Contact create/update and independent persistence read-back have been
 verified through Command Center Chat with GPT-5.6 Luna on its recorded runtime.
 Main Sequence 9.0.20 and Tau 2.0.10 were deployed successfully. The new Tau
 2.0.11 sender recovered a successful MCP create/update/get turn after the
-platform returned an ambiguous HTTP 502. Independent external read-back is
-blocked by recurrent runtime activation failure and MetaTables discovery
-timeouts; keep the marked fixture and read its current state before another
-write. Both hosted releases now point to the intended 2.0.11 revisions, but
-that promotion does not resolve the read-back or cleanup blocker. See
+platform returned an ambiguous HTTP 502. Both hosted releases were promoted to
+Tau 2.0.11, and after the platform repair an independent read-back confirmed
+that turn's writes and the fixture was cleaned up. The Main Sequence 9.0.22 and
+Tau 2.0.12 update needs its own hosted check after deployment. See
 [verification evidence](verification.md).
 
 Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
 replace general coding tools with Tau's skill-scoped `read`; A2A Task controls
 remain. These exclusions do not disable application MCP.
 
-In hosted mode Tau 2.0.11 verifies platform-signed caller assertions and
+In hosted mode Tau 2.0.12 verifies platform-signed caller assertions and
 requires the launcher's projected workload identity token file for its runtime
 credential exchange. Those hosting settings belong to the platform launcher;
 they are not local-mode flags or repository credentials. The hosted entrypoint
 served the earlier verified Chat MCP turn; that proof does not establish the
-fresh updated-runtime test. Tau 2.0.11 waits for a waking application
+fresh updated-runtime test. Tau 2.0.12 waits for a waking application
 within a bounded readiness deadline before admitting its MCP calls; it does not
 retry an uncertain business write.
 
-Tau 2.0.11 also honors a finite MCP per-call response deadline through its HTTP
-transport. A longer explicit tool deadline is no longer cut short by the
-default backend HTTP read timer. Startup/catalog and connection limits remain
-bounded. A timeout or disconnect still leaves the remote write outcome unknown;
-read current CRM state before issuing another write.
+Since 2.0.11, Tau also honors a finite MCP per-call response deadline through
+its HTTP transport. A longer explicit tool deadline is no longer cut short by
+the default backend HTTP read timer. Startup/catalog and connection limits
+remain bounded. A timeout or disconnect still leaves the remote write outcome
+unknown; read current CRM state before issuing another write.
+
+Tau 2.0.12 enforces the platform's 90-second limit on a hosted direct A2A
+Message and answers HTTP 504 `DEADLINE_EXCEEDED` when it expires. Send longer
+work as a Task, and never resend a Message that ran out of time: its work is
+not rolled back. Local mode has no platform Message limit and refuses to start
+with `MAINSEQUENCE_A2A_MESSAGE_LIMIT_SECONDS`, which only the platform sets.
 
 Running `ms-tau` or `api.tau.main:app` locally needs `TAU_LOCAL_MODE=true`,
 `MAINSEQUENCE_AUTH_MODE=jwt`, an explicit provider and model, and the signed-in

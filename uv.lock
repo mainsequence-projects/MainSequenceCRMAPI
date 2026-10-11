@@ -764,7 +764,7 @@ wheels = [
 
 [[package]]
 name = "mainsequence"
-version = "9.0.20"
+version = "9.0.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
@@ -786,9 +786,9 @@ dependencies = [
     { name = "typer" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/f5/ba701cea655a2071a7677d5f3799819ae72ce1fa0d575ce9e786eb331305/mainsequence-9.0.20.tar.gz", hash = "sha256:ff6bba2ab62295755561acf37b28f27121baccfaff1b81f6acc61b50727bf14f", size = 329805, upload-time = "2026-10-11T07:51:50.441Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/41/998fd24f47d0d84bf9dd995ac6ba41ecce014f6259bcf8c15287f7205592/mainsequence-9.0.22.tar.gz", hash = "sha256:1e280b7dc01ed86b2aaca0865f3197e5337fc7e3fa25819e7b2b1fa15fa80367", size = 338342, upload-time = "2026-10-11T19:02:39.719Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/26/56f1a92f9a8f0002afadd4e1a6260f41bfb0a9826f5cc8093a1b147bfa6a/mainsequence-9.0.20-py3-none-any.whl", hash = "sha256:8005bb785137623dea476ab9b96fd402d3a2a9b200473f3fac61b0204378855b", size = 272676, upload-time = "2026-10-11T07:51:48.42Z" },
+    { url = "https://files.pythonhosted.org/packages/45/8e/f5621cdcd891ec7d737320c690470cc05aa37764305e71506cf74e079dd8/mainsequence-9.0.22-py3-none-any.whl", hash = "sha256:2e66a86a5bc27a0a4cb840233ecf7696c8cdb9cdf1900b9c93cede4c91758bdd", size = 277231, upload-time = "2026-10-11T19:02:37.863Z" },
 ]
 
 [package.optional-dependencies]
@@ -798,7 +798,7 @@ mcp = [
 
 [[package]]
 name = "mainsequence-metatable"
-version = "0.1.33"
+version = "0.1.34"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -830,9 +830,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a6/a2/fbf75668cf287ee6a3a3ccf48360e427c987713e21a063e0831261dcb948/mainsequence_metatable-0.1.33.tar.gz", hash = "sha256:fbe64e4b5912f4e9943beb08bd78bee55d9b1e673601686cc21ce724dc5cc7c5", size = 1236479, upload-time = "2026-10-10T16:00:35.803Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/5c/c94c0012ab24a3d8c2c178afdaa06d631706b208688e253f6baa1d13b7c5/mainsequence_metatable-0.1.34.tar.gz", hash = "sha256:7ce385d8a6f87ce86dcd0e41c72688d7854c38295cda8a8e9d089ab3d0ff1acf", size = 1237932, upload-time = "2026-10-11T10:01:35.203Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/d0/678ee3258fbeb354935fc315d6c08a52740bf568e8c68248bf6d63da23f3/mainsequence_metatable-0.1.33-py3-none-any.whl", hash = "sha256:4067b969f6cfe88949995730e1e9a21423adcdfe723b6952abe24aa390aa0503", size = 2709008, upload-time = "2026-10-10T16:00:33.893Z" },
+    { url = "https://files.pythonhosted.org/packages/46/fe/a89ba89d3e20e25fea5dc7916809c653b01afba390c787c70e4e63d793e3/mainsequence_metatable-0.1.34-py3-none-any.whl", hash = "sha256:6deb0444d8f852dae167089b84a0ae2da62041ef83419528bca93208db69f004", size = 2710348, upload-time = "2026-10-11T10:01:33.418Z" },
 ]
 
 [[package]]
@@ -868,10 +868,10 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.110,<1" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "jinja2", specifier = ">=3.1.6,<4" },
-    { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.20,<10" },
-    { name = "mainsequence-metatable", specifier = ">=0.1.33,<0.2" },
+    { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.22,<10" },
+    { name = "mainsequence-metatable", specifier = ">=0.1.34,<0.2" },
     { name = "mcp", specifier = ">=1.30,<2" },
-    { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.11" },
+    { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.12" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.13,<3" },
     { name = "pyjwt", specifier = ">=2.10,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
@@ -1193,8 +1193,8 @@ wheels = [
 
 [[package]]
 name = "ms-tau-sdk"
-version = "2.0.11"
-source = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.11#7a17e86293d14120fe79c8165bc74054c4279c36" }
+version = "2.0.12"
+source = { git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.12#f3cb704a7a5ab5b722782bdc7c016dd352f16852" }
 dependencies = [
     { name = "anyio" },
     { name = "concurrent-log-handler" },

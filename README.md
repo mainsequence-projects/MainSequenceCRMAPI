@@ -80,7 +80,7 @@ empty provider. Nothing migrates at HTTP startup. Hosted environments are
 migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
 `.mainsequence/workflows/crm-api.yaml` runs before it deploys the API and the
 CRM assistant. That file is the repository's only workflow file. The API now
-uses Main Sequence 9.0.19 and MetaTables 0.1.27. Before rollout, verify the
+uses Main Sequence 9.0.22 and MetaTables 0.1.34. Before rollout, verify the
 hosted MetaTables API and its system migrations against that client version,
 and provision the CRM Team's namespace access described in
 [persistence and migrations](docs/delivery/persistence.md#migration-and-runtime-boundary).
@@ -96,9 +96,10 @@ See [persistence and migrations](docs/delivery/persistence.md). Governed
 mutation safety must be checked separately before a mutation release;
 readiness does not certify it.
 
-The optional Tau 2.0.9 assistant now discovers the API's typed CRM tools through
+The optional Tau 2.0.12 assistant discovers the API's typed CRM tools through
 application MCP at `/mcp`. Local development uses the same endpoint through a
 loopback transport bridge. See [ADR 0005](docs/crm_core/adrs/0005-crm-application-mcp.md)
-for authorization and the pending resource-key cutover: `crm-api` → `crm`
-creates a new API release identity, requiring frontend and OAuth updates at
-rollout. No hosted deployment has been performed for this migration.
+for authorization and the resource-key cutover: `crm-api` → `crm` created a new
+API release identity. It was deployed on 2026-10-11 and the frontend binds the
+new release; Google OAuth registration for it remains unverified. See the
+[verification evidence](docs/delivery/verification.md).

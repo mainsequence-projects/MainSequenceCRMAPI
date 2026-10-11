@@ -55,7 +55,7 @@ capabilities.
 
 The managed CRM assistant intentionally excludes Tau's base coding tools and
 Main Sequence MCP. Treat that as its chosen runtime profile, not a capability
-defect. Application MCP is independent of broad Main Sequence MCP; Tau 2.0.9
+defect. Application MCP is independent of broad Main Sequence MCP; Tau 2.0.12
 retains skill-scoped `read`. Customize conversation in `.tau/SYSTEM.md`.
 
 Do not remove the `<!-- mainsequence-agent-scaffold:start schema=1 source=agent_scaffold -->`
