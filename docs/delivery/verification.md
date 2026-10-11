@@ -17,6 +17,45 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Main Sequence 9.0.22, MetaTables 0.1.34 and Tau 2.0.12 (2026-10-11)
+
+The repository now requires `mainsequence[mcp]>=9.0.22` and
+`mainsequence-metatable>=0.1.34`, and pins `ms-tau-sdk==2.0.12` to its release
+tag `v2.0.12`, commit `f3cb704a7a5ab5b722782bdc7c016dd352f16852`. `uv lock`
+moved only those three packages; the local environment and the deployment
+`requirements.txt` export match. The managed skill copies were refreshed from
+the installed packages: Main Sequence 9.0.6 to 9.0.22, MetaTables 0.1.33 to
+0.1.34 and Tau 2.0.9 to 2.0.12. No CRM code, migration, workflow declaration
+or resource key changed; [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md)
+records the new direct-Message limit.
+
+Executed checks: all 201 tests, Ruff, strict MkDocs and the documentation test
+pass. The unchanged workflow passes live backend validation of the committed
+file with `valid: true`, API 2.3.0, no errors or warnings and
+`applicable: null`. Its three resource keys are unchanged from `origin/main`.
+
+The required local agent check passed on commit
+`13c214b728f3a85b0cad599abaaee7e7b43539bb` with a clean tree, Tau 2.0.12 and
+`openai-codex/gpt-5.6-luna/medium`. Protected bootstrap returned HTTP 200 with
+all six checks ready. The real turn called `crm__list_tools`, then one
+`crm__call_tool` running `crm_contacts_list` for a unique marker, which
+returned no items. After both processes restarted, the local history was
+unchanged and a fresh REST read matched the MCP result. The check's stream
+client disconnected at its 5-second read limit after about 13 seconds; it
+recovered the same persisted turn from local history without sending again.
+This supersedes the blocked status recorded below for this gate.
+
+The earlier catalog failure is gone because of an access change made outside
+this repository. Read-only inspection at about 21:00 UTC shows the developer
+reaching the CRM tables as a member of the owning Team
+`mainsequence-crm-production`, which makes the developer's effective access
+Writer rather than the Reader grant this gate documents. The Team also lists
+the API and migration Job workload Users recorded below and a service account,
+`ae0690b5-a8e9-4996-ad90-d1c40daf1dec`, that this documentation does not
+record. The namespace's only grant is still Writer to that Team. This update
+changed no grant or membership. The hosted deployment of these versions and its
+MCP verification remain to be done after the push.
+
 ### Mandatory local agent pre-push check (2026-10-11)
 
 The user requires a real local-mode agent test before every push. The
