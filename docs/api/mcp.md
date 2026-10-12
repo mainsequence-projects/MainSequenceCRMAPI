@@ -1,7 +1,8 @@
 # CRM application MCP
 
 `POST /mcp` serves authenticated, stateless Streamable HTTP with JSON responses.
-It implements MCP initialization, `tools/list` and `tools/call`. This endpoint
+It implements MCP initialization/discovery, `tools/list`, `tools/call`,
+`skills/list`, `skills/get` and `resources/read`. This endpoint
 is not public ingress and is outside the REST OpenAPI route index. The Main
 Sequence SDK rejects other methods and unapproved browser Origins.
 
@@ -61,6 +62,109 @@ may follow a committed write. Read the record before retrying. The local bridge
 reports `outcome_unknown` when a sent call loses its response, and never retries
 it automatically. Tau's hosted transport is SDK-owned and must likewise be
 treated as uncertain when it reports a failed call.
+
+## CRM usage skill pack
+
+The five authored business skills live under `.agents/skills/mainsequence_crm/`:
+
+| Skill | Primary tools | Business workflow |
+| --- | --- | --- |
+| `crm-core` | 37 | Contacts, Companies, affiliations, Notes, tags, activity, Tasks, Interactions, owner selection, settings and Contact merge previews. |
+| `crm-deals` | 9 | Deal records, pipeline metadata, stages, boards and versioned moves. |
+| `solution-selling/crm-prospecting` | 8 | Prospecting profiles, Lead state and linking the next Contact Task. |
+| `solution-selling/crm-prompters` | 5 | Template maintenance, context inspection and rendering unsaved drafts. |
+| `solution-selling/crm-discovery` | 10 | Diagnosis preparation and records, Deal assessments and Solution Selling context. |
+
+The allocation covers all 69 business tools exactly once; workflows can reuse
+another skill's reads. With Solution Selling disabled, the 46 core/Deal tools
+remain. Simple record operations stay grouped in core; separate skills cover
+the workflows with distinct decisions and evidence requirements.
+
+`crm-core/references/tool-map.json` records the exact primary allocation.
+`crm-core/references/mcp-usage.md` centralizes discovery, effective-user permissions,
+paging, version fences, business result interpretation and uncertain-write
+recovery. A prompter reference documents supported Jinja context and an example.
+Cross-skill links use published `skill://` URIs; references within a skill
+use relative paths. The API and static
+repositories contain identical usage packs; repository development skills stay
+in their separate namespace. `tests/test_crm_skill_pack.py` checks catalogue
+coverage with the module enabled and disabled, tool references and pack links.
+
+These instructions apply to advertised CRM MCP operations, including direct
+clients and generic discovery/call bridges. They follow the connected tool
+schemas, effective permissions and actual business results. They do not grant
+tool access, claim a draft was saved, or promise unsupported commands. Prompter
+requirements are currently inferred from the retrieved template; there is no
+server requirements-discovery tool.
+
+Repository implementation and maintenance skills live separately under
+`.agents/skills/mainsequence_crm_development/`. Only the business usage folder
+is published; development skills are excluded.
+
+## SDK skill publication
+
+Main Sequence 9.0.23 includes `mainsequence.server.mcp_skills.skills_extension`
+and version-matched publishing instructions in its `api_surfaces` skill. With
+MCP Python SDK 2.x, the CRM server installs it using:
+
+```python
+from mcp.server.mcpserver import MCPServer
+from mainsequence.server.mcp_skills import skills_extension
+
+mcp = MCPServer("crm", extensions=[skills_extension(".agents/skills/mainsequence_crm")])
+```
+
+The implementation subclasses `MCPServer`'s public tool methods to preserve
+the existing CRM catalogue and strict, redacted business validation. The SDK
+owns skill discovery, manifests and resource serving. `install_mcp` mounts its
+stateless HTTP app after request identity. A request-scoped binding retains
+the owning FastAPI application and its CRM services while the nested MCP app
+handles the protocol; it never supplies or replaces a caller identity.
+
+The publisher reads the selected folder directly at application creation;
+there is no generated package or second publication folder:
+
+```text
+.agents/skills/mainsequence_crm/
+  crm-core/
+    SKILL.md
+    references/mcp-usage.md
+    references/tool-map.json
+  crm-deals/SKILL.md
+  solution-selling/
+    crm-prospecting/SKILL.md
+    crm-prompters/
+      SKILL.md
+      references/template-context.md
+    crm-discovery/SKILL.md
+```
+
+Each skill's frontmatter name matches its folder. Group names use hyphens;
+supporting files belong to a skill. Shared guidance is stored and served once
+from `crm-core`, at `skill://crm-core/references/mcp-usage.md`. The three module
+skills have URIs such as `skill://solution-selling/crm-prompters/SKILL.md`.
+Relative folder resolution is independent of the process working directory.
+Changes to the pack take effect after restarting the API.
+
+Clients discover `io.modelcontextprotocol/skills` through modern MCP discovery,
+list skills with `skills/list`, get a manifest with `skills/get` and read its
+files with `resources/read`. Legacy 2025-11-25 initialization omits extension
+capabilities, but the registered skill methods and file reads are available.
+Manifests contain the byte size and SHA-256 digest of every served file.
+Unpublished files and unknown URIs return MCP errors.
+
+All five skills remain published when Solution Selling is disabled. Its tools
+then disappear from `tools/list`; skill presence does not enable a module.
+Discovery and file reads require the same verified HTTP identity and permitted
+Origin as tools. They expose authored instructions, require no CRM database
+readiness and grant no business permissions. Every business operation retains
+its effective-person capability checks.
+
+In-process tests exercise the actual CRM application with local Bearer and
+signed hosted caller verification, all five manifests, all eight file digests,
+published links, denied unauthenticated reads, URI isolation, module activation
+and modern client discovery. Hosted release availability remains unverified
+until these changes are deployed; no deployment or push was performed.
 
 ## Solution Selling read workflows
 

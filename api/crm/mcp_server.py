@@ -3,14 +3,16 @@
 import contextvars
 import logging
 
-from fastapi import FastAPI, HTTPException
-from mcp.server.lowlevel import Server
-from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from fastapi import FastAPI, HTTPException, Request
+from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
+from mcp.types import CallToolResult, Tool
 
 from api.crm.mcp_tools import CRMToolRuntime, build_crm_tools, tool_result
 from api.crm.service_adapter import context_for
 from mainsequence.client import User
 from mainsequence.server.fastapi import install_mcp, reads_as_caller
+from mainsequence.server.mcp_skills import skills_extension
 from src.crm.platform.runtime import CAPABILITIES, request_port
 from src.crm.services.operations import AccessDenied, ServiceUnavailable
 
@@ -91,10 +93,12 @@ def _require_hosted_person(request) -> str:
 
 
 def install_crm_mcp(application: FastAPI) -> None:
-    server = Server("crm", version="1")
+    active_request: contextvars.ContextVar[Request | None] = contextvars.ContextVar(
+        "crm_mcp_request", default=None
+    )
 
     def runtime() -> CRMToolRuntime:
-        request = server.request_context.request
+        request = active_request.get()
         if request is None:
             raise ServiceUnavailable("Missing HTTP request context")
         identity_mode = "local"
@@ -127,22 +131,44 @@ def install_crm_mcp(application: FastAPI) -> None:
 
     catalogue = {tool.definition.name: tool for tool in build_crm_tools(runtime)}
 
-    @server.list_tools()
-    async def list_tools():
-        return [tool.definition for tool in catalogue.values()]
+    class CRMMCPServer(MCPServer):
+        # Preserve the authored schemas and strict, redacted CRM validation
+        # through MCPServer's public tool methods. The SDK owns skill resources.
+        async def list_tools(self) -> list[Tool]:
+            return [tool.definition for tool in catalogue.values()]
 
-    # Our Pydantic boundary validates strictly and redacts invalid inputs. The
-    # SDK's default schema error includes the supplied value in its message.
-    @server.call_tool(validate_input=False)
-    async def call_tool(name, arguments):
-        token = _active_tool_name.set(name)
+        async def call_tool(
+            self, name: str, arguments: dict, context: Context | None = None
+        ) -> CallToolResult:
+            if context is None:
+                return tool_result("unavailable", message="Missing HTTP request context")
+            token = _active_tool_name.set(name)
+            try:
+                tool = catalogue.get(name)
+                if tool is None:
+                    return tool_result("not_found", message="CRM tool not found")
+                return await tool.invoke(arguments)
+            finally:
+                _active_tool_name.reset(token)
+
+    server = CRMMCPServer(
+        "crm", version="1",
+        extensions=[skills_extension(".agents/skills/mainsequence_crm")],
+    )
+    # install_mcp owns authentication and browser Origin admission for both
+    # platform release hosts and local URLs, as with the previous transport.
+    transport = server.streamable_http_app(
+        stateless_http=True, json_response=True,
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    )
+    async def crm_transport(scope, receive, send):
+        # Capture the owning FastAPI request before the SDK's nested Starlette
+        # app replaces scope["app"]. CRM ports live on this FastAPI application;
+        # caller identity still comes exclusively from SDK-verified getters.
+        request_token = active_request.set(Request(dict(scope), receive))
         try:
-            tool = catalogue.get(name)
-            if tool is None:
-                return tool_result("not_found", message="CRM tool not found")
-            return await tool.invoke(arguments)
+            await transport(scope, receive, send)
         finally:
-            _active_tool_name.reset(token)
+            active_request.reset(request_token)
 
-    manager = StreamableHTTPSessionManager(server, stateless=True, json_response=True)
-    install_mcp(application, manager.handle_request, lifespan=manager.run)
+    install_mcp(application, crm_transport, lifespan=server.session_manager.run)

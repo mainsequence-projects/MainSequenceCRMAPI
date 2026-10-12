@@ -1,0 +1,83 @@
+{
+  "skills": {
+    "crm-core": [
+      "crm_contacts_list",
+      "crm_contacts_get",
+      "crm_contacts_create",
+      "crm_contacts_update",
+      "crm_companies_list",
+      "crm_companies_get",
+      "crm_companies_create",
+      "crm_companies_update",
+      "crm_affiliations_list",
+      "crm_affiliations_get",
+      "crm_affiliations_create",
+      "crm_affiliations_update",
+      "crm_notes_list",
+      "crm_notes_get",
+      "crm_notes_create",
+      "crm_notes_update",
+      "crm_tags_list",
+      "crm_tags_get",
+      "crm_tags_create",
+      "crm_tags_update",
+      "crm_tasks_list",
+      "crm_tasks_get",
+      "crm_tasks_create",
+      "crm_tasks_update",
+      "crm_interactions_list",
+      "crm_interactions_get",
+      "crm_interactions_create",
+      "crm_interactions_update",
+      "crm_activity_list",
+      "crm_activity_get",
+      "crm_contacts_transition_company",
+      "crm_contacts_merge_preview",
+      "crm_principals_list",
+      "crm_settings_get",
+      "crm_settings_update",
+      "crm_tasks_complete",
+      "crm_tasks_reopen"
+    ],
+    "crm-deals": [
+      "crm_deals_list",
+      "crm_deals_get",
+      "crm_deals_create",
+      "crm_deals_update",
+      "crm_deals_move",
+      "crm_pipelines_list",
+      "crm_pipelines_get",
+      "crm_pipelines_stages",
+      "crm_pipelines_board"
+    ],
+    "solution-selling/crm-prospecting": [
+      "crm_prospecting_profiles_list",
+      "crm_prospecting_profiles_get",
+      "crm_prospecting_profiles_create",
+      "crm_prospecting_profiles_update",
+      "crm_leads_list",
+      "crm_leads_get",
+      "crm_leads_create",
+      "crm_leads_update"
+    ],
+    "solution-selling/crm-prompters": [
+      "crm_prompters_list",
+      "crm_prompters_get",
+      "crm_prompters_create",
+      "crm_prompters_update",
+      "crm_prompters_render"
+    ],
+    "solution-selling/crm-discovery": [
+      "crm_diagnoses_list",
+      "crm_diagnoses_get",
+      "crm_diagnoses_create",
+      "crm_diagnoses_update",
+      "crm_assessments_list",
+      "crm_assessments_get",
+      "crm_assessments_create",
+      "crm_assessments_update",
+      "crm_diagnoses_prepare",
+      "crm_solution_selling_context_get"
+    ]
+  }
+}

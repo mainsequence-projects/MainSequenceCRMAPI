@@ -10,7 +10,11 @@ operate within the Main Sequence platform and must follow Main Sequence platform
 
 CRM source authority, specifications and test gates live at `engineering/crm-handoff/START_HERE.md` and `engineering/crm-handoff/sources.lock.json`. Preserve existing repository/platform instructions and scaffold markers.
 
-Use `.agents/skills/mainsequence_crm/` for CRM work, with the appropriate installed `.agents/skills/mainsequence/`, `.agents/skills/metatables/`, `.agents/skills/command-center/` or optional `.agents/skills/ms_tau_sdk/` guidance. Project skills must remain outside SDK-managed/pruned namespaces.
+Use `.agents/skills/mainsequence_crm_development/` for CRM repository implementation and maintenance, with the appropriate installed `.agents/skills/mainsequence/`, `.agents/skills/metatables/`, `.agents/skills/command-center/` or optional `.agents/skills/ms_tau_sdk/` guidance. Project skills must remain outside SDK-managed/pruned namespaces.
+
+`.agents/skills/mainsequence_crm/` contains five business usage skills for CRM MCP operations: `crm-core`, `crm-deals`, `crm-prospecting`, `crm-prompters`, and `crm-discovery`. `crm-core` consolidates Contacts, Companies, affiliations, Notes, tags, activity, Tasks, Interactions, owners, settings and merge previews. Use these skills for operating the CRM through its advertised tools. They do not grant permissions or authorize repository changes. Exact enabled tool schemas and actual business results remain authoritative. The API publishes this folder directly with the Main Sequence SDK's `skills_extension` on authenticated `/mcp`.
+
+Solution Selling usage skills are nested under `.agents/skills/mainsequence_crm/solution-selling/`: `crm-prospecting`, `crm-prompters` and `crm-discovery`. Core and Deal skills stay directly under `mainsequence_crm/`. Shared MCP guidance and tool allocation live in `crm-core/references/mcp-usage.md` and `crm-core/references/tool-map.json`, served once and linked from other skills through `skill://` URIs. Keep the pack identical to the static repository's usage pack. `tests/test_crm_skill_pack.py` checks tool coverage with Solution Selling enabled and disabled; `tests/test_mcp_skills.py` verifies publication and authenticated file access.
 
 Target: Python FastAPI, Main Sequence MetaTables, Vite React/TypeScript and the Command Center SDK. Reuse the platform's caller identity, which the SDK's request identity verifies in the API; do not rebuild login/users/roles or adopt Supabase/Django/Frappe/Node business backends. Atomic is the pinned behavioral reference, not the retained application architecture. Tau is not required for deterministic tracking or data transfers.
 
@@ -40,7 +44,7 @@ Current repository decision (2026-10-04): `api.crm.main.create_app()` installs `
 
 Current repository decision (2026-10-09, amended 2026-10-12; ADR 0005): CRM business tools live in `api/crm/mcp_tools.py`, served through authenticated stateless `/mcp` installed after request identity. Hosted MCP business calls use the signed requester when present and check that person's CRM capabilities on every call; never fall back to the agent's permissions. A direct hosted caller is admitted only after a caller-scoped directory lookup proves it is an active human, then its own capabilities are checked. An unbound workload remains denied, including one with privileged Team memberships. REST uses the verified requester when present, otherwise the verified caller. `.tau/extensions/crm.py` only adds the local generic MCP bridge; hosted application tools come from Tau's workflow-declared `mcp_applications`. The API resource key is `crm` because the MCP application prefix cannot contain hyphens. This key change recreates its release when applied: coordinate the frontend release UID, OAuth callbacks, workload Team membership and grants before publishing. The assistant deployment waits for API deployment, which waits for migration. Never infer that chat readiness proves MCP authorization or persistence readiness.
 
-For every material change to a CRM model, business rule, mounted API behavior, persistence, transfer workflow, or delivery status, use `.agents/skills/mainsequence_crm/maintain-crm-documentation/SKILL.md` and update the relevant MkDocs concept and API/delivery pages in the same change. Run `mkdocs build --strict` and report its result; keep planned or unverified behavior labeled.
+For every material change to a CRM model, business rule, mounted API behavior, persistence, transfer workflow, or delivery status, use `.agents/skills/mainsequence_crm_development/maintain-crm-documentation/SKILL.md` and update the relevant MkDocs concept and API/delivery pages in the same change. Run `mkdocs build --strict` and report its result; keep planned or unverified behavior labeled.
 
 ### CodeRepository-Specific Instructions
 
@@ -55,7 +59,7 @@ capabilities.
 
 The managed CRM assistant intentionally excludes Tau's base coding tools and
 Main Sequence MCP. Treat that as its chosen runtime profile, not a capability
-defect. Application MCP is independent of broad Main Sequence MCP; Tau 2.0.12
+defect. Application MCP is independent of broad Main Sequence MCP; Tau 2.0.13
 retains skill-scoped `read`. Customize conversation in `.tau/SYSTEM.md`.
 
 Do not remove the `<!-- mainsequence-agent-scaffold:start schema=1 source=agent_scaffold -->`

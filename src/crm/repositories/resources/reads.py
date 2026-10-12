@@ -26,18 +26,28 @@ class ResourceReads(GovernedGateway):
         order_key = ordering.removeprefix("-")
         order_expression = ORDER_COLUMNS[resource][order_key]
         direction = "DESC" if descending else "ASC"
+        table = MODELS[definition.logical_table].__tablename__
+        # Sort the physical amount numerically, not its decimal-string projection.
+        base_order_expression = order_expression.replace("q.amount_numeric", "q.amount")
+        base_order_expression = base_order_expression.replace("q.", "t.")
+        page_order = f"q.__sort {direction} NULLS LAST, q.uid {direction}"
+        item_order = f"p.__sort {direction} NULLS LAST, p.uid {direction}"
         parameters.update(
             {"page_size": scope.page_size, "page_offset": scope.page_index * scope.page_size}
         )
         parameter_types.update({"page_size": "integer", "page_offset": "integer"})
+        # Counting must not materialize company/tag/task enrichment for every
+        # match. Keep the shared filtered set narrow, then project only page IDs.
         sql = (
-            f"WITH q AS ({select_sql} WHERE {where_sql}), "
-            "paged AS (SELECT q.*, row_number() OVER () AS __row FROM q "
-            f"ORDER BY {order_expression} {direction} NULLS LAST, q.uid {direction} "
+            f"WITH filtered AS (SELECT t.uid, {base_order_expression} AS __sort "
+            f'FROM "{table}" t WHERE {where_sql}), '
+            "paged AS (SELECT q.uid, q.__sort FROM filtered q "
+            f"ORDER BY {page_order} "
             "LIMIT CAST(%(page_size)s AS integer) OFFSET CAST(%(page_offset)s AS integer)) "
-            "SELECT COALESCE((SELECT jsonb_agg(to_jsonb(paged) - '__row' - 'amount_numeric' "
-            "ORDER BY __row) FROM paged), '[]'::jsonb) AS items, "
-            "(SELECT count(*) FROM q) AS total_items"
+            "SELECT COALESCE((SELECT jsonb_agg(to_jsonb(item) - 'amount_numeric' "
+            f"ORDER BY {item_order}) FROM paged p "
+            f"CROSS JOIN LATERAL ({select_sql} WHERE t.uid=p.uid) item), "
+            "'[]'::jsonb) AS items, (SELECT count(*) FROM filtered) AS total_items"
         )
         result = self._operation(
             operation="select",

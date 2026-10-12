@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import anyio
-import httpx
+import httpx2
 import pytest
 from fastapi.testclient import TestClient
 from tau_coding.extensions.loader import load_extensions
@@ -387,8 +387,8 @@ def test_local_bridge_uses_real_mcp_protocol_and_no_duplicate_tools(monkeypatch,
     app = local_app()
     store = Store()
     app.state.crm_resources = store
-    monkeypatch.setattr("api.tau.local_mcp._http_client", lambda: httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app, client=("127.0.0.1", 1234)),
+    monkeypatch.setattr("api.tau.local_mcp._http_client", lambda: httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app, client=("127.0.0.1", 1234)),
     ))
     tools = {t.name: t for t in local_mcp_tools()}
     assert set(tools) == {"crm__list_tools", "crm__call_tool"}

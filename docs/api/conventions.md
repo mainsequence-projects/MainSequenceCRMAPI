@@ -51,6 +51,15 @@ visible controls and columns; pipelines currently have no discovery route.
 | `ordering` | A published key, optionally prefixed with `-` |
 | `filters` | URL-encoded JSON object of that resource's semantic filters |
 
+Core resource collections select the requested page of filtered record IDs
+before computing full records and display-only related fields. Only that
+page is returned. `totalItems` is an exact count of all matches using the same
+filters and archive rules, not the number of returned records. The page and
+count run in one governed statement; related fields are not computed for
+off-page records merely to calculate the total. Ordering uses the published
+key with nulls last and a UID tie-breaker, preserved in the response array.
+Deal amounts sort numerically while remaining decimal strings in responses.
+
 Discovery accepts only `search` and `filters`; it rejects pagination and
 ordering. Unknown parameters and filter keys are rejected. UUID filters must
 be UUID strings. `archived` accepts `true`, `false`, or `"all"` in the filter

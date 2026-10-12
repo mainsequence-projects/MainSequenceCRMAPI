@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
 
 import anyio
-import httpx
+import httpx2
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -43,7 +43,7 @@ def _endpoint() -> str:
 
 
 def _http_client():
-    return httpx.AsyncClient(timeout=60, trust_env=False)
+    return httpx2.AsyncClient(timeout=60, trust_env=False)
 
 
 @asynccontextmanager
@@ -51,7 +51,7 @@ async def _session(endpoint):
     # No credentials, identities or sessions are cached. The loopback CRM
     # launcher supplies and verifies its own saved local SDK sign-in.
     async with _http_client() as http:
-        async with streamable_http_client(endpoint, http_client=http) as (read, write, _):
+        async with streamable_http_client(endpoint, http_client=http) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 yield session
@@ -90,10 +90,10 @@ def local_mcp_tools() -> tuple[AgentTool, ...]:
                         if call:
                             sent = True
                             result = await session.call_tool(parsed.tool, parsed.arguments)
-                            data = result.model_dump(mode="json", exclude_none=True)
+                            data = result.model_dump(mode="json", exclude_none=True, by_alias=True)
                         else:
                             result = await session.list_tools()
-                            data = result.model_dump(mode="json", exclude_none=True)
+                            data = result.model_dump(mode="json", exclude_none=True, by_alias=True)
             except Exception:
                 # No retry: a failed response may follow a committed write.
                 return _result({

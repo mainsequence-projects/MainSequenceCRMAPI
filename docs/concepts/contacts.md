@@ -20,6 +20,12 @@ Server projections add `display_name`, `company_name`, and an open-task count.
 current affiliation, not the full work history. Other concurrent current
 affiliations are allowed. At most one current affiliation is primary.
 
+Contact lists are server-paginated (25 by default, at most 100 per request).
+Company names, tag summaries and open-task counts are computed only for the
+selected page, not for every matching contact. The exact total still counts
+all matches; relationship filters may inspect related rows to determine which
+contacts match. This does not change the fields returned by contact details.
+
 Each affiliation is one company stint with `current`, `former`, or `unknown`
 status and optional `started_period` and `ended_period`. A period retains its
 source precision (`YYYY`, `YYYY-MM`, or `YYYY-MM-DD`); null means the source

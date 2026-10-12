@@ -17,6 +17,159 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Publication gates (2026-10-12)
+
+The user authorized publishing the API and static `main` branches after the
+local MCP publication check. The static preflight passes its ten tests,
+TypeScript/Vite application build, same-artifact Docusaurus build, documentation
+validation, Command Center SDK theme audit and offline handoff validator. The
+API's strict MkDocs build passes again.
+
+The API pre-push hook must execute `scripts/verify_local_agent.py --pre-push`
+with the workflow's real provider/model before Git sends the commit. Its
+isolated processes leave the existing development stack running. A successful
+push must then be followed through deployment to the active API revision.
+Hosted verification must enumerate all five skill manifests and read all eight
+files from the authenticated `/mcp`, comparing bytes and SHA-256 digests with
+the pushed pack. Gate and deployment evidence stays under ignored
+`.local/agent-pre-push/` and `.local/deployment/`; local checks alone do not
+establish hosted availability.
+
+### CRM MCP skill publication (2026-10-12)
+
+The CRM now publishes `.agents/skills/mainsequence_crm/` directly using the
+Main Sequence SDK's `skills_extension` and `MCPServer`. The group is named
+`solution-selling`; shared guidance and allocation are stored once in
+`crm-core/references/`. All five skills and eight files are byte-identical
+between API and static repositories. Cross-skill links use served `skill://`
+resources. No generated publication pack is involved.
+
+The complete offline suite passes: 279 tests, including seven new publication
+cases. These check the actual CRM ASGI application with controlled local
+identity lookups and signed caller keys, all five skill manifests, eight exact
+file byte lengths/digests, every published link, enabled/disabled module
+catalogues, failed authentication, Origin admission and unpublished URI
+rejection. A modern official MCP client verifies the extension capability and
+reads a skill from the same endpoint, after changing the process working
+directory. Existing CRM tool authorization, redacted argument validation,
+caller isolation and REST/MCP parity checks pass after the transport change.
+
+An isolated fresh `api.crm.local:app` process at `127.0.0.1:38645` also passed
+read-only HTTP checks using the real saved SDK sign-in: five list/get results,
+all eight files matching source bytes and manifest digests, and 69 advertised
+business tools. No business operation or Tau call was made. That verification
+API was stopped.
+
+The existing VS Code stack's API was subsequently restarted independently on
+port 38641. Its new process passed the same real-sign-in checks on
+`http://127.0.0.1:38641/mcp`: all five list/get results, all eight source files
+and manifest byte lengths/SHA-256 digests, and 69 advertised tools. The original
+supervisor continues to manage the replacement API. Tau's process ID stayed
+unchanged; no Tau call, restart or configuration change occurred. The temporary
+supervisor debugger was closed after the restart. Current endpoint and process
+evidence is in ignored `.local/mcp-skills/live-publication.json` and
+`.local/mcp-skills/api-restart.json`.
+
+Ruff, `git diff --check` and `mkdocs build --strict` pass.
+
+These checks establish local implementation behavior. At the time of these
+checks, hosted publication was unverified and the changes were uncommitted.
+The publisher and API restart changed no Tau source, configuration or runtime. See
+[MCP skill publication](../api/mcp.md#sdk-skill-publication).
+
+### Main Sequence 9.0.23, Tau 2.0.13 and MCP skill publication review (2026-10-12)
+
+The repository now requires `mainsequence[mcp]>=9.0.23`, pins `ms-tau-sdk==2.0.13`
+to tag `v2.0.13` (commit `fd8ad7b348e50c99f14cfef4a88bc1ac4b0f9e2d`), and uses
+MCP 2.3.0. The installed packages, lock and runtime export agree. Main Sequence
+and Tau managed development skills were refreshed to those exact versions;
+the project-owned CRM usage packs were preserved.
+
+MCP 2.x removed the old low-level decorators and implicit server request
+context. The CRM now registers callbacks and binds each callback's HTTP request
+only for that call, with context copied to its worker thread. The local bridge
+uses `httpx2`, the two-stream transport context and wire-alias serialization.
+Business validation, effective-person permission checks and uncertain-write
+recovery are unchanged. The complete offline test suite passes: 272 tests,
+including in-process MCP protocol, caller isolation and local bridge checks.
+Ruff and the strict documentation build pass. The Tau ASGI entrypoint imports
+with its SDK-installed local request identity.
+
+The initial publication review identified the SDK-supported Skills extension
+and the source pack's layout requirements.
+A temporary conforming five-skill pack passed `skills/list`, `skills/get`,
+all 16 resource size/digest checks, and modern capability discovery. Evidence
+is in ignored `.local/sdk-upgrade/mcp-skills-probe.json`. The source pack was
+not renamed or mounted during that review. Its root references folder and
+underscored group failed documented format rules; the conforming publisher
+showed no SDK defect and no upstream bug issue was needed. The subsequent
+publication change above fixes the source layout and mounts it directly.
+
+These are offline and in-process checks. A live provider/model assistant check,
+hosted deployment remain unverified. Nothing was committed or pushed.
+
+### CRM skill namespace separation (2026-10-12)
+
+The 11 API repository coding skills moved into
+`.agents/skills/mainsequence_crm_development/`, preserving their names and
+supporting files. The frontend's installed and handoff development packs use
+the same namespace, and their routing, installer and validation references
+are updated. Physical table namespaces remain unchanged.
+
+The `.agents/skills/mainsequence_crm/` pack now contains five business usage
+skills: core, Deals, prospecting, prompters and discovery. Core combines routine
+records, Notes, tags, activity, Tasks, Interactions, owners, settings and merge
+previews. The three Solution Selling skills are now nested in `solution-selling/`.
+They explain tool selection and workflow decisions; shared guidance covers
+permissions, pagination, version fences, results and uncertain-write recovery.
+Prompter guidance includes supported Jinja context and documents the absent
+requirements-discovery tool. Prepared diagnoses and rendered text remain drafts.
+See the [MCP usage pack](../api/mcp.md#crm-usage-skill-pack).
+
+`crm-core/references/tool-map.json` allocates all 69 current business tools exactly once:
+37 core, 9 Deals, 8 prospecting, 5 prompters and 10 discovery. The coverage tests
+compare this allocation with the actual catalogue, including the 46 tools
+remaining when Solution Selling is disabled. They also check concrete tool
+references, skill paths and links within the pack.
+
+Executed checks: all five skills pass the skill validator, all eight usage-pack
+files are byte-identical across repositories, and Ruff passes for the new test.
+`tests/test_crm_skill_pack.py` plus `tests/test_documentation.py` pass (4 tests),
+and the strict MkDocs build passes. The earlier development namespace move
+preserved all 20 API and 18 frontend development files apart from namespace
+references and passed the handoff validator. These are offline file, catalogue
+and documentation checks; they do not invoke business operations.
+
+The namespace refactor authored skill guidance without changing the tool
+catalogue or executing CRM writes. The subsequent publisher change above
+exposes those files through the SDK. File and catalogue validation does not
+prove live agent behavior or deployed MCP availability. Changes stay local
+until the user authorizes a push.
+
+### Local prompter creation feedback and requirements review (2026-10-12)
+
+The static checkout now shows an immediate creation status, disables repeat
+submission, and explains longer waits without inventing server progress. The
+first detail view uses the full confirmed creation response rather than
+issuing a redundant detail read; leaving and reopening loads fresh server
+state. The application build and SDK theme audit pass. Browser checks with
+controlled delayed responses cover pending, duplicate prevention, error
+recovery, and successful navigation with no extra detail request. These are
+simulated response checks, not proof of a new persisted CRM mutation.
+
+Read-only requests to the running local API returned HTTP 200: the prompter
+collection took 6.109 seconds and an existing prompter detail took 5.318 seconds.
+Creation latency was not measured. Removing the redundant frontend request
+does not establish that the underlying governed operations are fast.
+
+Source and exposed tool schemas confirm the existing render endpoint and
+`crm_prompters_render`; there is no template-specific requirements discovery
+contract. See the [render contract](../api/solution-selling.md). The live
+read-only `crm_prompters_list` check returned `internal_error` with
+`CRM operation failed`; live rendering was not attempted and remains unverified.
+No requirements endpoint or tool was implemented, and these local changes
+have not been pushed.
+
 ### Direct human MCP admission (pending live verification, 2026-10-12)
 
 Issue [#2](https://github.com/mainsequence-projects/MainSequenceCRMAPI/issues/2)

@@ -162,6 +162,33 @@ not the running CRM API. The CRM loopback launcher does not call
 API, and its business queries use PostgreSQL SQL. SQLite verification does not
 prove those production commands or hosted table permissions.
 
+## Collection query regression checks
+
+Run the focused request-shape and PostgreSQL collection checks:
+
+```bash
+.venv/bin/pytest tests/test_resource_collections.py -q
+```
+
+The PostgreSQL checks require existing `postgres`, `initdb`, and `pg_ctl`
+binaries on `PATH`, the installed `psycopg` driver, and a non-root POSIX user.
+They create a temporary UTF-8 cluster reachable only through a private Unix
+socket, seed disposable rows, roll back each test, and stop/remove that cluster
+on exit. They never connect to an existing database, change MetaTables runtime
+selection, or migrate hosted data. When those prerequisites are missing, the
+engine-specific cases are explicitly skipped; the request-shape checks still
+run.
+
+On 2026-10-12, PostgreSQL 14.15 executed the actual collection SQL against
+1,000 active fixture contacts. `EXPLAIN ANALYZE` showed each of the three
+display-enrichment subqueries running 50 times for a 50-record second page,
+compared with 1,000 times in the previous full-projection/count query. Checks
+also cover null-last ordering, UID ties, numeric deal sorting, filters,
+archives, empty pages, exact totals and HTTP permission revocation.
+The MetaTables transport is captured for these tests: they verify SQL and
+application behavior, not hosted authorization or end-to-end latency. Platform
+cold starts remain expected behavior and are outside this query change.
+
 ## Optional Google Workspace extension
 
 The [Google Workspace module setup guide](../google_workspace_module/setup.md)
@@ -237,7 +264,7 @@ Tau `/ready` verifies provider and user
 authentication. A healthy Tau process is still separate from the frontend's
 platform-Agent-based Assistant flow; it does not create an Agent UID.
 
-`ms-tau-sdk` 2.0.12 is locked to its release tag `v2.0.12` in `pyproject.toml` and
+`ms-tau-sdk` 2.0.13 is locked to its release tag `v2.0.13` in `pyproject.toml` and
 `uv.lock`. `uv sync --locked` installs it alongside the API, but CRM startup
 does not start Tau. The separate ASGI entrypoint `api.tau.main:app` uses
 `create_app()` and reads the SDK's normal runtime settings. For the CRM agent,
@@ -281,7 +308,18 @@ its saved sign-in to the API's request verification and connects local policy
 and directory adapters. The bridge accepts no credentials or endpoint from
 model arguments and never retries a tool call. It contains no business schemas
 or persistence logic. The API catalogue contains 46 tools with Solution Selling
-disabled, 66 with it enabled; see the [MCP contract](../api/mcp.md).
+disabled, 69 with it enabled; see the [MCP contract](../api/mcp.md).
+
+Main Sequence 9.0.23 and Tau 2.0.13 require MCP Python SDK 2.x; the lock installs
+2.3.0. The API uses `MCPServer` with its existing typed CRM tool boundary and
+the SDK's skill publisher, and the local bridge
+uses the required `httpx2` transport and two-stream client context. It serializes
+results with wire aliases so the model still receives `inputSchema`,
+`structuredContent` and `isError`. Business schemas, caller checks and the
+no-retry boundary remain in the CRM service. See the
+[MCP skill publication](../api/mcp.md#sdk-skill-publication) for the selected
+folder and the five workflows exposed by the API. Restart the API after
+editing a published skill: the SDK captures its files at application creation.
 
 In hosted mode the project extension registers nothing: Tau's declared
 application MCP supplies the same two discovery/call tools with per-turn
@@ -299,20 +337,20 @@ Main Sequence 9.0.20 and Tau 2.0.10 were deployed successfully. The new Tau
 2.0.11 sender recovered a successful MCP create/update/get turn after the
 platform returned an ambiguous HTTP 502. Both hosted releases were promoted to
 Tau 2.0.11, and after the platform repair an independent read-back confirmed
-that turn's writes and the fixture was cleaned up. The Main Sequence 9.0.22 and
-Tau 2.0.12 update needs its own hosted check after deployment. See
+that turn's writes and the fixture was cleaned up. The current Main Sequence
+9.0.23 and Tau 2.0.13 update needs its own hosted check after deployment. See
 [verification evidence](verification.md).
 
 Both tool exclusions remain enabled. They omit broad Main Sequence MCP and
 replace general coding tools with Tau's skill-scoped `read`; A2A Task controls
 remain. These exclusions do not disable application MCP.
 
-In hosted mode Tau 2.0.12 verifies platform-signed caller assertions and
+In hosted mode Tau 2.0.13 verifies platform-signed caller assertions and
 requires the launcher's projected workload identity token file for its runtime
 credential exchange. Those hosting settings belong to the platform launcher;
 they are not local-mode flags or repository credentials. The hosted entrypoint
 served the earlier verified Chat MCP turn; that proof does not establish the
-fresh updated-runtime test. Tau 2.0.12 waits for a waking application
+fresh updated-runtime test. Tau 2.0.13 waits for a waking application
 within a bounded readiness deadline before admitting its MCP calls; it does not
 retry an uncertain business write.
 
@@ -322,7 +360,7 @@ the default backend HTTP read timer. Startup/catalog and connection limits
 remain bounded. A timeout or disconnect still leaves the remote write outcome
 unknown; read current CRM state before issuing another write.
 
-Tau 2.0.12 enforces the platform's 90-second limit on a hosted direct A2A
+Since 2.0.12, Tau enforces the platform's 90-second limit on a hosted direct A2A
 Message and answers HTTP 504 `DEADLINE_EXCEEDED` when it expires. Send longer
 work as a Task, and never resend a Message that ran out of time: its work is
 not rolled back. Local mode has no platform Message limit and refuses to start

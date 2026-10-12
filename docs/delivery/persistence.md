@@ -110,6 +110,25 @@ list is a JSON array and that a Deal requires a Company, drops the old
 nullable. Its downgrade refuses while companyless, multi-person or unlinked
 Interactions exist.
 
+## Bounded core collection reads
+
+`src/crm/repositories/resources/reads.py` builds one governed read with a
+narrow filtered set of record IDs and the selected sort value. The page
+applies the bound `LIMIT` and `OFFSET` before the full resource projection.
+Company/contact counts, tag arrays and linked deal contacts are computed only
+for the page IDs; the exact total counts the narrow filtered set in the same
+statement. The response array uses the same null-last ordering and UID
+tie-breaker as the page selection. Numeric deal ordering uses the physical
+amount rather than the projected decimal string.
+
+An exact count still visits matching base records, and relationship filters
+still inspect the relations needed to decide membership. This is not a
+constant-time count or a limit on legitimate filter work. The change needs no
+schema revision, does not cache permissions or contact results, and does not
+alter platform cold-start behavior. See the
+[isolated collection SQL checks](local-development.md#collection-query-regression-checks)
+for local evidence; hosted latency after deployment remains unverified.
+
 ## Migration and runtime boundary
 
 The migration provider is `src.crm.migrations:migration`. It uses namespace

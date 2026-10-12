@@ -37,6 +37,15 @@ review. It neither saves nor sends the draft. Rendering uses restricted Jinja
 text features and bounded plain-data projections; missing or inconsistent
 references fail clearly. It requires `crm.read`.
 
+There is no template-specific requirements endpoint or MCP tool. Retrieve the
+stored template with the existing prompter detail read to inspect its variables;
+the generic render schema always requires both Contact and Company, even when
+the template only uses one. Optional references and individual `inputs` keys
+are not discovered before rendering. For example, `{{ inputs.topic }}` requires
+an explicit `topic` input, while a profile block guarded by `{% if profile %}`
+can be omitted. The signed-in sender is supplied by the API. The Company is
+selected explicitly and is not inferred from Contact affiliations.
+
 ## Read-only workflow helpers
 
 `POST /extensions/solution-selling/context/` and

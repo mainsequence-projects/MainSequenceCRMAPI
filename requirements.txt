@@ -12,6 +12,7 @@ annotated-types==0.8.0
 anyio==4.15.1
     # via
     #   httpx
+    #   httpx2
     #   mcp
     #   ms-tau-sdk
     #   sse-starlette
@@ -82,11 +83,14 @@ grpcio==1.84.0
 h11==0.16.0
     # via
     #   httpcore
+    #   httpcore2
     #   uvicorn
 hf-xet==1.7.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
+httpcore2==2.13.1 ; sys_platform != 'emscripten'
+    # via httpx2
 httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
@@ -94,11 +98,14 @@ httpx==0.28.1
     #   huggingface-hub
     #   mainsequence-metatable
     #   mainsequencecrmapi
-    #   mcp
     #   ms-tau-sdk
     #   tau-ai
-httpx-sse==0.4.3
-    # via mcp
+httpx2==2.13.1
+    # via
+    #   mainsequencecrmapi
+    #   mcp
+httpx2-jsfetch==1.0 ; sys_platform == 'emscripten'
+    # via httpx2
 huggingface-hub==1.33.0
     # via
     #   fastembed
@@ -108,6 +115,7 @@ idna==3.20
     #   anyio
     #   email-validator
     #   httpx
+    #   httpx2
     #   requests
 jaraco-classes==3.4.0
     # via keyring
@@ -135,7 +143,7 @@ linkify-it-py==2.2.0
     # via markdown-it-py
 loguru==0.7.3
     # via fastembed
-mainsequence==9.0.22
+mainsequence==9.0.23
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi
@@ -152,11 +160,13 @@ markupsafe==3.0.3
     # via
     #   jinja2
     #   mako
-mcp==1.30.0
+mcp==2.3.0
     # via
     #   mainsequence
     #   mainsequencecrmapi
     #   ms-tau-sdk
+mcp-types==2.3.0
+    # via mcp
 mdit-py-plugins==0.6.1
     # via textual
 mdurl==0.1.2
@@ -167,7 +177,7 @@ more-itertools==11.1.0
     # via
     #   jaraco-classes
     #   jaraco-functools
-ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@f3cb704a7a5ab5b722782bdc7c016dd352f16852
+ms-tau-sdk @ git+https://github.com/mainsequence-sdk/ms-tau-sdk.git@fd8ad7b348e50c99f14cfef4a88bc1ac4b0f9e2d
     # via mainsequencecrmapi
 numpy==2.5.3
     # via
@@ -181,6 +191,7 @@ opentelemetry-api==1.44.0
     # via
     #   mainsequence
     #   mainsequence-metatable
+    #   mcp
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
@@ -257,15 +268,14 @@ pydantic==2.13.5
     #   mainsequence-metatable
     #   mainsequencecrmapi
     #   mcp
+    #   mcp-types
     #   ms-tau-sdk
     #   pydantic-settings
     #   tau-ai
 pydantic-core==2.46.5
     # via pydantic
 pydantic-settings==2.15.0
-    # via
-    #   mcp
-    #   ms-tau-sdk
+    # via ms-tau-sdk
 pygments==2.21.0
     # via
     #   mainsequence
@@ -355,6 +365,10 @@ tqdm==4.70.1
     #   fastembed
     #   huggingface-hub
     #   mainsequence-metatable
+truststore==0.10.4 ; sys_platform != 'emscripten'
+    # via
+    #   httpcore2
+    #   httpx2
 typer==0.27.2
     # via
     #   mainsequence
@@ -368,6 +382,7 @@ typing-extensions==4.16.0
     #   grpcio
     #   huggingface-hub
     #   mcp
+    #   mcp-types
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
