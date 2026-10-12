@@ -51,6 +51,7 @@ class CRMToolRuntime:
     resources: GovernedResourceStore | None = None
     records: VersionedRecordStore | None = None
     bootstrap: BootstrapPort | None = None
+    denial_reporter: Callable[[AccessDenied], None] | None = None
 
     def operations(self) -> CRMOperations:
         return CRMOperations(
@@ -146,8 +147,12 @@ def _tool(
         except (ValidationError, TypeError, ValueError):
             return tool_result("invalid_arguments", message="Invalid tool arguments")
 
+        runtime: CRMToolRuntime | None = None
+
         def call() -> Any:
-            service = runtime_provider().operations()
+            nonlocal runtime
+            runtime = runtime_provider()
+            service = runtime.operations()
             return operation(service, parsed)
 
         # Cancellation before dispatch starts no work. Once a synchronous write
@@ -155,7 +160,9 @@ def _tool(
         await anyio.lowlevel.checkpoint()
         try:
             data = await anyio.to_thread.run_sync(call, abandon_on_cancel=False)
-        except AccessDenied:
+        except AccessDenied as exc:
+            if runtime is not None and runtime.denial_reporter is not None:
+                runtime.denial_reporter(exc)
             return tool_result("forbidden", message="CRM access denied")
         except ServiceUnavailable:
             return tool_result("unavailable", message="CRM runtime is unavailable")

@@ -17,6 +17,23 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Direct human MCP admission (pending live verification, 2026-10-12)
+
+Issue [#2](https://github.com/mainsequence-projects/MainSequenceCRMAPI/issues/2)
+identified that direct human OAuth authenticates successfully but carries no
+requester because it is not delegated work. The pre-fix API rejected such calls
+before capability evaluation. The source change admits an active direct human
+only after a caller-scoped directory lookup; it keeps unbound workloads denied,
+delegated calls requester-bound, and logs safe denial reasons.
+
+Local signed-assertion tests cover direct-human allow/deny, unbound-workload
+denial, delegated requester isolation and per-operation capability evaluation.
+They do not prove the deployed directory lookup or OAuth path. Before closing
+the issue, deploy the tested commit and execute a direct human `crm_contacts_list`
+call, one deliberately denied capability call, and an existing delegated
+read-only assistant call; inspect their correlated denial/success logs. Do not
+perform a hosted CRM mutation for this admission smoke test.
+
 ### Solution Selling MCP read workflows (2026-10-12)
 
 Implemented `crm_prompters_render`, `crm_solution_selling_context_get` and

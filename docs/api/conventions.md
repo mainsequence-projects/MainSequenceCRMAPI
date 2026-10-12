@@ -20,10 +20,12 @@ verifies the caller of every request before any CRM middleware or route runs:
 
 Protected routes use `authenticated_actor()`: it reads the verified caller
 with `User.get_logged_user()` and selects the signed `User.get_requester()`
-when present. Hosted [MCP business tools](mcp.md) additionally require a
-requester and never fall back to the agent's permissions. A user header (`X-User-UID`, `X-User-ID`) or the
-process's own SDK credential never substitutes for the verified caller, and a
-request without one never reaches CRM code. An application policy adapter
+when present. Hosted [MCP business tools](mcp.md) use the requester on a
+delegated call, never the agent's permissions. Without delegation, they admit
+only a verified direct caller whose caller-scoped directory record is active
+and human; an unbound workload is denied. A user header (`X-User-UID`,
+`X-User-ID`) or the process's own SDK credential never substitutes for the
+verified caller, and a request without one never reaches CRM code. An application policy adapter
 checks the required capability (`crm.read`, `crm.create`, `crm.edit`,
 `crm.archive`, `crm.merge`, `crm.transfer.import`, or `crm.configure`). Owner
 UUIDs are checked against the existing platform directory. Missing adapters,

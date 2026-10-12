@@ -286,11 +286,13 @@ disabled, 66 with it enabled; see the [MCP contract](../api/mcp.md).
 In hosted mode the project extension registers nothing: Tau's declared
 application MCP supplies the same two discovery/call tools with per-turn
 access. The workflow enables requester delegation and grants the assistant view
-access to the CRM application. Hosted CRM business tools require the signed
-requester. The hosted policy/directory/bootstrap adapters are installed by
+access to the CRM application. Hosted assistant calls use the signed requester.
+A direct human OAuth MCP caller is also supported after the API's caller-scoped
+directory check proves that it is active and human; an unbound workload remains
+denied. The hosted policy/directory/bootstrap adapters are installed by
 `api.crm.main.create_app()`; see the [hosted authorization decision](../crm_core/adrs/0005-crm-application-mcp.md).
-Unavailable storage or failed authorization still fails closed; workload
-access alone never substitutes for the person.
+Unavailable storage, failed caller-type resolution, or failed authorization
+still fail closed; workload access alone never substitutes for the person.
 Hosted Contact create/update and independent persistence read-back have been
 verified through Command Center Chat with GPT-5.6 Luna on its recorded runtime.
 Main Sequence 9.0.20 and Tau 2.0.10 were deployed successfully. The new Tau

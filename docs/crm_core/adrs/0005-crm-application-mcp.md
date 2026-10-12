@@ -36,12 +36,14 @@ Command Center ─────────────> REST ────┘
 
 REST and MCP resolve the effective actor through `authenticated_actor()`:
 the signed `User.get_requester()` when present, otherwise the verified
-`User.get_logged_user()`. Hosted MCP business calls additionally require a
-requester. A workload alone cannot perform these tools. The policy checks
-the person's CRM capability on every invocation. Missing, malformed, expired
-or denied delegation never falls back to workload permissions. No tool accepts
-an actor, capability, caller proof, token or connection argument. The receiving
-API cannot forward the requester's identity to platform directory APIs.
+`User.get_logged_user()`. Hosted MCP admits a delegated workload only through
+its signed requester. Without delegation, it uses `reads_as_caller()` to look
+up the verified caller and admits only an active human; an unbound workload
+cannot perform these tools. The policy checks the effective person's CRM
+capability on every invocation. Missing, malformed, expired or denied
+delegation never falls back to workload permissions. No tool accepts an actor,
+capability, caller proof, token or connection argument. The receiving API
+cannot forward the requester's identity to platform directory APIs.
 
 The 2026-10-11 amendment connects the hosted policy and directory in
 `src/crm/platform/hosted_runtime.py`. Every operation evaluates the effective
@@ -136,9 +138,29 @@ The new API/Job must retain the CRM namespace's required table permissions.
 Bootstrap readiness and Tau readiness still do not prove business-tool access.
 Hosted policy/directory wiring, admin-approved delegation, hosted MetaTables
 compatibility, the new API release binding and a real requester tool call must
-all be verified before declaring the deployed assistant operational. See
-[verification evidence](../../delivery/verification.md) and the
-[MCP API contract](../../api/mcp.md).
+all be verified before declaring the deployed assistant operational. A direct
+human OAuth tool call additionally needs its own live verification. See
+[verification evidence](../../delivery/verification.md) and the [MCP API
+contract](../../api/mcp.md).
+
+## 2026-10-12 amendment: direct human application MCP
+
+`User.get_requester()` is absent on a direct human OAuth call by design: it
+represents delegation, not authentication. The prior hosted admission gate
+mistook every no-requester call for an unbound workload and denied it before
+the CRM policy could run. Hosted MCP now resolves a no-requester caller through
+SDK `reads_as_caller()` and permits only an active User with
+`identity_type == "human"`. The direct person's own signed Team/admin facts
+remain the policy input; an unbound workload, inactive identity, non-human
+identity, or failed caller-scoped lookup fails closed.
+
+Delegated calls still use only requester facts and cannot forward their
+requester-bearing assertion to the directory. The SDK rejects invalid or
+expired delegation before a tool starts, so it cannot fall back to caller
+rights. Denial logs record a safe reason and request correlation, while the
+MCP response remains the generic `forbidden` envelope. The live gate must
+cover a direct human read, a capability denial, an unbound-workload denial,
+and the existing delegated tool path.
 
 ## 2026-10-12 amendment: Solution Selling read compositions
 

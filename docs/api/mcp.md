@@ -30,17 +30,25 @@ internal exceptions are redacted. Serialized business results exceeding
 128,000 characters are replaced by a short error; page sizes remain capped at
 100. A tool declares a 60-second client timeout through MCP metadata.
 
-Hosted business calls require the verified requester; the agent workload is
-not an alternative actor. Local calls use verified direct Bearer identity,
-supplied by the loopback launcher for the local bridge. Both paths use
-`CRMOperations` and the existing policy/directory, validation, version fences,
-and governed repository writes. See [identity conventions](conventions.md).
-Missing policy or directory wiring returns `unavailable`.
-The hosted adapters are now installed by the API entrypoint. They evaluate
-only the requester's signed Team/admin facts, never the agent's facts. Owner
-selection in a delegated tool is limited to the requester; another owner
-returns `validation_error` without querying the workload's directory. See
-[the authorization amendment](../crm_core/adrs/0005-crm-application-mcp.md).
+Hosted business calls use the verified requester when a workload is delegated
+to serve a person. A direct hosted caller has no requester: the API looks up
+that caller through the caller-scoped platform directory and admits it only
+when the record is active and `human`. An unbound workload remains denied,
+including one with privileged Team memberships. Local calls use verified direct
+Bearer identity, supplied by the loopback launcher for the local bridge. Every
+admitted call rechecks the effective person's capability through
+`CRMOperations`; authentication never grants a CRM capability. See [identity
+conventions](conventions.md). Missing policy or directory wiring returns
+`unavailable`.
+
+The hosted adapters evaluate only the requester's signed Team/admin facts on a
+delegated call, never the agent's facts. A direct human uses its own signed
+facts. Owner selection in a delegated tool is limited to the requester; another
+owner returns `validation_error` without querying the workload's directory.
+Safe denial logs include the tool, request correlation, identity mode, denial
+reason, and—when policy rejects the call—the required capability. They never
+include credentials, assertions, or tool arguments. See [the authorization
+amendment](../crm_core/adrs/0005-crm-application-mcp.md).
 
 Archive/restore, merge execution and import commit are absent. Merge preview,
 ordinary typed create/update, task completion/reopen, pipeline reads, deal

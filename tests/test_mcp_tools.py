@@ -269,7 +269,7 @@ def test_protocol_initialize_catalogue_and_strict_validation(signed_caller):
         assert store.calls == []
 
 
-def test_requester_required_and_no_identity_or_permission_cache(signed_caller):
+def test_requester_and_unbound_workload_have_no_identity_or_permission_cache(signed_caller, monkeypatch):
     class PerPersonPolicy:
         def __init__(self):
             self.people = []
@@ -279,6 +279,10 @@ def test_requester_required_and_no_identity_or_permission_cache(signed_caller):
             return {"crm.create"} if actor_uid in {ACTOR, AGENT} else set()
 
     policy, store = PerPersonPolicy(), Store()
+    monkeypatch.setattr(
+        "api.crm.mcp_server.User.get_by_uid",
+        lambda uid: SimpleNamespace(is_active=True, identity_type="workload"),
+    )
     with TestClient(app_for(policy, store)) as client:
         args = {"payload": {"first_name": "Ada"}}
         assert call(client, "crm_contacts_create", args,
