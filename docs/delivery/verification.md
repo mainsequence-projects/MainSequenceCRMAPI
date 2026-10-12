@@ -17,6 +17,38 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Solution Selling MCP read workflows (2026-10-12)
+
+Implemented `crm_prompters_render`, `crm_solution_selling_context_get` and
+`crm_diagnoses_prepare` in the API-owned catalogue, sharing the governed service
+with REST. The active catalogue contains 69 tools: 38 reads and 31 writes.
+All 205 tests, Ruff, strict MkDocs and mounted-route documentation parity pass.
+These are code/contract checks; they are separate from the live evidence below.
+
+Before committing, the real local Tau 2.0.12 agent ran with the workflow's
+`openai-codex/gpt-5.6-luna/medium` configuration and the normal CLI login.
+It loaded the project Solution Selling skill, discovered MCP schemas, and
+executed exactly the three new reads in order, each with successful business
+results. The context returned actual fixture Interaction history and source
+versions. Diagnosis preparation copied nine questions with null answers,
+labelled its business issue a hypothesis, and returned `saved: false`.
+After restarting both processes, public local history retained the same calls
+and every fresh REST result equalled its actual MCP result. Sanitized evidence
+is retained under ignored `.local/agent-pre-push/`.
+
+This is local agent/conversation verification against the configured hosted CRM
+dataset, not proof of local SQLite persistence for CRM records. The test used
+marked disposable records and a separate owned pipeline/stage; the agent calls
+were all read-only. Setup saved exact ownership, UIDs and versions for scoped
+cleanup. Fixture data and credentials are excluded from the commit.
+
+The push must pass the unchanged mandatory Contact smoke scenario on the
+committed revision. After push, verify the workflow's migration, API and
+assistant steps for that exact commit, and initialize the deployed MCP to
+confirm all 69 tools and the three new read-only schemas. Keep subsequent
+platform evidence separate from the local results above; neither bootstrap
+nor a Git push alone proves deployment or hosted business authorization.
+
 ### Main Sequence 9.0.22, MetaTables 0.1.34 and Tau 2.0.12 (2026-10-11)
 
 The repository now requires `mainsequence[mcp]>=9.0.22` and

@@ -26,6 +26,11 @@ offer repository editing, tests, server control, or deployment as CRM chat work.
 
 ## CRM actions
 
+- For Solution Selling work, load the project `solution-selling` skill and
+  discover the enabled module tools. Keep profile hypotheses, buyer reports
+  and confirmed assessment evidence distinct; read helpers return drafts or
+  context and never prove that a record was saved or a message was sent.
+
 - Discover the available CRM operations with `crm__list_tools`, then use
   `crm__call_tool` with the returned tool name and exact input schema.
   Match the tool to the record type and action; use bounded searches and exact

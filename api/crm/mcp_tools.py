@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -22,6 +23,7 @@ from src.crm.models.bootstrap import SettingsPatch
 from src.crm.models.deals import MoveDeal
 from src.crm.models.merge import MergePreviewRequest
 from src.crm.models.queries import FILTER_MODELS, QueryScope
+from src.crm.models.record_filters import RecordFilters
 from src.crm.platform.runtime import BootstrapPort
 from src.crm.repositories.errors import ResourceConflict, ResourceNotFound
 from src.crm.repositories.records import RECORDS, VersionedRecordStore
@@ -34,6 +36,11 @@ from src.crm.services.operations import (
     ServiceUnavailable,
 )
 from src.crm.solution_selling.config import solution_selling_enabled
+from src.crm.solution_selling.models import (
+    DiagnosisPrepareRequest,
+    PrompterRenderRequest,
+    SolutionSellingContextRequest,
+)
 
 
 @dataclass(frozen=True)
@@ -283,10 +290,20 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
             __base__=_UID,
             payload=(patch_type, ...),
         )
+        filter_type = create_model(
+            f"{slug.title()}ToolFilters", __base__=_Arguments,
+            **{name: (RecordFilters.model_fields[name].annotation,
+                      deepcopy(RecordFilters.model_fields[name]))
+               for name in RECORDS[resource].filters},
+        )
+        list_args = create_model(
+            f"{slug.title()}ListToolArguments", __base__=_RecordList,
+            filters=(filter_type, Field(default_factory=filter_type)),
+        )
         add(
             f"crm_{slug}_list",
-            f"List CRM {resource}.",
-            _RecordList,
+            f"List active CRM {resource} with bounded paging and resource-specific filters.",
+            list_args,
             lambda service, args, resource=resource: service.list_records(
                 resource, **args.model_dump(mode="python")
             ),
@@ -312,6 +329,34 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
                 resource, args.uid, args.payload
             ),
             mutation=True,
+        )
+
+    if solution_selling_enabled():
+        render_args = create_model(
+            "PrompterRenderToolArguments", __base__=_UID, payload=(PrompterRenderRequest, ...),
+        )
+        add(
+            "crm_prompters_render",
+            "Render a stored prompter with explicit Contact and Company references. "
+            "Returns draft text; never saves or sends a message.",
+            render_args,
+            lambda service, args: service.render_prompter(args.uid, args.payload),
+        )
+        add(
+            "crm_solution_selling_context_get",
+            "Read a Deal, its Company and optional assessment (including key players and pain chain), "
+            "plus a bounded page of Interactions and source UIDs/versions. "
+            "Evidence statuses are preserved; individual reads are not an atomic snapshot.",
+            SolutionSellingContextRequest,
+            lambda service, args: service.solution_selling_context(args),
+        )
+        add(
+            "crm_diagnoses_prepare",
+            "Prepare an unsaved diagnosis for an explicit Interaction and Contact from a prospecting "
+            "profile. Copies questions with empty answers; potential pain is a hypothesis. "
+            "A missing template yields nine empty matrix cells. Never creates or updates a record.",
+            DiagnosisPrepareRequest,
+            lambda service, args: service.prepare_diagnosis(args),
         )
 
     add(

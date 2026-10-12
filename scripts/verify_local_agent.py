@@ -110,7 +110,33 @@ def business_result(part):
     return result["data"]
 
 
-def verify(contact_uid=None):
+def solution_selling_reads(fixture_path):
+    """Explicit existing fixture references; this gate never provisions records."""
+    fixture = json.loads(Path(fixture_path).read_text())
+    required = {"deal_uid", "company_uid", "interaction_uid", "contact_uid", "profile_uid", "prompter_uid"}
+    require(required <= fixture.keys() and not fixture.keys() - required - {"solution_selling_uid", "inputs"},
+            "Solution Selling fixture must contain only the documented explicit references and inputs.")
+    for key in required | ({"solution_selling_uid"} if fixture.get("solution_selling_uid") else set()):
+        fixture[key] = str(uuid.UUID(fixture[key]))
+    assessment = ({"solution_selling_uid": fixture["solution_selling_uid"]}
+                  if fixture.get("solution_selling_uid") else {})
+    render = {"contact_uid": fixture["contact_uid"], "company_uid": fixture["company_uid"],
+              "profile_uid": fixture["profile_uid"], "deal_uid": fixture["deal_uid"],
+              "inputs": fixture.get("inputs", {}), **assessment}
+    context = {"deal_uid": fixture["deal_uid"], "interaction_page_size": 2}
+    prepare = {"interaction_uid": fixture["interaction_uid"], "contact_uid": fixture["contact_uid"],
+               "profile_uid": fixture["profile_uid"], **assessment}
+    return [
+        {"tool": "crm_prompters_render", "arguments": {"uid": fixture["prompter_uid"], "payload": render},
+         "path": f"/extensions/solution-selling/prompters/{fixture['prompter_uid']}/render/", "payload": render},
+        {"tool": "crm_solution_selling_context_get", "arguments": context,
+         "path": "/extensions/solution-selling/context/", "payload": context},
+        {"tool": "crm_diagnoses_prepare", "arguments": prepare,
+         "path": "/extensions/solution-selling/diagnoses/prepare/", "payload": prepare},
+    ]
+
+
+def verify(contact_uid=None, solution_selling_fixture=None):
     if contact_uid:
         contact_uid = str(uuid.UUID(contact_uid))
     workflow = yaml.safe_load((ROOT / ".mainsequence/workflows/crm-api.yaml").read_text())
@@ -144,14 +170,18 @@ def verify(contact_uid=None):
     params = {} if contact_uid else {"search": marker}
     requested_tool = "crm_contacts_get" if contact_uid else "crm_contacts_list"
     arguments = {"uid": contact_uid} if contact_uid else {"search": marker}
-    report.update(business_tool=requested_tool, arguments=arguments)
-    instruction = (f"Read Contact UID {contact_uid}." if contact_uid else
-                   f'Search contacts for the exact text "{marker}"; expect no matches.')
+    requests = (solution_selling_reads(solution_selling_fixture) if solution_selling_fixture else
+                [{"tool": requested_tool, "arguments": arguments,
+                  "path": "/api/crm/v1/" + query, "params": params}])
+    expected = [{"tool": r["tool"], "arguments": r["arguments"]} for r in requests]
+    report.update(business_reads=expected)
     prompt = ("Perform a read-only CRM verification. Discover the CRM MCP schemas with "
-              f"crm__list_tools, then use crm__call_tool to run {requested_tool}. "
-              f"{instruction} Use exactly these arguments: {json.dumps(arguments)}. "
+              "crm__list_tools, then use crm__call_tool to run exactly these reads in order: "
+              f"{json.dumps(expected)}. "
               "Do not create, edit, archive, or call any other business tool. "
-              "Never retry an uncertain tool call. Report the actual returned result briefly.")
+              "Never retry an uncertain tool call. Report the actual returned results briefly.")
+    if solution_selling_fixture:
+        prompt += " Load the solution-selling project skill before using its workflow."
     try:
         with ExitStack() as stack, httpx.Client(trust_env=False, timeout=90) as client:
             crm = start("api.crm.local:app", api_port, environment, run / "crm.log", stack)
@@ -214,31 +244,43 @@ def verify(contact_uid=None):
             discovery = [p for p in calls if p["toolName"] == "crm__list_tools"]
             require(bool(discovery),
                     "The agent must actually discover CRM MCP tools.")
-            require(any(not p.get("isError") and
-                        any(t.get("name") == requested_tool for t in
-                            p.get("result", {}).get("details", {}).get("tools", []))
-                        for p in discovery), "CRM MCP discovery did not return the requested tool.")
-            require(all(p["toolName"] in {"crm__list_tools", "crm__call_tool"} for p in calls),
+            for request in requests:
+                require(any(not p.get("isError") and
+                            any(t.get("name") == request["tool"] for t in
+                                p.get("result", {}).get("details", {}).get("tools", []))
+                            for p in discovery), "CRM discovery did not return a requested tool.")
+            allowed = {"crm__list_tools", "crm__call_tool"}
+            if solution_selling_fixture:
+                allowed.add("read")  # SDK-owned read is restricted to discovered project skills.
+            require(all(p["toolName"] in allowed for p in calls),
                     "The agent used a tool outside the requested CRM read workflow.")
             business = [p for p in calls if p["toolName"] == "crm__call_tool"]
-            require(len(business) == 1 and business[0]["args"]["tool"] == requested_tool,
-                    "Require exactly one requested CRM MCP read; no retries or writes.")
-            require(business[0]["args"]["arguments"] == arguments,
-                    "The agent must use the exact scoped read arguments.")
-            details = business[0].get("result", {}).get("details", {})
-            report["bridge_code"] = details.get("code")
-            save()
-            result = business_result(business[0])
-            if contact_uid:
-                require(result["uid"] == contact_uid, "MCP read returned a different contact.")
+            require([p["args"] for p in business] == expected,
+                    "Require exactly the scoped CRM MCP reads in order; no retries or writes.")
+            results = [business_result(p) for p in business]
+            if solution_selling_fixture:
+                rendered, context, prepared = results
+                require(bool(rendered["text"]), "Rendering must return a nonempty draft.")
+                require(context["deal"]["uid"] == requests[1]["arguments"]["deal_uid"],
+                        "Context returned a different Deal.")
+                require(context["interactions"]["items"] and context["sources"],
+                        "Context must exercise actual Interaction history and source versions.")
+                require(prepared["saved"] is False and prepared["business_issue_status"] == "hypothesis",
+                        "Diagnosis preparation must remain an unsaved hypothesis.")
+                entries = [entry for row in prepared["draft"]["matrix"].values()
+                           for cell in row.values() for entry in cell]
+                require(entries and all(e["answer"] is None for e in entries),
+                        "The live fixture must exercise copied questions with empty answers.")
+                report["read_evidence"] = {"sources": context["sources"], "draft_saved": False,
+                                           "prepared_questions": len(entries), "rendered_chars": len(rendered["text"])}
+            elif contact_uid:
+                require(results[0]["uid"] == contact_uid, "MCP returned a different Contact.")
+                report["read_evidence"] = {k: results[0].get(k) for k in ("uid", "version")}
             else:
-                require(result["items"] == [] and result["pageInfo"]["totalItems"] == 0,
+                require(results[0]["items"] == [] and results[0]["pageInfo"]["totalItems"] == 0,
                         "The unique read-only search must have no matches.")
+                report["read_evidence"] = {"total_items": 0}
             report["mcp_read_verified"] = True
-            report["read_evidence"] = (
-                {k: result.get(k) for k in ("uid", "version", "created_by_uid", "updated_by_uid")}
-                if contact_uid else {"total_items": result["pageInfo"]["totalItems"]}
-            )
             save()
             # Restart both processes: confirm local conversation durability and fresh API binding.
             stop(agent)
@@ -250,8 +292,15 @@ def verify(contact_uid=None):
             recovered = get_json(client, history_url)
             require(recovered["session"]["status"] == "completed" and
                     history_tools(recovered) == calls, "Local history did not survive restart.")
-            independent = get_json(client, api + "/api/crm/v1/" + query, params=params)
-            require(independent == result, "Fresh API read differs from the actual MCP result.")
+            for request, result in zip(requests, results, strict=True):
+                if "payload" in request:
+                    response = client.post(api + request["path"], json=request["payload"])
+                    require(response.status_code == 200,
+                            f"Fresh read-only POST returned HTTP {response.status_code}.")
+                    independent = response.json()
+                else:
+                    independent = get_json(client, api + request["path"], params=request["params"])
+                require(independent == result, "Fresh API read differs from the actual MCP result.")
             report.update(status="passed", restart_history_verified=True,
                           fresh_api_read_verified=True, tool_calls=len(calls))
             save()
@@ -269,10 +318,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pre-push", action="store_true")
     parser.add_argument("--contact-uid", help="Read this exact controlled contact instead of an empty search.")
+    parser.add_argument("--solution-selling-fixture", help="JSON file with explicit existing fixture UIDs; exercises all three read helpers.")
     args = parser.parse_args()
+    require(not (args.contact_uid and args.solution_selling_fixture), "Choose one live read scenario.")
     if args.pre_push:
         check_push()
-    return verify(args.contact_uid)
+    return verify(args.contact_uid, args.solution_selling_fixture)
 
 
 if __name__ == "__main__":

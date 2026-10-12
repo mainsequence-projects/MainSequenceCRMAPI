@@ -19,10 +19,138 @@ from api.crm.main import create_app
 from api.crm.mcp_tools import CRMToolRuntime, build_crm_tools
 from api.tau.local_mcp import local_mcp_tools
 from src.crm.services.operations import CRMContext
+from src.crm.solution_selling.models import ProspectingProfileCreate
 
 ACTOR = uuid.UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 CONTACT = uuid.UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
 AGENT = uuid.UUID("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+
+
+class WorkflowReads:
+    """Read ports deliberately have no mutation method."""
+
+    def __init__(self):
+        self.deal, self.company, self.interaction, self.profile, self.prompter, self.assessment = (
+            str(uuid.uuid4()) for _ in range(6)
+        )
+        def record(uid, **fields):
+            return {"uid": uid, "version": 7, **fields}
+        self.data = {
+            "deals": record(self.deal, company_uid=self.company),
+            "companies": record(self.company, name="Example Company"),
+            "contacts": record(str(CONTACT), first_name="Ada"),
+            "interactions": record(self.interaction, company_uid=self.company, deal_uid=self.deal),
+            "assessments": record(self.assessment, company_uid=self.company, deal_uid=self.deal,
+                                  key_players=[{"contact_uid": str(CONTACT), "pain": "Delay",
+                                                "status": "reported", "reasons": []}], pain_chain=[]),
+            "prospecting-profiles": record(self.profile, **ProspectingProfileCreate(
+                name="Research", market_context="Funds", role="Researcher", potential_pain="Delay",
+                diagnosis_template={"open": {"reasons": [{"question": "What causes the delay?"}]}},
+            ).model_dump(mode="json")),
+            "prompters": record(self.prompter, template="Hi {{ contact.first_name }} at {{ company.name }}"),
+        }
+        self.calls = []
+        self.no_assessment = False
+
+    def detail(self, resource, uid):
+        self.calls.append((resource, str(uid)))
+        assert str(uid) == self.data[resource]["uid"]
+        return self.data[resource]
+
+    def collection(self, resource, **scope):
+        self.calls.append((resource, scope))
+        assert scope["filters"] == {"deal_uid": self.deal}
+        items = [] if resource == "assessments" and self.no_assessment else [self.data[resource]]
+        return {"items": items, "pageInfo": {"pageIndex": scope["page_index"],
+                "pageSize": scope["page_size"], "totalItems": len(items),
+                "hasNextPage": False, "hasPreviousPage": scope["page_index"] > 0}}
+
+    def scenarios(self):
+        return [
+            ("crm_prompters_render", {"uid": self.prompter, "payload": {
+                "contact_uid": str(CONTACT), "company_uid": self.company}},
+             f"/extensions/solution-selling/prompters/{self.prompter}/render/", True),
+            ("crm_solution_selling_context_get", {"deal_uid": self.deal,
+                "interaction_page_size": 2}, "/extensions/solution-selling/context/", False),
+            ("crm_diagnoses_prepare", {"interaction_uid": self.interaction, "contact_uid": str(CONTACT),
+                "profile_uid": self.profile, "solution_selling_uid": self.assessment},
+             "/extensions/solution-selling/diagnoses/prepare/", False),
+        ]
+
+
+def test_solution_selling_helpers_match_rest_and_preserve_evidence(signed_caller):
+    store = WorkflowReads()
+    app = app_for(Policy("crm.read"), store)
+    app.state.crm_record_store = store
+    with TestClient(app, headers=delegated(signed_caller)) as client:
+        results = []
+        for tool, args, route, wrapped in store.scenarios():
+            result = call(client, tool, args)
+            response = client.post(route, json=args["payload"] if wrapped else args)
+            assert response.status_code == 200, response.text
+            assert result["structuredContent"] == {"code": "ok", "data": response.json()}
+            results.append(response.json())
+    assert results[0] == {"text": "Hi Ada at Example Company"}
+    context, prepared = results[1:]
+    assert context["assessment"]["key_players"][0]["status"] == "reported"
+    assert context["interactions"]["pageInfo"]["pageSize"] == 2
+    assert all(s["version"] == 7 for s in context["sources"])
+    assert prepared["saved"] is False and prepared["business_issue_status"] == "hypothesis"
+    assert prepared["draft"]["matrix"]["open"]["reasons"] == [
+        {"question": "What causes the delay?", "answer": None}]
+    assert "uid" not in prepared["draft"] and prepared["draft"]["conclusion"] is None
+    prepared["draft"]["matrix"]["open"]["reasons"][0]["question"] = "Edited"
+    assert store.data["prospecting-profiles"]["diagnosis_template"]["open"]["reasons"][0]["question"] != "Edited"
+
+
+def test_solution_selling_helpers_recheck_permissions_and_reject_spoofing(signed_caller):
+    store = WorkflowReads()
+    app = app_for(Policy(), store)
+    app.state.crm_record_store = store
+    with TestClient(app, headers=delegated(signed_caller)) as client:
+        for tool, args, _route, _wrapped in store.scenarios():
+            assert call(client, tool, args)["structuredContent"]["code"] == "forbidden"
+            assert call(client, tool, args | {"actor_uid": str(AGENT)})["structuredContent"]["code"] == "invalid_arguments"
+    assert store.calls == []
+
+
+def test_solution_selling_helpers_validate_relations_and_bounds(signed_caller):
+    store = WorkflowReads()
+    app = app_for(Policy("crm.read"), store)
+    app.state.crm_record_store = store
+    with TestClient(app, headers=delegated(signed_caller)) as client:
+        assert call(client, "crm_solution_selling_context_get", {
+            "deal_uid": store.deal, "interaction_page_size": 21,
+        })["structuredContent"]["code"] == "invalid_arguments"
+        assert store.calls == []
+        store.data["assessments"]["company_uid"] = str(uuid.uuid4())
+        for tool, args, _route, _wrapped in store.scenarios()[1:]:
+            assert call(client, tool, args)["structuredContent"]["code"] == "validation_error"
+        store.data["prompters"]["template"] = "{{ inputs.secret_missing }}"
+        result = call(client, *store.scenarios()[0][:2])
+        assert result["structuredContent"]["code"] == "validation_error"
+        assert "secret_missing" not in json.dumps(result)
+        store.no_assessment = True
+        context = call(client, "crm_solution_selling_context_get", {"deal_uid": store.deal})
+        assert context["structuredContent"]["data"]["assessment"] is None
+        store.data["prospecting-profiles"]["diagnosis_template"] = None
+        prepared = call(client, "crm_diagnoses_prepare", {"interaction_uid": store.interaction,
+            "contact_uid": str(CONTACT), "profile_uid": store.profile})["structuredContent"]["data"]
+        assert all(cell == [] for row in prepared["draft"]["matrix"].values() for cell in row.values())
+
+
+def test_record_list_filters_are_precise_and_helpers_follow_activation(config_file, signed_caller):
+    with TestClient(app_for(Policy("crm.read")), headers=delegated(signed_caller)) as client:
+        catalogue = {t["name"]: t for t in rpc(client, "tools/list")["tools"]}
+        filters = catalogue["crm_diagnoses_list"]["inputSchema"]["$defs"]["DiagnosesToolFilters"]
+        assert set(filters["properties"]) == {"interaction_uid", "contact_uid", "solution_selling_uid"}
+        assert filters["additionalProperties"] is False
+        assert call(client, "crm_diagnoses_list", {"filters": {"owner_uid": str(ACTOR)}})["structuredContent"]["code"] == "invalid_arguments"
+        for name in ("crm_prompters_render", "crm_solution_selling_context_get", "crm_diagnoses_prepare"):
+            assert catalogue[name]["annotations"]["readOnlyHint"] is True
+    config_file(solution_selling=False)
+    names = {t.definition.name for t in build_crm_tools(lambda: None)}
+    assert not {"crm_prompters_render", "crm_solution_selling_context_get", "crm_diagnoses_prepare"} & names
 
 class Policy:
     def __init__(self, *allowed: str):
@@ -123,11 +251,11 @@ def test_protocol_initialize_catalogue_and_strict_validation(signed_caller):
         })
         assert init["serverInfo"]["name"] == "crm"
         catalogue = rpc(client, "tools/list")["tools"]
-        assert len(catalogue) == 66
+        assert len(catalogue) == 69
         names = {tool["name"] for tool in catalogue}
         assert "crm_contacts_archive" not in names
         assert "crm_contacts_merge_execute" not in names
-        assert sum(t["annotations"]["readOnlyHint"] for t in catalogue) == 35
+        assert sum(t["annotations"]["readOnlyHint"] for t in catalogue) == 38
         result = call(client, "crm_contacts_create", {"payload": {"first_name": "Ada"}})
         assert result["structuredContent"]["code"] == "forbidden"
         result = call(client, "crm_contacts_create", {
@@ -264,7 +392,7 @@ def test_local_bridge_uses_real_mcp_protocol_and_no_duplicate_tools(monkeypatch,
     async def scenario():
         async with app.router.lifespan_context(app):
             catalogue = await tools["crm__list_tools"].execute("list", {})
-            assert len(catalogue.details["tools"]) == 66
+            assert len(catalogue.details["tools"]) == 69
             result = await tools["crm__call_tool"].execute("create", {
                 "tool": "crm_contacts_create", "arguments": {"payload": {"first_name": "Ada"}},
             })

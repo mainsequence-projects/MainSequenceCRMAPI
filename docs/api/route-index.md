@@ -130,5 +130,8 @@ FastAPI's generated OpenAPI paths.
 | `PATCH` | `/extensions/solution-selling/prompters/{uid}/` | [Solution Selling](solution-selling.md) |
 | `POST` | `/extensions/solution-selling/prompters/{uid}/render/` | [Solution Selling](solution-selling.md) |
 
+| `POST` | `/extensions/solution-selling/context/` | [Solution Selling](solution-selling.md) |
+| `POST` | `/extensions/solution-selling/diagnoses/prepare/` | [Solution Selling](solution-selling.md) |
+
 Export creation and download routes are not mounted and therefore do not
 appear here.

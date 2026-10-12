@@ -34,12 +34,15 @@ from ..solution_selling.config import solution_selling_enabled
 from ..solution_selling.models import (
     AssessmentPatch,
     DiagnosisPatch,
+    DiagnosisPrepareRequest,
     LeadPatch,
     PrompterPatch,
     PrompterRenderRequest,
     ProspectingProfilePatch,
+    SolutionSellingContextRequest,
 )
 from ..solution_selling.prompters import render_prompter
+from ..solution_selling.workflows import prepare_diagnosis, solution_selling_context
 
 
 class ServiceUnavailable(RuntimeError):
@@ -442,8 +445,8 @@ class CRMOperations:
         self.context.require("crm.read")
         self._record_enabled("prompters")
         payload = validated_model(PrompterRenderRequest, payload)
-        return {
-            "text": render_prompter(
+        try:
+            text = render_prompter(
                 prompter_uid=uid,
                 request=payload,
                 actor_uid=self.context.actor_uid,
@@ -451,4 +454,24 @@ class CRMOperations:
                 core=self.resources,
                 methodology=self.records,
             )
-        }
+        except ValueError as exc:
+            raise self._invalid("payload") from exc
+        return {"text": text}
+
+    def solution_selling_context(self, payload: BaseModel | dict[str, Any]) -> dict[str, Any]:
+        self.context.require("crm.read")
+        self._record_enabled("assessments")
+        request = validated_model(SolutionSellingContextRequest, payload)
+        try:
+            return solution_selling_context(request, core=self.resources, methodology=self.records)
+        except ValueError as exc:
+            raise self._invalid("deal_uid") from exc
+
+    def prepare_diagnosis(self, payload: BaseModel | dict[str, Any]) -> dict[str, Any]:
+        self.context.require("crm.read")
+        self._record_enabled("diagnoses")
+        request = validated_model(DiagnosisPrepareRequest, payload)
+        try:
+            return prepare_diagnosis(request, core=self.resources, methodology=self.records)
+        except ValueError as exc:
+            raise self._invalid("payload") from exc

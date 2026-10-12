@@ -6,7 +6,7 @@ is not public ingress and is outside the REST OpenAPI route index. The Main
 Sequence SDK rejects other methods and unapproved browser Origins.
 
 The catalogue is built from the same typed models as the CRM service. It has
-66 tools (35 reads, 31 writes) with Solution Selling active, or 46 tools when
+69 tools (38 reads, 31 writes) with Solution Selling active, or 46 tools when
 disabled. Tool names retain `crm_<resource>_<operation>`. Discover the exact
 schema through `tools/list`; for example:
 
@@ -53,3 +53,19 @@ may follow a committed write. Read the record before retrying. The local bridge
 reports `outcome_unknown` when a sent call loses its response, and never retries
 it automatically. Tau's hosted transport is SDK-owned and must likewise be
 treated as uncertain when it reports a failed call.
+
+## Solution Selling read workflows
+
+When the module is active, `crm_prompters_render`,
+`crm_solution_selling_context_get`, and `crm_diagnoses_prepare` require
+`crm.read`. They share the REST service and never persist or dispatch drafts.
+Their inputs and results are described in the
+[Solution Selling API](solution-selling.md). The five module resources retain
+their existing list/get/create/update tools. Lists advertise only their own
+UUID or text filters; unknown filter keys fail input validation.
+
+Context includes the assessment's existing evidence statuses and a bounded
+Interaction page, with source UIDs and versions. It is a composition of reads,
+not an atomic snapshot. Preparing a diagnosis copies profile questions with
+empty answers; its business issue is explicitly a hypothesis. Saving a diagnosis
+or updating an assessment remains a separate, explicitly requested command.

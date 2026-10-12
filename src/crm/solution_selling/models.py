@@ -153,6 +153,23 @@ class DiagnosisCreate(DiagnosisFields):
     pass
 
 
+class SolutionSellingContextRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    deal_uid: UUID
+    interaction_page_index: int = Field(default=0, ge=0)
+    interaction_page_size: int = Field(default=5, ge=1, le=20)
+
+
+class DiagnosisPrepareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    interaction_uid: UUID
+    contact_uid: UUID
+    profile_uid: UUID
+    solution_selling_uid: UUID | None = None
+
+
 class SolutionSellingDiagnosis(DiagnosisFields, Record):
     pass
 

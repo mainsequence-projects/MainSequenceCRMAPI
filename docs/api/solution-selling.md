@@ -36,3 +36,32 @@ references, and a string-to-string `inputs` map. It returns `{text}` for human
 review. It neither saves nor sends the draft. Rendering uses restricted Jinja
 text features and bounded plain-data projections; missing or inconsistent
 references fail clearly. It requires `crm.read`.
+
+## Read-only workflow helpers
+
+`POST /extensions/solution-selling/context/` and
+`crm_solution_selling_context_get` accept `deal_uid`,
+`interaction_page_index` (default 0, minimum 0) and `interaction_page_size`
+(default 5, range 1–20). The response contains `deal`, nullable `company`,
+nullable `assessment`, `interactions: {items, pageInfo}`, and `sources` with
+`resource`, `uid`, and `version` for every returned record. Assessment contains
+its key players and pain chain without changing evidence statuses. Interactions
+are ordered by their existing scheduled-time collection order; page information
+truthfully describes the bounded history. These individual reads are not an
+atomic snapshot. Use the returned versions when proposing subsequent edits.
+
+`POST /extensions/solution-selling/diagnoses/prepare/` and
+`crm_diagnoses_prepare` accept required `interaction_uid`, `contact_uid`,
+`profile_uid`, and optional `solution_selling_uid`. The response contains
+`draft` (a valid diagnosis-create payload), `saved: false`,
+`business_issue_status: "hypothesis"`, and `sources` with UIDs/versions. It copies
+profile questions with null answers and uses potential pain as the business
+issue. Without a profile template all nine cells are empty. Contact is explicit;
+no participant or affiliation is inferred. A linked assessment must match the
+Interaction's Company and, when present, Deal.
+
+`crm_prompters_render` takes `{uid, payload}` where `payload` is the same render
+request described above. All three helpers require `crm.read`; none save, send,
+confirm evidence, or update an assessment. Missing active references return
+not-found; invalid relationships return validation errors. Review a prepared
+payload before explicitly invoking an existing create/update tool.

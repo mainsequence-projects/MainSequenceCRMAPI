@@ -152,3 +152,19 @@ does not rewrite this Interaction's history.
 **Current status:** Pydantic validates the nine-cell matrix; migration `0006`
 adds the diagnosis table, and the optional [API](../../api/solution-selling.md)
 exposes it. General evidence automation remains outside this decision.
+
+## 2026-10-12 amendment: prepare an unsaved diagnosis
+
+`crm_diagnoses_prepare` and its REST adapter accept explicit Interaction,
+Contact and prospecting-profile UIDs, plus an optional assessment UID. The
+service reads active authorized records, checks the existing assessment /
+Interaction Company and Deal relationship, and copies the profile's question
+matrix. Every answer remains null; a missing template gives nine empty cells.
+The profile's potential pain becomes the draft business issue, labelled
+`hypothesis` in the result. The result includes `saved: false` and source
+UIDs/versions; it has no persisted diagnosis UID or receipt. Contact is explicit
+and is not inferred from or required to appear in the participant list.
+
+The user may review or edit the draft and explicitly save it using the existing
+diagnosis create tool. Preparation does not create, overwrite, confirm evidence,
+or propagate anything into the maintained Deal assessment.

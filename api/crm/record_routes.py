@@ -13,6 +13,7 @@ from src.crm.solution_selling.models import (
     AssessmentPatch,
     DiagnosisCreate,
     DiagnosisPatch,
+    DiagnosisPrepareRequest,
     LeadCreate,
     LeadPatch,
     PrompterCreate,
@@ -20,12 +21,23 @@ from src.crm.solution_selling.models import (
     PrompterRenderRequest,
     ProspectingProfileCreate,
     ProspectingProfilePatch,
+    SolutionSellingContextRequest,
 )
 
 from .service_adapter import invoke, service_for
 
 core_router = APIRouter(prefix="/api/crm/v1/interactions")
 module_router = APIRouter(prefix="/extensions/solution-selling")
+
+
+@module_router.post("/context/")
+def get_solution_selling_context(request: Request, payload: SolutionSellingContextRequest):
+    return invoke(lambda: service_for(request).solution_selling_context(payload))
+
+
+@module_router.post("/diagnoses/prepare/")
+def prepare_diagnosis(request: Request, payload: DiagnosisPrepareRequest):
+    return invoke(lambda: service_for(request).prepare_diagnosis(payload))
 
 
 def _list(resource: str, request: Request, page_index: int, page_size: int, search: str | None):

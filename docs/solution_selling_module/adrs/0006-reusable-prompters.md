@@ -143,3 +143,11 @@ Contact. No separate model is needed for each document kind or template use.
 optional [API](../../api/solution-selling.md) renders a bounded, read-only
 text preview for explicit Contact and Company context. It does not send or
 save the draft.
+
+## 2026-10-12 amendment: MCP rendering
+
+Expose the existing bounded renderer as `crm_prompters_render` with required
+prompter UID, Contact UID and explicit Company UID; other context is optional.
+It requires `crm.read` and returns the same `{text}` preview as REST. Invalid
+references or template data return a redacted validation error. Rendering
+never writes an Interaction, changes a template, or sends a communication.

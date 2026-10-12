@@ -45,3 +45,14 @@ methodology details in the existing assessment's Edit view.
 The [Interaction model](../crm_core/adrs/0001-interaction.md) belongs
 to core CRM, not this module. An assessment may draw on conversations linked
 to the same Deal, without an Interaction foreign key to Solution Selling.
+
+## Assistant workflow
+
+The assistant discovers the module's typed MCP tools. Use prospecting profiles
+as hypotheses, render outreach as a draft, record the actual Interaction, and
+prepare its diagnosis questions before saving answers deliberately. The Deal
+context helper reads the maintained assessment and a bounded Interaction page.
+Key-player and pain-chain statuses remain `hypothesis`, `reported`, or
+`confirmed` until an explicit assessment update changes them. No read helper
+confirms evidence or propagates answers. See the
+[workflow helper contracts](../api/solution-selling.md#read-only-workflow-helpers).

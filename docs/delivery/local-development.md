@@ -343,3 +343,25 @@ still calls the live Main Sequence provider services; the CRM agent profile
 above excludes broad Main Sequence MCP, while CRM application MCP remains
 available. Deploy Tau separately from `api.crm.main:app` using the workflow
 and rollout checks in ADR 0005. Confirmation-dependent operations remain absent.
+
+## Solution Selling live agent check
+
+After a Solution Selling tool change, run the real local agent against explicit,
+owned fixture references before committing:
+
+```bash
+.venv/bin/python scripts/verify_local_agent.py --solution-selling-fixture /absolute/path/to/fixture.json
+```
+
+The untracked JSON contains `deal_uid`, `company_uid`, `contact_uid`,
+`interaction_uid`, `profile_uid`, and `prompter_uid`, with optional
+`solution_selling_uid` and `inputs`. Use a profile with unanswered questions and
+an Interaction belonging to the selected Deal. The gate provisions nothing.
+It discovers current schemas and runs exactly the three read-only helpers,
+checks a rendered draft, copied unanswered questions and source versions,
+restarts both processes, and compares each actual result with a fresh REST read.
+The workflow's real provider/model and the normal saved CLI login remain required.
+Local mode describes the agent/conversation store; the CRM dataset remains the
+configured environment. Remove only disposable records explicitly owned by the
+test, after verifying their current state. Never replay an uncertain setup write.
+The pre-push hook still runs its read-only Contact gate on the committed revision.

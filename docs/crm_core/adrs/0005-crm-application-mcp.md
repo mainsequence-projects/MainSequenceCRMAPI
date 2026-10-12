@@ -63,7 +63,7 @@ directory read. No workload-scoped directory query substitutes for it. The
 bootstrap adapter uses the existing governed settings store. These adapters
 do not run migrations or read settings at application startup.
 
-The catalogue retains 66 tools with Solution Selling enabled, 46 without it.
+The catalogue contains 69 tools with Solution Selling enabled, 46 without it.
 It omits archive/restore, merge execution and import commit until shared
 services can verify the required confirmation evidence. Reads are annotated
 read-only; mutations are non-idempotent. The agent dispatches calls sequentially.
@@ -139,3 +139,26 @@ compatibility, the new API release binding and a real requester tool call must
 all be verified before declaring the deployed assistant operational. See
 [verification evidence](../../delivery/verification.md) and the
 [MCP API contract](../../api/mcp.md).
+
+## 2026-10-12 amendment: Solution Selling read compositions
+
+Add three API-owned, read-only tools: `crm_prompters_render`,
+`crm_solution_selling_context_get`, and `crm_diagnoses_prepare`. The catalogue
+now has 38 reads and 31 writes when the module is active, and 46 tools when
+inactive. Each new operation requires the effective person's `crm.read` and
+uses the same governed stores as REST. Module list filters have closed,
+resource-specific schemas. No storage migration or permission expansion is needed.
+
+Context returns the Deal, Company, optional assessment with its key-player
+and pain-chain evidence, a bounded Interaction page, and source UIDs/versions.
+It does not promise a transaction-wide snapshot. Diagnosis preparation returns
+an unsaved payload, copied questions with no answers, and labels the profile's
+potential pain as a hypothesis. Rendering returns draft text without saving or
+sending it. Existing create/update commands remain deliberate actions with the
+existing version fences. No helper propagates or confirms evidence.
+
+The project runtime skill `.tau/skills/solution-selling/SKILL.md` guides this
+workflow through the generic MCP bridge. Tau's skill-scoped `read` may load it;
+it adds no business tool or platform authority. The live local gate supports
+all three helpers and compares actual results with fresh REST reads after restart.
+Deployment evidence is recorded in the delivery verification page.
