@@ -1193,3 +1193,18 @@ must update the relevant [concept](../concepts/index.md) and API/delivery page
 in the same change. Add new pages to `mkdocs.yml`, use relative links, and run
 the strict build. The repository's
 `maintain-crm-documentation` skill records this workflow for coding agents.
+
+
+## 2026-10-12 direct OAuth directory projection correction
+
+The deployed c838254 revision rejected a direct OAuth contact read as
+`nonhuman_caller`: human directory projections omit `identity_type`. MCP now
+requires a caller-scoped exact human filter match when that field is absent,
+with matching UID and active state. No CRM grants or operation checks changed.
+
+Focused hosted identity, MCP and documentation tests passed (34 tests); Ruff
+and strict MkDocs build passed. Regression cases cover omitted type, empty,
+duplicate, wrong-UID and inactive matches. Hosted OAuth verification and the
+hosted workload verification remain pending at this point. The real-provider
+local agent gate passed with CRM MCP reads, restart persistence and fresh API
+read-back; evidence is under `.local/agent-pre-push/953870f6-d8e2-4f87-8cee-6a344752c77c/report.json`.

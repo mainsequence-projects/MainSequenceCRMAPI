@@ -63,6 +63,20 @@ def _require_hosted_person(request) -> str:
     try:
         with reads_as_caller():
             caller_record = User.get_by_uid(caller.uid)
+            # Human directory projections omit identity_type. Prove the type
+            # with the platform's exact filter instead of treating None as human.
+            if caller_record.identity_type is None:
+                humans = User.filter(uid=caller.uid, identity_type="human")
+                if len(humans) != 1 or humans[0].uid != caller.uid:
+                    _log_denial(request, identity_mode="direct_caller", reason="human_not_verified")
+                    raise AccessDenied("Direct caller is not a verified person")
+                caller_record = humans[0]
+                if caller_record.is_active is not True:
+                    _log_denial(request, identity_mode="direct_caller", reason="inactive_direct_caller")
+                    raise AccessDenied("Direct caller is not an active person")
+                return "direct_human"
+    except AccessDenied:
+        raise
     except Exception as exc:
         _log_denial(request, identity_mode="direct_caller", reason="caller_type_unavailable")
         raise ServiceUnavailable("Direct caller type could not be verified") from exc

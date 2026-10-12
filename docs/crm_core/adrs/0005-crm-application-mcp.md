@@ -184,3 +184,14 @@ workflow through the generic MCP bridge. Tau's skill-scoped `read` may load it;
 it adds no business tool or platform authority. The live local gate supports
 all three helpers and compares actual results with fresh REST reads after restart.
 Deployment evidence is recorded in the delivery verification page.
+
+
+### Human directory projections
+
+The platform may omit `identity_type` from a human directory response. An
+omitted value does not establish human identity. In that case MCP admission
+uses `User.filter(uid=caller.uid, identity_type="human")` within
+`reads_as_caller()` and requires exactly one matching UID with `is_active`
+true. Empty, mismatched, duplicate or inactive results are denied; lookup
+errors fail closed. Explicit workload types still require delegation. The
+effective person's signed capability checks remain unchanged.

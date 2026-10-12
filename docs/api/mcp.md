@@ -77,3 +77,14 @@ Interaction page, with source UIDs and versions. It is a composition of reads,
 not an atomic snapshot. Preparing a diagnosis copies profile questions with
 empty answers; its business issue is explicitly a hypothesis. Saving a diagnosis
 or updating an assessment remains a separate, explicitly requested command.
+
+
+### Human directory projections
+
+The platform may omit `identity_type` from a human directory response. An
+omitted value does not establish human identity. In that case MCP admission
+uses `User.filter(uid=caller.uid, identity_type="human")` within
+`reads_as_caller()` and requires exactly one matching UID with `is_active`
+true. Empty, mismatched, duplicate or inactive results are denied; lookup
+errors fail closed. Explicit workload types still require delegation. The
+effective person's signed capability checks remain unchanged.

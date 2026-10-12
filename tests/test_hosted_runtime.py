@@ -159,3 +159,33 @@ def test_invalid_team_configuration_fails_at_startup(monkeypatch):
     monkeypatch.setenv("CRM_WRITER_TEAM_UIDS", "not-a-team-uuid")
     with pytest.raises(RuntimeError, match="CRM_WRITER_TEAM_UIDS"):
         PlatformPolicy.from_environment()
+
+
+@pytest.mark.parametrize("matches,expected", [
+    ([(str(ACTOR), True)], "ok"),
+    ([], "forbidden"),
+    ([(str(OTHER), True)], "forbidden"),
+    ([(str(ACTOR), False)], "forbidden"),
+    ([(str(ACTOR), True), (str(ACTOR), True)], "forbidden"),
+])
+def test_mcp_human_directory_projection_requires_exact_type_proof(
+    signed_caller, monkeypatch, matches, expected,
+):
+    app, store = hosted_app(monkeypatch)
+    monkeypatch.setattr(
+        "api.crm.mcp_server.User.get_by_uid",
+        lambda uid: SimpleNamespace(uid=uid, is_active=True, identity_type=None),
+    )
+    def human_filter(**filters):
+        from mainsequence._request_identity import _caller_read_headers
+        from mainsequence.client import User
+        assert "X-MainSequence-Caller-Assertion" in _caller_read_headers(
+            User.get_object_url(), User.get_object_url(),
+        )
+        assert filters == {"uid": str(ACTOR), "identity_type": "human"}
+        return [SimpleNamespace(uid=uid, is_active=active) for uid, active in matches]
+    monkeypatch.setattr("api.crm.mcp_server.User.filter", human_filter)
+    with TestClient(app) as client:
+        result = call(client, "crm_contacts_list", headers=signed_caller(ACTOR, team_uids=[READERS]))
+    assert result["structuredContent"]["code"] == expected
+    assert len(store.calls) == (1 if expected == "ok" else 0)
