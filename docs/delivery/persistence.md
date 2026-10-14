@@ -199,7 +199,7 @@ hand. The assistant calls the API-owned MCP tools, so its deployment waits
 for the API deployment as well as its own prepared image. All business writes
 continue through the API's governed CRM operations.
 
-The repository locks `mainsequence-metatable` 0.1.34. Before rollout, verify
+The repository locks `mainsequence-metatable` 0.1.35. Before rollout, verify
 the Environment's hosted API and its system migrations against this version.
 The historical 0.1.19 minimum addressed only the removal of runtime-switch
 fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));
@@ -270,7 +270,7 @@ no scheduled Job today.
 The API and migration Job declare
 `access.branches: [{repository: MetaTables, level: view}]` for hosted API
 discovery. This platform access does not grant table access. With MetaTables
-0.1.34, an Organization admin must create the `mainsequence-crm` namespace in
+0.1.35, an Organization admin must create the `mainsequence-crm` namespace in
 each Environment and grant Writer to its CRM Team. That Team needs the workload
 Users of the migration Job and API as members. The assistant accesses the
 CRM application and no longer needs direct table permissions for these tools. Use a separate Team

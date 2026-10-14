@@ -80,7 +80,7 @@ empty provider. Nothing migrates at HTTP startup. Hosted environments are
 migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
 `.mainsequence/workflows/crm-api.yaml` runs before it deploys the API and the
 CRM assistant. That file is the repository's only workflow file. The API now
-uses Main Sequence 9.0.23 and MetaTables 0.1.34. Before rollout, verify the
+uses Main Sequence 9.0.23 and MetaTables 0.1.35. Before rollout, verify the
 hosted MetaTables API and its system migrations against that client version,
 and provision the CRM Team's namespace access described in
 [persistence and migrations](docs/delivery/persistence.md#migration-and-runtime-boundary).

@@ -128,7 +128,7 @@ Hosted environments are migrated only by the deployment workflow's
 [persistence and migrations](persistence.md#migration-and-runtime-boundary).
 Do not run `metatables migrations upgrade` or `downgrade` without `--local`.
 Before rollout, verify the hosted MetaTables API and its system migrations
-against client 0.1.34 and complete the CRM Team/namespace setup documented in
+against client 0.1.35 and complete the CRM Team/namespace setup documented in
 [persistence](persistence.md#migration-and-runtime-boundary). A failed migration
 Job prevents the API and assistant from rolling out.
 
