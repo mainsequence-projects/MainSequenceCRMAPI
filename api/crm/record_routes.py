@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from src.crm.models.interactions import InteractionCreate, InteractionPatch
+from src.crm.solution_selling.bulk import PrompterDeleteRequest
 from src.crm.solution_selling.models import (
     AssessmentCreate,
     AssessmentPatch,
@@ -24,6 +25,7 @@ from src.crm.solution_selling.models import (
     SolutionSellingContextRequest,
 )
 
+from .prompter_discovery import prompter_discovery
 from .service_adapter import invoke, service_for
 
 core_router = APIRouter(prefix="/api/crm/v1/interactions")
@@ -198,6 +200,23 @@ def list_prompters(
     search: str | None = Query(None, max_length=255),
 ):
     return _list("prompters", request, page_index, page_size, search)
+
+
+@module_router.get("/prompters/discovery/")
+def discover_prompters(request: Request, search: str | None = Query(None, max_length=255)):
+    if set(request.query_params) - {"search"}:
+        raise HTTPException(status_code=422, detail="Unsupported discovery query")
+    return invoke(lambda: prompter_discovery(can_delete=service_for(request).can_delete_prompters()))
+
+
+@module_router.post("/prompters/bulk-delete/preflight/")
+def preflight_delete_prompters(request: Request, payload: PrompterDeleteRequest):
+    return invoke(lambda: service_for(request).delete_prompters(payload, preflight=True))
+
+
+@module_router.post("/prompters/bulk-delete/")
+def delete_prompters(request: Request, payload: PrompterDeleteRequest):
+    return invoke(lambda: service_for(request).delete_prompters(payload))
 
 
 @module_router.get("/prompters/{uid}/")

@@ -17,6 +17,55 @@ from metatables.migrations.connection import migration_engine
 from src.crm.migrations import migration
 
 
+def test_prompt_revision_enforces_utf8_bytes_and_preserves_source_on_local_sqlite(tmp_path):
+    database = tmp_path / "prompt-revision.sqlite"
+    config = alembic_config_for_provider(migration, sqlalchemy_url=f"sqlite:///{database}")
+    with migration_engine(config) as engine, engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+        connection.commit()
+        assert (
+            connection.exec_driver_sql(
+                "SELECT version_num FROM mainsequence_crm__alembic_version"
+            ).scalar_one()
+            == "0010"
+        )
+        table = sa.Table("mainsequence_crm__prompt", sa.MetaData(), autoload_with=connection)
+        connection.commit()
+        markdown = "😀" * 16384
+        now = datetime.now(timezone.utc)
+        row = {
+            "uid": uuid.uuid4().hex,
+            "name": "Private SQLite prompt",
+            "content_markdown": markdown,
+            "version": 1,
+            "created_at": now,
+            "updated_at": now,
+        }
+        connection.execute(table.insert().values(**row))
+        connection.commit()
+        for content in ("", "😀" * 16385):
+            with pytest.raises(sa.exc.IntegrityError), connection.begin_nested():
+                connection.execute(
+                    table.insert().values(
+                        **{**row, "uid": uuid.uuid4().hex, "content_markdown": content}
+                    )
+                )
+        connection.commit()
+        config.attributes.pop("connection")
+    with sa.create_engine(f"sqlite:///{database}").connect() as fresh:
+        assert fresh.execute(sa.select(table.c.content_markdown)).scalar_one() == markdown
+    with migration_engine(config) as engine, engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.downgrade(config, "0009")
+        connection.commit()
+        assert "mainsequence_crm__prompt" not in sa.inspect(connection).get_table_names()
+        assert (
+            "mainsequence_crm__solution_selling_prompter"
+            in sa.inspect(connection).get_table_names()
+        )
+
+
 def _postgresql_bind():
     return SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
 
@@ -71,20 +120,30 @@ def test_interaction_participant_migration_backfills_before_removing_primary_con
         "src.crm.migrations.versions.mainsequence_crm.0009_interaction_participants"
     )
     operations = []
-    monkeypatch.setattr(revision, "op", SimpleNamespace(
-        get_bind=_postgresql_bind,
-        add_column=lambda *a, **k: operations.append(("add_column", a, k)),
-        execute=lambda statement: operations.append(("execute", statement.text)),
-        create_check_constraint=lambda *a, **k: operations.append(("check", a, k)),
-        drop_index=lambda *a, **k: operations.append(("drop_index", a, k)),
-        drop_constraint=lambda *a, **k: operations.append(("drop_constraint", a, k)),
-        drop_column=lambda *a, **k: operations.append(("drop_column", a, k)),
-        alter_column=lambda *a, **k: operations.append(("alter_column", a, k)),
-    ))
+    monkeypatch.setattr(
+        revision,
+        "op",
+        SimpleNamespace(
+            get_bind=_postgresql_bind,
+            add_column=lambda *a, **k: operations.append(("add_column", a, k)),
+            execute=lambda statement: operations.append(("execute", statement.text)),
+            create_check_constraint=lambda *a, **k: operations.append(("check", a, k)),
+            drop_index=lambda *a, **k: operations.append(("drop_index", a, k)),
+            drop_constraint=lambda *a, **k: operations.append(("drop_constraint", a, k)),
+            drop_column=lambda *a, **k: operations.append(("drop_column", a, k)),
+            alter_column=lambda *a, **k: operations.append(("alter_column", a, k)),
+        ),
+    )
     revision.upgrade()
     assert [step[0] for step in operations] == [
-        "add_column", "execute", "check", "check", "drop_index",
-        "drop_constraint", "drop_column", "alter_column",
+        "add_column",
+        "execute",
+        "check",
+        "check",
+        "drop_index",
+        "drop_constraint",
+        "drop_column",
+        "alter_column",
     ]
     assert "jsonb_build_array" in operations[1][1]
     assert "contact_uid" in operations[1][1]
@@ -127,44 +186,115 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
             return row
 
         migrate("upgrade", "0001")
-        connection.execute(_table(
-            "mainsequence_crm__workspace", uid=U, name=S, default_currency=S, timezone=S,
-            configuration=J, configuration_version=I, mutation_epoch=I, created_at=T,
-            updated_at=T,
-        ).insert().values(
-            uid=WORKSPACE, name="Legacy", default_currency="EUR", timezone="UTC",
-            configuration={"company_sectors": []}, configuration_version=3, mutation_epoch=0,
-            created_at=when, updated_at=when,
-        ))
-        connection.execute(_table(
-            "mainsequence_crm__company", uid=U, workspace_uid=U, created_at=T, updated_at=T,
-            version=I, name=S, context_links=J,
-        ).insert().values(
-            uid=COMPANY, workspace_uid=WORKSPACE, created_at=when, updated_at=when, version=1,
-            name="Acme", context_links=[],
-        ))
-        connection.execute(_table(
-            "mainsequence_crm__contact", uid=U, workspace_uid=U, created_at=T, updated_at=T,
-            version=I, company_uid=U, first_name=S, linkedin_url=S, emails=J, phones=J,
-        ).insert().values(
-            uid=CONTACT, workspace_uid=WORKSPACE, created_at=when, updated_at=when, version=1,
-            company_uid=COMPANY, first_name="Ada", linkedin_url=LINKEDIN, emails=[], phones=[],
-        ))
+        connection.execute(
+            _table(
+                "mainsequence_crm__workspace",
+                uid=U,
+                name=S,
+                default_currency=S,
+                timezone=S,
+                configuration=J,
+                configuration_version=I,
+                mutation_epoch=I,
+                created_at=T,
+                updated_at=T,
+            )
+            .insert()
+            .values(
+                uid=WORKSPACE,
+                name="Legacy",
+                default_currency="EUR",
+                timezone="UTC",
+                configuration={"company_sectors": []},
+                configuration_version=3,
+                mutation_epoch=0,
+                created_at=when,
+                updated_at=when,
+            )
+        )
+        connection.execute(
+            _table(
+                "mainsequence_crm__company",
+                uid=U,
+                workspace_uid=U,
+                created_at=T,
+                updated_at=T,
+                version=I,
+                name=S,
+                context_links=J,
+            )
+            .insert()
+            .values(
+                uid=COMPANY,
+                workspace_uid=WORKSPACE,
+                created_at=when,
+                updated_at=when,
+                version=1,
+                name="Acme",
+                context_links=[],
+            )
+        )
+        connection.execute(
+            _table(
+                "mainsequence_crm__contact",
+                uid=U,
+                workspace_uid=U,
+                created_at=T,
+                updated_at=T,
+                version=I,
+                company_uid=U,
+                first_name=S,
+                linkedin_url=S,
+                emails=J,
+                phones=J,
+            )
+            .insert()
+            .values(
+                uid=CONTACT,
+                workspace_uid=WORKSPACE,
+                created_at=when,
+                updated_at=when,
+                version=1,
+                company_uid=COMPANY,
+                first_name="Ada",
+                linkedin_url=LINKEDIN,
+                emails=[],
+                phones=[],
+            )
+        )
         connection.commit()
         migrate("upgrade", "0008")
         interaction = _table(
-            "mainsequence_crm__interaction", uid=U, company_uid=U, contact_uid=U, subject=S,
-            kind=S, status=S, created_at=T, updated_at=T, version=I, participants=J,
+            "mainsequence_crm__interaction",
+            uid=U,
+            company_uid=U,
+            contact_uid=U,
+            subject=S,
+            kind=S,
+            status=S,
+            created_at=T,
+            updated_at=T,
+            version=I,
+            participants=J,
         )
-        connection.execute(interaction.insert().values(
-            uid=INTERACTION, company_uid=COMPANY, contact_uid=CONTACT, subject="Intro",
-            kind="call", status="planned", created_at=when, updated_at=when, version=1,
-        ))
+        connection.execute(
+            interaction.insert().values(
+                uid=INTERACTION,
+                company_uid=COMPANY,
+                contact_uid=CONTACT,
+                subject="Intro",
+                kind="call",
+                status="planned",
+                created_at=when,
+                updated_at=when,
+                version=1,
+            )
+        )
         connection.commit()
         migrate("upgrade", "head")
 
         version = sa.text("SELECT version_num FROM mainsequence_crm__alembic_version")
-        assert one(version).version_num == "0009"
+        assert one(version).version_num == "0010"
         settings = _table("mainsequence_crm__settings", name=S, default_currency=S)
         assert tuple(one(sa.select(settings))) == ("Legacy", "EUR")
         affiliation = _table("mainsequence_crm__contact_company_affiliation", uid=U)
@@ -192,5 +322,5 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         legacy_contact = _table("mainsequence_crm__contact", linkedin_url=S)
         assert one(sa.select(legacy_contact)).linkedin_url == LINKEDIN
         migrate("upgrade", "head")
-        assert one(version).version_num == "0009"
+        assert one(version).version_num == "0010"
         assert one(sa.select(contact)).socials == {"linkedin": LINKEDIN}

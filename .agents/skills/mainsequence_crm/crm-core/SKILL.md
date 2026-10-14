@@ -42,6 +42,10 @@ a requested new record, and update to change a selected existing record.
    required facts from the user or verified reads. Unknown optional data may
    stay omitted. Contact social URLs use the advertised `socials` object; do
    not copy a Company's separate `linkedin_url` field onto a Contact.
+   For a Contact being added for prospecting, follow the
+   [prospecting Company prerequisite](skill://solution-selling/crm-prospecting/SKILL.md):
+   resolve or create its actual Company first and include the confirmed UID
+   in `payload.company_uid`. An unresolved Company blocks that Contact save.
 3. For a requested edit, read the latest detail and patch only the intended
    fields. Preserve unrelated emails, tags and other array members. Resolve
    owner assignments from selectable principals.

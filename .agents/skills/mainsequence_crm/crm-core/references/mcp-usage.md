@@ -51,8 +51,11 @@ The actual service response decides access; skill instructions grant none.
 
 - Act on the user's requested create or change without redundant confirmation.
   Ask for missing required facts or a material unresolved choice. Read-only
-  research, a draft or a suggestion does not imply permission to save related
-  records or send a message.
+  research or a suggestion does not imply permission to save related records
+  or send a message. A prospecting outreach request includes required prompter
+  creation when none is indicated, as defined by
+  [prospecting](skill://solution-selling/crm-prospecting/SKILL.md). Rendering
+  still does not authorize a Lead, Interaction, Task or delivery as a side effect.
 - Ordinary updates use `uid` and `payload: {expected_version, changes}`.
   Obtain a current version first. Send only intended changes: omission retains
   a field; explicit null clears it only where allowed. For array replacements,

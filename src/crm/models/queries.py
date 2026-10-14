@@ -124,6 +124,7 @@ FILTER_MODELS: dict[str, type[SemanticFilters]] = {
     "tasks": TaskFilters,
     "notes": NoteFilters,
     "tags": TagFilters,
+    "prompts": TagFilters,
     "activity": ActivityFilters,
     "transfers": TransferFilters,
     "pipelines": PipelineFilters,

@@ -30,6 +30,16 @@ Interaction's Company and, when present, Deal. Embedded matrix, key-player,
 pain-chain, and profile guidance content is Pydantic-validated, not a
 collection of generic JSON-registered models.
 
+Lead list and detail responses also include read-only `contact_display_name`,
+`company_uid` and `company_name`, resolved from the referenced Contact and its
+current primary Company. Names are not copied into the Lead MetaTable and cannot
+be supplied on create or patch. Collection reads enrich only the requested page
+in the same governed query as its total count. A Contact without a Company still
+appears, with null Company fields. An unnamed Contact uses its first email as
+the display label, or `Unnamed contact` when no label is available. The Lead's
+`uid` remains its navigation and mutation identity. Lead `search` still matches
+notes; it does not search these display fields.
+
 `POST /extensions/solution-selling/prompters/{uid}/render/` accepts a required
 `contact_uid` and explicit `company_uid`, optional lead/profile/deal/assessment
 references, and a string-to-string `inputs` map. It returns `{text}` for human
@@ -45,6 +55,33 @@ are not discovered before rendering. For example, `{{ inputs.topic }}` requires
 an explicit `topic` input, while a profile block guarded by `{% if profile %}`
 can be omitted. The signed-in sender is supplied by the API. The Company is
 selected explicitly and is not inferred from Contact affiliations.
+
+## Prompter bulk deletion
+
+`GET prompters/discovery/` returns `command-center.resource_discovery@v1`,
+including the `delete` action only for callers with `crm.read` and `crm.archive`.
+It accepts optional `search`, without pagination or ordering. The action supports
+explicit selection only (up to 200 unique UUIDs); selecting a page never means
+all matching records. The SDK owns selection, preflight and typed confirmation.
+
+`POST prompters/bulk-delete/preflight/` and `POST prompters/bulk-delete/` accept
+the Command Center bulk execution envelope: `selection: {mode: "explicit", uids}`
+and `options: {expected_versions: {"<uid>": <positive integer>}}`. The version
+map must contain exactly the selected UIDs. The frontend supplies the versions
+of the displayed rows. Preflight returns `allowed`, `matched_count`, `detail`
+and `blockers`. Execution returns `{deleted_count}`. Both boundaries independently
+check permissions and module activation.
+
+One governed PostgreSQL statement locks the selected rows, checks every version,
+sets `archived_at`, increments versions and records an activity event per row.
+A missing, archived or stale row blocks the entire mutation (`409`); invalid
+selection/options return `422`, and missing capability returns `403`. Deleted
+templates disappear from active reads and cannot render new drafts. Existing
+CRM records and audit history remain. This is archival deletion, with no normal
+UI restore flow currently offered. There is no bulk-delete MCP tool.
+
+Deletion does not promise replay. After an uncertain response, read the list
+before retrying. SQLite execution of this PostgreSQL command is not verified.
 
 ## Read-only workflow helpers
 

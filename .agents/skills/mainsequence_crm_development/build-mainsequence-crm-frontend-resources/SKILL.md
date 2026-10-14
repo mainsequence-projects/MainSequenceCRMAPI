@@ -7,12 +7,18 @@ description: "Build CRM contacts, companies, deal lists, tasks, notes, details a
 
 ## Read before changing code
 
-Read repository AGENTS.md and `engineering/crm-handoff/START_HERE.md`. Read these application specifications:
+Read the owning repository's `AGENTS.md`, current implementation and tests,
+and the maintained documentation for the affected surface. Paths below are
+relative to the named checkout; API and frontend are separate repositories.
 
-- `engineering/crm-handoff/specs/04_backend_api.md`
-- `engineering/crm-handoff/specs/06_frontend.md`
+- Frontend: `engineering/README.md`, affected user-guide pages under `docs/`,
+  `src/Resources.tsx`, `src/crm-records/`, and `src/models.ts`.
+- API: affected concept/API pages, `docs/api/route-index.md`,
+  and current Pydantic models under `src/crm/models/`.
 
-Then use the installed SDK-owned skills; never edit them during application work:
+Read the matching installed SDK skills. Main Sequence and Tau guidance lives
+in the API checkout; Command Center guidance lives in the frontend checkout.
+Never edit SDK-owned skills during application work:
 
 - `.agents/skills/command-center/resource/adapt-resource-backend/SKILL.md`
 - `.agents/skills/command-center/views/build-resource-list/SKILL.md`
@@ -21,7 +27,9 @@ Then use the installed SDK-owned skills; never edit them during application work
 - `.agents/skills/command-center/views/add-resource-actions/SKILL.md`
 - `.agents/skills/command-center/layout/compose-command-center-page/SKILL.md`
 
-Pinned source IDs: A01, A04, C08, C09, C10, C11, C16, C17. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.
+Installed package versions, public contracts and version-matched skills govern
+SDK behavior. Missing installed guidance is an installation/compatibility
+issue; do not substitute obsolete source snapshots or guessed APIs.
 
 ## Workflow
 

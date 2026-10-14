@@ -7,20 +7,26 @@ description: "Verify Command Center contract, theme, responsive shell/layout, ac
 
 ## Read before changing code
 
-Read repository AGENTS.md and `engineering/crm-handoff/START_HERE.md`. Read these application specifications:
+Read the owning repository's `AGENTS.md`, current implementation and tests,
+and the maintained documentation for the affected surface. Paths below are
+relative to the named checkout; API and frontend are separate repositories.
 
-- `engineering/crm-handoff/specs/06_frontend.md`
-- `engineering/crm-handoff/specs/08_test_acceptance.md`
-- `engineering/crm-handoff/specs/10_gaps_and_risks.md`
+- Frontend: `engineering/README.md`, `package.json`, `tests/`,
+  `documentation/navigation.json`, and affected user-guide pages under `docs/`.
+- API: `docs/delivery/verification.md` and relevant API/contract tests.
 
-Then use the installed SDK-owned skills; never edit them during application work:
+Read the matching installed SDK skills. Main Sequence and Tau guidance lives
+in the API checkout; Command Center guidance lives in the frontend checkout.
+Never edit SDK-owned skills during application work:
 
 - `.agents/skills/command-center/navigation/compose-command-center-application-shell/SKILL.md`
 - `.agents/skills/command-center/layout/compose-command-center-page/SKILL.md`
 - `.agents/skills/command-center/theme/theme-command-center-app/SKILL.md`
 - `.agents/skills/command-center/documentation/document-command-center-application/SKILL.md`
 
-Pinned source IDs: C07, C11, C12, C15. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.
+Installed package versions, public contracts and version-matched skills govern
+SDK behavior. Missing installed guidance is an installation/compatibility
+issue; do not substitute obsolete source snapshots or guessed APIs.
 
 ## Workflow
 

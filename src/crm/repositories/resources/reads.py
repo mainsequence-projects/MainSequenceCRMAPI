@@ -19,7 +19,7 @@ from .catalog import ORDER_COLUMNS, RESOURCE_SPECS
 class ResourceReads(GovernedGateway):
     def collection(self, resource: str, scope: QueryScope) -> dict[str, Any]:
         definition = RESOURCE_SPECS[resource]
-        select_sql = self._select_sql(resource)
+        select_sql = self._select_sql(resource, collection=True)
         where_sql, parameters, parameter_types = self._where_sql(resource, scope)
         ordering = scope.ordering or definition.default_ordering
         descending = ordering.startswith("-")
@@ -64,7 +64,7 @@ class ResourceReads(GovernedGateway):
         page_index = int(scope.page_index)
         page_size = int(scope.page_size)
         for item in items:
-            validate_payload(definition.contract, item)
+            validate_payload(definition.collection_contract or definition.contract, item)
         return {
             "items": items,
             "pageInfo": {
@@ -96,8 +96,15 @@ class ResourceReads(GovernedGateway):
         item = self._json(rows[0].get("item"), expected=dict, label="detail")
         return validate_payload(definition.contract, item)
 
-    def _select_sql(self, resource: str) -> str:
+    def _select_sql(self, resource: str, *, collection: bool = False) -> str:
         table = MODELS[RESOURCE_SPECS[resource].logical_table].__tablename__
+        if resource == "prompts" and collection:
+            fields = ", ".join(
+                f"t.{column.name}"
+                for column in MODELS["prompt"].__table__.columns
+                if column.name != "content_markdown"
+            )
+            return f'SELECT {fields} FROM "{table}" t'
         if resource == "companies":
             return company_projection()
         if resource == "contacts":

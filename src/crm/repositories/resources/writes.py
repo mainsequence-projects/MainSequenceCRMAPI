@@ -21,6 +21,7 @@ class ResourceMutations(GovernedGateway):
     @staticmethod
     def _create_values(resource: str, data: dict[str, Any], actor_uid: uuid.UUID) -> dict[str, Any]:
         nullable_defaults = {
+            "prompts": {"description": None},
             "companies": {
                 "owner_uid": None,
                 "sector_key": None,
@@ -278,10 +279,11 @@ class ResourceMutations(GovernedGateway):
             relation_values if isinstance(relation_values, list) else [],
             allow_existing_archived_company=resource == "contacts",
         )
+        active_predicate = " AND current.archived_at IS NULL" if resource == "prompts" else ""
         entity_exists = (
             f'AND EXISTS (SELECT 1 FROM "{entity_table}" current '
             "WHERE current.uid=CAST(%(entity_uid)s AS uuid) "
-            "AND current.version=CAST(%(expected_version)s AS bigint))"
+            "AND current.version=CAST(%(expected_version)s AS bigint)" + active_predicate + ")"
         )
         ctes = [
             *(
@@ -360,7 +362,12 @@ class ResourceMutations(GovernedGateway):
                 "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=p.version+1 "
                 "FROM changed WHERE p.uid=changed.pipeline_uid RETURNING p.uid)"
             )
-        parameters["event_changes"] = json.dumps(data)
+        # Prompt bodies belong in their detail response, not in activity-list payloads.
+        event_changes = dict(data)
+        if resource == "prompts" and "content_markdown" in event_changes:
+            event_changes.pop("content_markdown")
+            event_changes["content_markdown_changed"] = True
+        parameters["event_changes"] = json.dumps(event_changes)
         parameter_types["event_changes"] = "jsonb"
         sql = (
             "WITH " + ", ".join(ctes) + f' INSERT INTO "{activity_table}" '
@@ -468,6 +475,7 @@ class ResourceMutations(GovernedGateway):
             "tasks": (("contact_uid", "contact"),),
             "notes": (("contact_uid", "contact"), ("deal_uid", "deal")),
             "tags": (),
+            "prompts": (),
         }[resource]
         for field, logical_table in references:
             if logical_table is None or values.get(field) is None:

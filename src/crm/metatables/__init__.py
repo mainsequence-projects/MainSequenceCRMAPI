@@ -13,6 +13,7 @@ from .google_oauth import GoogleOAuthAttempt, GoogleOAuthConnection
 from .interaction import Interaction
 from .note import Note
 from .pipeline import Pipeline
+from .prompt import Prompt
 from .settings import Settings
 from .solution_selling import (
     SolutionSelling,
@@ -41,6 +42,7 @@ MODELS = {
     "deal": Deal,
     "deal_contact": DealContact,
     "note": Note,
+    "prompt": Prompt,
     "task": Task,
     "activity_event": ActivityEvent,
     "entity_redirect": EntityRedirect,

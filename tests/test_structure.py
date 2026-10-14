@@ -36,7 +36,7 @@ def test_models_are_python_classes_not_runtime_json_definitions():
     assert not (API / "src/crm/data_dictionary.json").exists()
     assert not (API / "src/crm/crm-domain.schema.json").exists()
     assert not (API / "src/crm/import-mapping.schema.json").exists()
-    assert len(MODELS) == 26
+    assert len(MODELS) == 27
     for logical_name, model in MODELS.items():
         expected_module = (
             "src.crm.metatables.solution_selling"

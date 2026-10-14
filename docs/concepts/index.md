@@ -12,6 +12,7 @@ the application does not define a workspace or tenant record.
 | [Task](tasks-notes.md) | Belongs to a contact | Follow-up work with explicit completion state |
 | [Interaction](interactions.md) | Records participants; may reference a company and deal | Preparation and outcome of one conversation |
 | [Note](tasks-notes.md) | Belongs to exactly one contact or deal | Time-stamped narrative with server-owned authorship |
+| [Prompt](prompts.md) | Independent core library document | Fixed Markdown instructions to read, edit, and copy |
 | [Tag](tags-activity.md) | May label contacts | Reusable classification with a semantic tone |
 | [Activity event](tags-activity.md) | Refers to an entity and command | Read-only audit history |
 | [Transfer](transfers.md) | Belongs to an initiating principal | Durable import/export job state |

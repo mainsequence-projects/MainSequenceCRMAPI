@@ -247,7 +247,9 @@ class LeadCreate(LeadFields):
 
 
 class SolutionSellingLead(LeadFields, Record):
-    pass
+    contact_display_name: str
+    company_uid: UUID | None
+    company_name: str | None
 
 
 class LeadChanges(NonEmptyChanges):

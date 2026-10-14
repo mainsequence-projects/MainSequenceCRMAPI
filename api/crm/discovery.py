@@ -33,6 +33,12 @@ def _spec(label: str, *columns: tuple[str, str, str]) -> DiscoverySpec:
 
 
 DISCOVERY: dict[str, DiscoverySpec] = {
+    "prompts": _spec(
+        "Prompts",
+        ("name", "Prompt", "primary"),
+        ("description", "Description", "secondary"),
+        ("updated_at", "Updated", "tertiary"),
+    ),
     "companies": _spec(
         "Companies",
         ("name", "Company", "primary"),

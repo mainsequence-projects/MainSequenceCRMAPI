@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from . import activity, companies, contacts, deals, notes, pipelines, tags, tasks
+from . import activity, companies, contacts, deals, notes, pipelines, prompts, tags, tasks
 
 router = APIRouter()
 for resource_router in (
@@ -11,6 +11,7 @@ for resource_router in (
     deals.router,
     tasks.router,
     notes.router,
+    prompts.router,
     tags.router,
     activity.router,
     pipelines.router,

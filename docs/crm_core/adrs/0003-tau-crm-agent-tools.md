@@ -3,9 +3,7 @@
 - **Status:** Transport and caller binding superseded by [ADR 0005](0005-crm-application-mcp.md)
 - **Date:** 2026-09-24
 - **Scope:** Optional CRM agent runtime and its business tools
-- **Sources:** Sibling project's
-  `engineering/crm-handoff/specs/09_tau_optional.md` and source lock;
-  `ms-tau-sdk` 1.2.8 at pinned release commit
+- **Sources:** `ms-tau-sdk` 1.2.8 at pinned release commit
   `1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6`;
   upstream [ADR 0011](https://github.com/mainsequence-sdk/ms-tau-sdk/blob/1308a65a724ca8bf2e0f02d39a5fbd072cd8eec6/docs/adrs/0011-independent-base-tool-and-main-sequence-mcp-exclusion.md)
 

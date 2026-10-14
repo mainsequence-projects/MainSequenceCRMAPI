@@ -13,7 +13,7 @@ Do not defer the update to an unspecified later task.
    `docs/concepts/` page for meaning, relationships, invariants, and lifecycle.
 2. Update `docs/api/` when a mounted route, query, request/response model,
    capability, status, or error behavior changes. Describe the implemented
-   wire behavior, not an aspirational handoff contract. Keep
+   wire behavior and label planned or unmounted behavior explicitly. Keep
    `docs/api/route-index.md` aligned with mounted OpenAPI methods and paths.
    Add a page and nav entry only when a distinct concept or delivery surface
    warrants one.

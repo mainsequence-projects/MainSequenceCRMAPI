@@ -22,11 +22,10 @@ platform policy. There is no application-owned workspace or tenant identity.
 
 ## Implementation status
 
-The pages describe the code currently present here, not every feature in the
-engineering handoff. In particular, export HTTP routes are not mounted, and
-local tests alone do not establish governed mutation safety. The CRM-only
-`0005` migration, fresh-process governed reads, and a synthetic contact social
-create/patch probe were verified on the configured disposable provider. A
-deployed release and nonempty legacy backfill remain unverified.
-See [verification and release](delivery/verification.md) before treating the
-service as deployment-ready.
+The pages describe the implemented models, shared services, and mounted routes
+in this checkout. Export HTTP routes are not mounted. Local tests alone do not
+establish governed mutation safety or deployed behavior; consult the dated
+[verification and release evidence](delivery/verification.md) for each change.
+Maintain behavior using `AGENTS.md`, the project development skills, current
+code and tests, and installed SDK/client guidance. Keep planned work and
+unverified integration checks explicitly labeled.

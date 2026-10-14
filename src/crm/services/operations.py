@@ -30,6 +30,7 @@ from ..platform.runtime import CAPABILITIES, BootstrapPort, DirectoryPort, Polic
 from ..repositories.records import RECORDS, VersionedRecordStore
 from ..repositories.resources.catalog import ORDER_COLUMNS, RESOURCE_SPECS
 from ..repositories.resources.store import GovernedResourceStore
+from ..solution_selling.bulk import PrompterDeleteRequest
 from ..solution_selling.config import solution_selling_enabled
 from ..solution_selling.models import (
     AssessmentPatch,
@@ -195,6 +196,9 @@ class CRMOperations:
             candidate.update(patch["changes"])
             expected_version = patch["expected_version"]
             data = validate_payload(f"{singular.title()}Create", candidate)
+            if resource == "prompts":
+                # Validate the complete candidate, but only write/audit requested fields.
+                data = {key: data[key] for key in patch["changes"]}
         self._owner(data)
         return self.resources.update(resource, self.context.actor_uid, uid, expected_version, data)
 
@@ -406,6 +410,25 @@ class CRMOperations:
         self.context.require("crm.read")
         self._record_enabled(resource)
         return self.records.detail(resource, uid)
+
+    def can_delete_prompters(self) -> bool:
+        self.context.require("crm.read")
+        self._record_enabled("prompters")
+        try:
+            self.context.require("crm.archive")
+        except AccessDenied:
+            return False
+        return True
+
+    def delete_prompters(self, payload: BaseModel, *, preflight: bool = False) -> dict[str, Any]:
+        self.context.require("crm.read")
+        self.context.require("crm.archive")
+        self._record_enabled("prompters")
+        payload = validated_model(PrompterDeleteRequest, payload)
+        versions = payload.options.expected_versions
+        if preflight:
+            return self.records.preflight_delete_prompters(versions)
+        return self.records.delete_prompters(self.context.actor_uid, versions)
 
     def create_record(self, resource: str, payload: BaseModel) -> dict[str, Any]:
         self.context.require("crm.create")

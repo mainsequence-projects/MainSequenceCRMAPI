@@ -7,24 +7,28 @@ description: "Build the CRM storage and integrity layer using SQLAlchemy-authore
 
 ## Read before changing code
 
-Read repository AGENTS.md and `engineering/crm-handoff/START_HERE.md`. Read these application specifications:
+Read the owning repository's `AGENTS.md`, current implementation and tests,
+and the maintained documentation for the affected surface. Paths below are
+relative to the named checkout; API and frontend are separate repositories.
 
-- `engineering/crm-handoff/specs/02_metatables_and_integrity.md`
-- `engineering/crm-handoff/specs/03_data_model.md`
-- `engineering/crm-handoff/specs/10_gaps_and_risks.md`
+- API: `docs/delivery/persistence.md`, affected pages under `docs/concepts/`,
+  `src/crm/metatables/`, `src/crm/migrations/`, `src/crm/repositories/`, and
+  `tests/test_migrations.py` / `tests/test_catalog.py`.
 
-Then use the installed MetaTables client skills (refresh them with
-`metatables copy-metatables-skills --path .`); never edit them during application work:
+Read the installed MetaTables client skills in the API checkout; never edit
+them during application work:
 
 - `.agents/skills/metatables/metatables-meta-tables/SKILL.md`
 - `.agents/skills/metatables/metatables-migrations/SKILL.md`
 
-Pinned source IDs: M01, M02, M03, M04, M07, M08, A02, A06, A11. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.
+Installed package versions, public contracts and version-matched skills govern
+SDK behavior. Missing installed guidance is an installation/compatibility
+issue; do not substitute obsolete source snapshots or guessed APIs.
 
 Repository decision (2026-09-23): revision `0004` replaced the old workspace
 table and all CRM `workspace_uid` columns with singleton `settings` and direct
-record foreign keys. Older handoff instructions requiring a workspace tenant,
-composite workspace keys, or a global workspace mutation epoch are superseded.
+record foreign keys. Do not reintroduce an application workspace tenant,
+composite workspace keys, or a global workspace mutation epoch.
 
 ## Workflow
 

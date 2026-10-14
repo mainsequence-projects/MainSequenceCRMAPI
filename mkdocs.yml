@@ -15,6 +15,7 @@ nav:
       - Companies: concepts/companies.md
       - Deals and pipelines: concepts/deals-pipelines.md
       - Tasks and notes: concepts/tasks-notes.md
+      - Prompts: concepts/prompts.md
       - Interactions: concepts/interactions.md
       - Tags and activity: concepts/tags-activity.md
       - Transfers: concepts/transfers.md
@@ -26,6 +27,7 @@ nav:
       - Contacts and companies: api/contacts-companies.md
       - Deals and pipelines: api/deals-pipelines.md
       - Tasks, notes, tags, and activity: api/engagement.md
+      - Prompts: api/prompts.md
       - Interactions: api/interactions.md
       - Solution Selling: api/solution-selling.md
       - Google Workspace: api/google-workspace.md

@@ -1,5 +1,20 @@
 # Persistence and migrations
 
+## Core Prompts (revision 0010)
+
+Revision `0010`, downstream of `0009`, adds `mainsequence_crm__prompt` to the
+existing `mainsequence-crm` provider/namespace (27 managed tables). It does not
+alter Solution Selling Prompters or their contents. Prompt mutations use the
+existing atomic governed record/activity command and actor/version fences.
+Lists select metadata only. PostgreSQL and SQLite migrations enforce the
+65,536-byte body limit using their respective byte-length expressions.
+
+This feature is implemented locally, not deployed by this change. Hosted
+application of the revision remains exclusively the workflow's `migrate-crm`
+Job before API deployment; never upgrade a hosted database manually. Local
+verification uses disposable SQLite files and a private PostgreSQL Unix socket,
+not the normal local CRM runner's hosted DataSource.
+
 The two model layers serve different purposes:
 
 - `src/crm/models/` contains core Pydantic domain and HTTP payload classes;

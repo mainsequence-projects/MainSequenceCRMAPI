@@ -71,12 +71,12 @@ The five authored business skills live under `.agents/skills/mainsequence_crm/`:
 | --- | --- | --- |
 | `crm-core` | 37 | Contacts, Companies, affiliations, Notes, tags, activity, Tasks, Interactions, owner selection, settings and Contact merge previews. |
 | `crm-deals` | 9 | Deal records, pipeline metadata, stages, boards and versioned moves. |
-| `solution-selling/crm-prospecting` | 8 | Prospecting profiles, Lead state and linking the next Contact Task. |
+| `solution-selling/crm-prospecting` | 8 | Prospecting profiles and the required-prompter outreach workflow, actual Interaction recording, Lead state and linking the next Contact Task. |
 | `solution-selling/crm-prompters` | 5 | Template maintenance, context inspection and rendering unsaved drafts. |
 | `solution-selling/crm-discovery` | 10 | Diagnosis preparation and records, Deal assessments and Solution Selling context. |
 
 The allocation covers all 69 business tools exactly once; workflows can reuse
-another skill's reads. With Solution Selling disabled, the 46 core/Deal tools
+another skill's operations. With Solution Selling disabled, the 46 core/Deal tools
 remain. Simple record operations stay grouped in core; separate skills cover
 the workflows with distinct decisions and evidence requirements.
 
@@ -96,6 +96,23 @@ schemas, effective permissions and actual business results. They do not grant
 tool access, claim a draft was saved, or promise unsupported commands. Prompter
 requirements are currently inferred from the retrieved template; there is no
 server requirements-discovery tool.
+
+Before saving a new prospecting Contact, the prospecting skill resolves or
+creates its actual Company and passes the confirmed UID in
+`payload.company_uid`. Unknown or unresolved Companies block that Contact
+creation; the workflow does not save an unlinked Contact for later repair.
+This prerequisite also appears in core Contact guidance for prospecting work.
+
+The prospecting skill requires a persisted prompter for introductions,
+follow-up messages and conversation preparation. It reads an indicated
+prompter; when none is indicated, it creates one before rendering. The workflow
+then distinguishes the unsaved draft, actual delivery, requested Interaction
+recording, Lead progress and follow-up Task linking. Required template creation
+does not authorize sending or other record saves. The current MCP has no
+delivery tool, and neither Lead nor Interaction has a typed prompter reference.
+These are agent workflow requirements. The record API contracts are unchanged;
+they have not gained a prospecting-specific Company or template requirement,
+or automatic outreach logging.
 
 Repository implementation and maintenance skills live separately under
 `.agents/skills/mainsequence_crm_development/`. Only the business usage folder

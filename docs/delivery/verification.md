@@ -17,12 +17,155 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Core fixed-Markdown Prompts (2026-10-13)
+
+Implemented locally in the uncommitted API working tree based on `d825f53`
+and the paired frontend working tree based on `90fadc8`. Existing unrelated
+working-tree changes were retained. These results describe that local source,
+not the deployed revisions bearing those base commits.
+
+The change adds the Prompt contract, MetaTable and additive revision `0010`,
+resource registry/projections and seven REST routes, plus the frontend's
+`src/prompts/` screens, navigation, Markdown editor dependencies and user guide.
+The shared resource reader now permits a metadata-only collection contract;
+Prompt collections never select `content_markdown`. Lists request 50 records.
+This core feature is independent of optional Solution Selling Prompters and
+adds no assistant MCP tools.
+
+Actual checks, all exiting successfully:
+
+- `.venv/bin/pytest -q`: **307 passed**. Prompt HTTP tests execute actual CRM
+  compiled SQL in a disposable private PostgreSQL cluster. They cover
+  create/edit/read/archive/restore, exact literal Markdown, strict input,
+  version conflicts, per-operation capability revocation, archived edits,
+  metadata-only pagination, canonical SDK discovery/collection schemas and
+  indexed valid/invalid fixtures. A failed audit constraint rolls back the
+  document update; an actual PostgreSQL Reader role cannot write. Identity
+  and policy facts are controlled fixtures, and external HTTP is forbidden in
+  Prompt tests. SQLite migration tests apply the full history to `0010`, check
+  the UTF-8 limit, reopen persistence and downgrade only the Prompt table.
+- `.venv/bin/python scripts/verify_prompts_local.py`: a private loopback
+  MetaTables API with a temporary SQLite database applies revision `0010`,
+  executes governed compiled insert/update operations, and confirms version 2
+  and exact content from a **fresh client process**. That process binds all
+  **27** CRM tables and validates settings. Only developer identity/Team facts
+  are fixtures; the API, migration, catalogue and persistence are real.
+  External/platform HTTP is blocked. The owned Prompt is deleted after its
+  current state is confirmed, and the temporary runtime is disposed. This is
+  not an API-restart or real-provider Tau test.
+- Frontend `npm test`: **16 passed**. `npm run docs:check` validates all **22**
+  guide pages. `npm run build` type-checks and builds both the app and guide in
+  `dist/`. `npx --no-install command-center-sdk theme audit --path src` passes
+  for all three authored CSS files. Node 24 is used. The editor is lazy-loaded;
+  Vite still reports a non-failing large-chunk warning, including the editor
+  chunk (approximately 199 KiB gzip).
+- `node tests/prompts.browser.mjs` uses real Chromium against an owned Vite
+  process with every CRM HTTP request intercepted by disposable in-memory
+  data. Both fallback API/guide proxies point to an unreachable port; external
+  browser requests are blocked. Actual UI checks cover formatted toolbar
+  edits, exact source-mode switching/copying, unsupported-content preservation,
+  archive/restore, unsaved cancel/back protection, stale-version recovery,
+  committed-but-lost responses without replay, safe HTML/link/image handling,
+  the Prompt help action, dense lists with long labels, reduced motion and
+  list-error refresh recovery. Public SDK shell/layout assertions pass at 375
+  and 768 pixels with actual touch/mobile contexts, and at 1280 pixels with a
+  fine pointer, in light and dark presets. Screenshots are inspected locally.
+- `node tests/docs-artifact.browser.mjs` serves only the built `dist/` on an
+  owned random loopback port. The application reaches its required-host gate,
+  `/docs/` and all **21** generated feature links resolve, the Prompt deep link
+  loads on desktop/mobile in light/dark, and the return link opens the app.
+  No guide asset fails. This is packaged static-artifact verification, not a
+  live Command Center transport/session check.
+- Focused Ruff, strict MkDocs and both repositories' `git diff --check` pass.
+
+No production data, normal developer DataSource, hosted migration, deployment,
+push or release was used for these checks. Hosted identity/policy and
+startup/reconnection behavior are unchanged and not newly live-verified. The
+real-provider Tau pre-push gate remains required before publishing; it was not
+run for this unpushed implementation. A normal authorized release must apply
+`0010` through the existing `migrate-crm` Job before serving these routes.
+
+### Implementation maintenance sources (2026-10-13)
+
+API maintenance starts from `AGENTS.md`, the project development skills,
+`src/crm/`, mounted `api/crm/` behavior, tests and these MkDocs pages. Frontend
+maintenance starts from its `AGENTS.md`, `engineering/README.md`, current
+Vite source, tests and end-user guide. Installed package contracts and
+version-matched skills govern SDK behavior in the checkout that installs them.
+
+The initial specification pack, duplicate development-skill source tree,
+installation scripts, offline pack validators and their frontend Python
+dependencies have been removed. The Atomic MIT notice is retained under the
+frontend's `engineering/legal/`. The two project development packs now share
+the current API rules for singleton settings, direct record foreign keys,
+version fences, uncertain-write recovery, migration Jobs and application MCP.
+
+This maintenance change alters instructions, documentation and obsolete
+validation tooling. It does not change CRM runtime behavior or establish new
+live verification. Existing dated deployment evidence and unresolved checks
+below retain their original scope.
+
+### Company and prompter prospecting prerequisites (2026-10-13)
+
+The local `crm-prospecting` skill now resolves the actual Company before any
+prospecting Contact creation. A missing Company is created from established
+facts first; the Contact create includes its confirmed `company_uid`. Unknown,
+ambiguous or unresolved Company state blocks Contact creation. CRM core routes
+prospecting Contact saves through this prerequisite. The API contract remains
+unchanged; this is skill guidance rather than a new database constraint.
+
+The workflow then covers Contact resolution, required
+prompter selection or creation, requested Lead preparation, rendering, actual
+outreach evidence, requested Interaction recording, Lead progress and follow-up
+Task linking. If no prompter is indicated, the workflow creates one before
+drafting. Introductions, follow-ups and conversation preparation use a saved
+prompter. Historical logging and research-only requests preserve their own
+scope; neither implies that a new template was used in past outreach.
+
+Prompter and shared write guidance use the same rule. All eight usage-pack files
+match between API and static repositories; the five-skill allocation and 69-tool
+catalogue are unchanged. All five skills pass the skill validator. The skill
+pack, protected MCP publication and documentation tests pass (11 tests), and
+the strict MkDocs build passes. These are offline checks, not a live agent
+execution of the new workflow.
+
+The workflow changes are local and unpushed. No CRM business records, API
+contracts, Tau source or configuration changed. Hosted agent skill access still
+has the SDK gap recorded below; this skill update does not resolve it.
+
+### Deployed MCP and agent render verification (2026-10-13)
+
+The deployed API and assistant run API commit `d825f53`; the deployed static
+site runs `90fadc8`. Authenticated requests to the deployed `/mcp` passed
+`skills/list`, `skills/get` for all five manifests, and `resources/read` for all
+eight advertised files. Every file matched the source bytes and SHA-256 digest.
+
+The deployed CRM assistant was then exercised through its advertised normal
+`POST /api/chat` route using the real `openai-codex/gpt-5.6-luna` configuration.
+Its actual tool results show discovery of 69 business tools and successful
+Contact, Company and prompter reads, affiliation verification, and an unsaved
+`crm_prompters_render` call. The selected existing Contact was Javier Eduardo
+Bernal Stoopen at Monex. The stored `test` prompter returned exactly
+`Hi  Javier Eduardo`, matching the direct MCP result. The successful tool
+results and final answer were confirmed in persisted session entries.
+
+Remote skill consumption by the deployed assistant remains unavailable.
+Tau 2.0.13's application bridge exposes only application tool listing/calling,
+discarding the connection's advertised resource catalogue and exposing no
+skill/resource reader. Its local project skill read does not establish a remote
+MCP skill read. SDK issue
+[#98](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/98) records the live
+reproduction and source evidence. The MCP publisher itself passed.
+
+Evidence is retained under ignored `.local/deployment/agent-skill-render/`.
+These checks changed no CRM business records or Tau source/configuration.
+
 ### Publication gates (2026-10-12)
 
 The user authorized publishing the API and static `main` branches after the
 local MCP publication check. The static preflight passes its ten tests,
 TypeScript/Vite application build, same-artifact Docusaurus build, documentation
-validation, Command Center SDK theme audit and offline handoff validator. The
+validation, Command Center SDK theme audit and offline specification validation. The
 API's strict MkDocs build passes again.
 
 The API pre-push hook must execute `scripts/verify_local_agent.py --pre-push`
@@ -112,9 +255,8 @@ hosted deployment remain unverified. Nothing was committed or pushed.
 
 The 11 API repository coding skills moved into
 `.agents/skills/mainsequence_crm_development/`, preserving their names and
-supporting files. The frontend's installed and handoff development packs use
-the same namespace, and their routing, installer and validation references
-are updated. Physical table namespaces remain unchanged.
+supporting files. The frontend's development skills use the same namespace.
+Physical table namespaces remain unchanged.
 
 The `.agents/skills/mainsequence_crm/` pack now contains five business usage
 skills: core, Deals, prospecting, prompters and discovery. Core combines routine
@@ -137,7 +279,7 @@ files are byte-identical across repositories, and Ruff passes for the new test.
 `tests/test_crm_skill_pack.py` plus `tests/test_documentation.py` pass (4 tests),
 and the strict MkDocs build passes. The earlier development namespace move
 preserved all 20 API and 18 frontend development files apart from namespace
-references and passed the handoff validator. These are offline file, catalogue
+references and passed the then-current specification validator. These are offline file, catalogue
 and documentation checks; they do not invoke business operations.
 
 The namespace refactor authored skill guidance without changing the tool
@@ -1069,7 +1211,7 @@ row, saved mapping, and validated its plan. All successful probe records were
 deleted by exact UID; none are production data. These checks establish the
 tested command paths, not all possible concurrent interleavings. A deployed
 frontend/API release remains unverified. Do not describe an unmounted endpoint,
-mocked test, or planned handoff ticket as a deployed feature.
+mocked test, or planned feature as a deployed feature.
 
 The repository-layer refactor was checked locally with route/unit tests,
 Ruff, a strict MkDocs build, and an offline source/wheel build. These checks
@@ -1337,6 +1479,58 @@ identity is kept:
 
 `crm-api` and `migrate-crm` stay in `crm-api.yaml` under the same keys and keep
 their identities.
+
+## 2026-10-13 prompter bulk deletion
+
+The local frontend uses canonical SDK discovery to offer explicit selection,
+**Delete prompters**, preflight and typed confirmation. API tests cover discovery,
+permission revocation, invalid selection, stale/missing versions and the atomic
+statement boundary. The indexed Command Center contract fixtures validate, and
+frontend adapter tests preserve displayed versions across preflight/execution.
+Focused API tests, frontend tests, app/user-guide builds, strict MkDocs, route
+documentation parity and the closed theme audit passed.
+
+Live verification used the local API with the existing **hosted PostgreSQL**
+MetaTables runtime (`local_mode: false`), not local SQLite. Two owned disposable
+prompters were created; one was updated. A stale deletion returned `409`, and
+fresh reads proved both rows remained active. Deleting with current versions
+returned `deleted_count: 2`; both active detail reads then returned `404` and
+the fixture search returned zero rows. A fresh client bound all 26 CRM tables
+and confirmed both archived rows, incremented versions and two archival events.
+Only those verification records were mutated. Evidence is ignored under
+`.local/prompter-bulk-verification/`.
+
+Browser checks verified list checkboxes, page-only selection, the SDK action
+picker, allowed preflight, the disabled confirmation button before typing
+`DELETE`, and cancellation. Successful deletion was verified through HTTP,
+not by pressing the browser's final confirmation. SQLite execution and deployed
+delivery of this change remain unverified. No push was performed.
+
+The standard local page at `http://127.0.0.1:38644/solution-selling/prompters`
+also exposed the action after its API restart. At 375 × 812 the same SDK list
+stacked its records, retained the action picker and had no horizontal overflow.
+This was a viewport check, not the full coarse-pointer layout matrix.
+
+## 2026-10-13 Lead display labels
+
+Lead list and detail reads resolve Contact names and primary Company labels in
+one governed MetaTables query. No schema migration or CRM data mutation was
+needed. Eighteen focused API and documentation tests passed, including read
+authorization, read-only fields, null Company labels and collection envelopes.
+The frontend app and user-guide builds, documentation validation and strict
+MkDocs build passed.
+
+The running local API and Vite site were checked against existing hosted
+PostgreSQL MetaTables data. Twenty-five Lead labels matched fresh Contact
+reads, and the first Lead's detail matched its collection record. The browser
+showed Contact and Company columns and named detail links. At 375 × 812 the
+SDK stacked the same fields without page overflow; this was a viewport check,
+not the full coarse-pointer matrix. A pagination overlap check was affected
+by other actors adding Leads during verification: offset pages are not a
+snapshot. A follow-up read check passed with a stable Contact filter, including
+the empty second page and exact count. Read-check evidence is ignored under
+`.local/lead-display-verification/`.
+Deployed delivery remains unverified; no push was performed.
 
 ## Keeping this site current
 

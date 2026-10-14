@@ -7,20 +7,26 @@ description: "Build the Vite React CRM root using Command Center embedded naviga
 
 ## Read before changing code
 
-Read repository AGENTS.md and `engineering/crm-handoff/START_HERE.md`. Read these application specifications:
+Read the owning repository's `AGENTS.md`, current implementation and tests,
+and the maintained documentation for the affected surface. Paths below are
+relative to the named checkout; API and frontend are separate repositories.
 
-- `engineering/crm-handoff/specs/01_architecture.md`
-- `engineering/crm-handoff/specs/06_frontend.md`
-- `engineering/crm-handoff/specs/08_test_acceptance.md`
+- Frontend: `engineering/README.md`, `README.md`, `src/App.tsx`, `src/api.ts`,
+  `src/navigation.tsx`, `src/routes.ts`, and `tests/routes.test.ts`.
+- API: `docs/api/service.md` and `docs/delivery/local-development.md`.
 
-Then use the installed SDK-owned skills; never edit them during application work:
+Read the matching installed SDK skills. Main Sequence and Tau guidance lives
+in the API checkout; Command Center guidance lives in the frontend checkout.
+Never edit SDK-owned skills during application work:
 
 - `.agents/skills/command-center/general/build-command-center-application/SKILL.md`
 - `.agents/skills/command-center/navigation/compose-command-center-application-shell/SKILL.md`
 - `.agents/skills/command-center/embed/integrate-static-site-iframe/SKILL.md`
 - `.agents/skills/command-center/feedback/build-application-loading-flow/SKILL.md`
 
-Pinned source IDs: C01, C05, C06, C07, C13. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.
+Installed package versions, public contracts and version-matched skills govern
+SDK behavior. Missing installed guidance is an installation/compatibility
+issue; do not substitute obsolete source snapshots or guessed APIs.
 
 ## Workflow
 

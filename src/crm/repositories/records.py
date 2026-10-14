@@ -115,8 +115,79 @@ REFERENCE_FIELDS = {
 }
 
 
+def _lead_projection(source: str) -> str:
+    """Resolve display labels from the Contact's current primary Company."""
+    contact = MODELS["contact"].__tablename__
+    company = MODELS["company"].__tablename__
+    return (
+        "SELECT t.*, COALESCE(NULLIF(trim(concat_ws(' ', c.first_name, c.last_name)), ''), "
+        "c.emails->0->>'email', 'Unnamed contact') AS contact_display_name, "
+        "c.company_uid AS company_uid, company.name AS company_name "
+        f'FROM {source} t LEFT JOIN "{contact}" c ON c.uid=t.contact_uid '
+        f'LEFT JOIN "{company}" company ON company.uid=c.company_uid'
+    )
+
+
 class VersionedRecordStore(GovernedGateway):
     """One small gateway; domain rules stay in Pydantic and SQL predicates."""
+
+    @staticmethod
+    def _selected_prompters(versions: dict[uuid.UUID, int]):
+        params = {}
+        values = []
+        for index, (uid, version) in enumerate(sorted(versions.items())):
+            params[f"uid_{index}"] = str(uid)
+            params[f"version_{index}"] = version
+            values.append(f"(%(uid_{index})s::uuid, %(version_{index})s::bigint)")
+        return "requested(uid, version) AS (VALUES " + ", ".join(values) + ")", params
+
+    def preflight_delete_prompters(self, versions: dict[uuid.UUID, int]) -> dict[str, Any]:
+        requested, params = self._selected_prompters(versions)
+        table = MODELS["solution_selling_prompter"].__tablename__
+        result = self._operation(
+            operation="select", parameters=params, parameter_types={}, max_rows=1,
+            sql=f'WITH {requested} SELECT count(*) AS matched_count FROM "{table}" t '
+                'JOIN requested r ON r.uid=t.uid AND r.version=t.version WHERE t.archived_at IS NULL',
+        )
+        count = int(result["rows"][0]["matched_count"])
+        allowed = count == len(versions)
+        return {"allowed": allowed, "matched_count": count,
+                "detail": f"Delete {count} selected prompter(s). Audit history is retained." if allowed
+                          else "A selected prompter changed or is unavailable. Refresh the list and select again.",
+                "blockers": [] if allowed else ["Selection or record versions are stale."]}
+
+    def delete_prompters(self, actor_uid: uuid.UUID, versions: dict[uuid.UUID, int]) -> dict[str, Any]:
+        requested, params = self._selected_prompters(versions)
+        table = MODELS["solution_selling_prompter"].__tablename__
+        activity = MODELS["activity_event"].__tablename__
+        command = uuid.uuid4()
+        # Lock the complete selection in deterministic order before checking versions.
+        # Missing, deleted or concurrently edited rows cause the shared gate to fail.
+        events = []
+        for index, uid in enumerate(sorted(versions)):
+            params[f"event_{index}"] = str(uuid.uuid5(command, str(uid)))
+            events.append(f"(%(uid_{index})s::uuid, %(event_{index})s::uuid)")
+        params.update(actor_uid=str(actor_uid), command_uid=str(command), count=len(versions))
+        sql = (
+            f"WITH {requested}, events(uid, event_uid) AS (VALUES {', '.join(events)}), "
+            f'locked AS MATERIALIZED (SELECT t.uid, t.version, t.archived_at FROM "{table}" t '
+            "JOIN requested r ON r.uid=t.uid ORDER BY t.uid FOR UPDATE OF t), "
+            "gate AS (SELECT 1 WHERE (SELECT count(*) FROM locked l JOIN requested r "
+            "ON r.uid=l.uid AND r.version=l.version WHERE l.archived_at IS NULL)=%(count)s::integer), "
+            f'changed AS (UPDATE "{table}" t SET archived_at=NOW(), updated_at=NOW(), '
+            "updated_by_uid=%(actor_uid)s::uuid, version=t.version+1 FROM requested r, gate "
+            "WHERE t.uid=r.uid AND t.version=r.version AND t.archived_at IS NULL RETURNING t.uid) "
+            f'INSERT INTO "{activity}" (uid, entity_type, entity_uid, kind, occurred_at, '
+            "recorded_at, actor_uid, origin, command_uid, summary, changes, source_attribution) "
+            "SELECT e.event_uid, 'solution_selling_prompter', c.uid, 'archived', NOW(), NOW(), "
+            "%(actor_uid)s::uuid, 'live', %(command_uid)s::uuid, 'Deleted prompter', '{}'::jsonb, NULL "
+            "FROM changed c JOIN events e ON e.uid=c.uid RETURNING entity_uid"
+        )
+        result = self._operation(operation="insert", sql=sql, parameters=params,
+                                 parameter_types={}, max_rows=len(versions))
+        if len(result.get("rows", [])) != len(versions):
+            raise ResourceConflict("A selected prompter changed or is unavailable. Refresh and select again.")
+        return {"deleted_count": len(versions)}
 
     def collection(
         self,
@@ -156,13 +227,17 @@ class VersionedRecordStore(GovernedGateway):
                 + ")"
             )
         where = " AND ".join(conditions)
+        # Enrich only the requested page, without dropping Leads that have no Company.
+        projection = f", projected AS ({_lead_projection('paged')})" if resource == "leads" else ""
+        result_table = "projected" if resource == "leads" else "paged"
+        rank_order = f"ORDER BY {spec.order} DESC NULLS LAST, uid DESC" if resource == "leads" else ""
         sql = (
             f'WITH q AS (SELECT t.* FROM "{table}" t WHERE {where}), '
-            "paged AS (SELECT q.*, row_number() OVER () AS __row FROM q "
+            f"paged AS (SELECT q.*, row_number() OVER ({rank_order}) AS __row FROM q "
             f"ORDER BY {spec.order} DESC NULLS LAST, uid DESC "
-            "LIMIT %(limit)s::integer OFFSET %(offset)s::integer) "
-            "SELECT COALESCE((SELECT jsonb_agg(to_jsonb(paged) - '__row' ORDER BY __row) "
-            "FROM paged), '[]'::jsonb) AS items, (SELECT count(*) FROM q) AS total_items"
+            f"LIMIT %(limit)s::integer OFFSET %(offset)s::integer){projection} "
+            f"SELECT COALESCE((SELECT jsonb_agg(to_jsonb({result_table}) - '__row' ORDER BY __row) "
+            f"FROM {result_table}), '[]'::jsonb) AS items, (SELECT count(*) FROM q) AS total_items"
         )
         result = self._operation(
             operation="select",
@@ -191,9 +266,16 @@ class VersionedRecordStore(GovernedGateway):
     def detail(self, resource: str, uid: uuid.UUID) -> dict[str, Any]:
         spec = RECORDS[resource]
         table = MODELS[spec.table].__tablename__
+        source = f'"{table}"'
+        sql = (
+            f"WITH item AS ({_lead_projection(source)} "
+            "WHERE t.uid=%(uid)s::uuid AND t.archived_at IS NULL) SELECT to_jsonb(item) AS item FROM item"
+            if resource == "leads" else
+            f'SELECT to_jsonb(t) AS item FROM "{table}" t WHERE t.uid=%(uid)s::uuid AND t.archived_at IS NULL'
+        )
         result = self._operation(
             operation="select",
-            sql=f'SELECT to_jsonb(t) AS item FROM "{table}" t WHERE t.uid=%(uid)s::uuid AND t.archived_at IS NULL',
+            sql=sql,
             parameters={"uid": str(uid)},
             parameter_types={},
             max_rows=1,

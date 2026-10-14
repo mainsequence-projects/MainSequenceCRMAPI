@@ -10,12 +10,21 @@ class ResourceSpec(BaseModel):
 
     logical_table: str
     contract: str
+    collection_contract: str | None = None
     item_label: str
     search_fields: tuple[str, ...]
     default_ordering: str
 
 
 RESOURCE_SPECS: dict[str, ResourceSpec] = {
+    "prompts": ResourceSpec(
+        logical_table="prompt",
+        contract="Prompt",
+        collection_contract="PromptSummary",
+        item_label="Prompt",
+        search_fields=("name", "description"),
+        default_ordering="-updated_at",
+    ),
     "companies": ResourceSpec(
         logical_table="company",
         contract="Company",
@@ -76,6 +85,7 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
 
 
 ORDER_COLUMNS: dict[str, dict[str, str]] = {
+    "prompts": {"name": "q.name", "created_at": "q.created_at", "updated_at": "q.updated_at"},
     "companies": {"name": "q.name", "created_at": "q.created_at", "updated_at": "q.updated_at"},
     "contacts": {
         "first_name": "q.first_name",

@@ -7,13 +7,18 @@ description: "Build the source/upload, mapping, review, durable execution and re
 
 ## Read before changing code
 
-Read repository AGENTS.md and `engineering/crm-handoff/START_HERE.md`. Read these application specifications:
+Read the owning repository's `AGENTS.md`, current implementation and tests,
+and the maintained documentation for the affected surface. Paths below are
+relative to the named checkout; API and frontend are separate repositories.
 
-- `engineering/crm-handoff/specs/04_backend_api.md`
-- `engineering/crm-handoff/specs/05_import_export.md`
-- `engineering/crm-handoff/specs/06_frontend.md`
+- Frontend: `engineering/README.md`, `docs/data-transfer/index.md`,
+  and `src/TransferPages.tsx`.
+- API: `docs/concepts/transfers.md`, `docs/api/transfers.md`,
+  and current transfer models and services.
 
-Then use the installed SDK-owned skills; never edit them during application work:
+Read the matching installed SDK skills. Main Sequence and Tau guidance lives
+in the API checkout; Command Center guidance lives in the frontend checkout.
+Never edit SDK-owned skills during application work:
 
 - `.agents/skills/command-center/views/build-resource-list/SKILL.md`
 - `.agents/skills/command-center/views/build-resource-detail/SKILL.md`
@@ -21,11 +26,13 @@ Then use the installed SDK-owned skills; never edit them during application work
 - `.agents/skills/command-center/feedback/build-application-loading-flow/SKILL.md`
 - `.agents/skills/command-center/layout/compose-command-center-page/SKILL.md`
 
-Pinned source IDs: A08, A09, A10, C08, C09, C11, C13. Resolve them through `engineering/crm-handoff/SOURCE_MAP.md` and the source lock. Missing installed guidance is an installation/compatibility task, not permission to guess an API.
+Installed package versions, public contracts and version-matched skills govern
+SDK behavior. Missing installed guidance is an installation/compatibility
+issue; do not substitute obsolete source snapshots or guessed APIs.
 
 ## Workflow
 
-1. Implement the five visible steps from spec 06. Display actual profile coverage and bounds; do not call Atomic legacy JSON a full backup or promise live source-system connectors.
+1. Maintain the source/upload, mapping, review, execution and report steps in the current transfer screen. Display actual profile coverage and bounds; do not call Atomic legacy JSON a full backup or promise live source-system connectors.
 2. Upload through the authorized API and render server field samples/issues. Treat IDs as strings; never parse source identifiers or money through floating-point JavaScript coercion.
 3. Provide explicit existing-owner, reference, stage, date/timezone/currency and conflict policy mapping. Unknown/missing values stay blocked unless deliberately resolved; no first-stage or current-user fallback.
 4. Display the sealed plan's creates/updates/skips/conflicts/dependent blockers and warning acceptance. Invalidate review when mapping changes. Distinguish strict validation from explicit valid-rows-only execution.

@@ -7,7 +7,10 @@ description: Select or maintain Solution Selling prompters, inspect their suppor
 
 Read [shared MCP guidance](skill://crm-core/references/mcp-usage.md). Use
 [CRM core](skill://crm-core/SKILL.md) to resolve people and organizations and
-[prospecting](skill://solution-selling/crm-prospecting/SKILL.md) for Lead/profile selection.
+[prospecting](skill://solution-selling/crm-prospecting/SKILL.md) for Lead/profile selection
+and the complete outreach workflow. Prospecting outreach always uses a saved
+prompter: read the user's indicated template, or create one first when none is
+indicated. This applies to introductions, follow-ups and conversation preparation.
 
 ## Tool selection
 
@@ -19,9 +22,12 @@ Read [shared MCP guidance](skill://crm-core/references/mcp-usage.md). Use
 
 ## Resolve what the template needs
 
-1. Find by supported search/kind filters, disambiguate matching names and get
-   the stored template. Do not create or edit a template for an ordinary draft
-   request when a suitable one already exists.
+1. For prospecting outreach, resolve the indicated prompter by supported
+   search/kind filters or UID, disambiguate matching names and get it. If none
+   is indicated, follow the prospecting skill to create one before rendering;
+   do not silently substitute an existing template. For other draft requests,
+   find and read a suitable stored template without an unnecessary create or
+   edit. Do not edit an existing template merely to personalize one draft.
 2. Inspect its references using the supported
    [template context](references/template-context.md). The catalogue has no
    requirements-discovery tool; explain that requirements came from inspecting
@@ -58,8 +64,9 @@ so. A separately written suggestion must be identified as such.
 
 ## Author or maintain a reusable template
 
-For an explicit template save, use create with name, kind and template, or
-update with a freshly read version and requested changes. Read the context
+For an explicit template save or the required prospecting template creation,
+use create with name, kind and template. Update an indicated existing template
+only with a freshly read version and requested changes. Read the context
 reference for a working Jinja example and supported fields. Keep optional
 context guarded and customer-specific facts in records or supplied inputs.
 Validate a requested rendering with explicit records; a saved template alone

@@ -3,8 +3,8 @@
 This repository contains the Python CRM API. It uses FastAPI, authored Pydantic
 request/domain models, and SQLAlchemy-authored Main Sequence MetaTables. The
 separate static frontend repository consumes `/api/crm/v1/` through Command
-Center's delegated transport. The authoritative handoff pack is in that paired
-frontend repository; it is not vendored into this API checkout.
+Center's delegated transport. Maintain API behavior against the current models,
+shared services, mounted routes, tests, and documentation in this checkout.
 
 The API's own [MkDocs documentation](docs/index.md) separates CRM concepts,
 mounted HTTP endpoints, and delivery guidance. Start it with

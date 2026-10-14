@@ -13,6 +13,13 @@ FastAPI's generated OpenAPI paths.
 | `GET` | `/healthz` | [Service and settings](service.md) |
 | `GET` | `/api/crm/v1/readiness/` | [Service and settings](service.md) |
 | `GET` | `/api/crm/v1/bootstrap/` | [Service and settings](service.md) |
+| `GET` | `/api/crm/v1/prompts/discovery/` | [Prompts](prompts.md) |
+| `GET` | `/api/crm/v1/prompts/` | [Prompts](prompts.md) |
+| `POST` | `/api/crm/v1/prompts/` | [Prompts](prompts.md) |
+| `GET` | `/api/crm/v1/prompts/{uid}/` | [Prompts](prompts.md) |
+| `PATCH` | `/api/crm/v1/prompts/{uid}/` | [Prompts](prompts.md) |
+| `POST` | `/api/crm/v1/prompts/{uid}/archive/` | [Prompts](prompts.md) |
+| `POST` | `/api/crm/v1/prompts/{uid}/restore/` | [Prompts](prompts.md) |
 | `GET` | `/api/crm/v1/interactions/` | [Interactions](interactions.md) |
 | `POST` | `/api/crm/v1/interactions/` | [Interactions](interactions.md) |
 | `GET` | `/api/crm/v1/interactions/{uid}/` | [Interactions](interactions.md) |
@@ -126,6 +133,9 @@ FastAPI's generated OpenAPI paths.
 | `PATCH` | `/extensions/solution-selling/leads/{uid}/` | [Solution Selling](solution-selling.md) |
 | `GET` | `/extensions/solution-selling/prompters/` | [Solution Selling](solution-selling.md) |
 | `POST` | `/extensions/solution-selling/prompters/` | [Solution Selling](solution-selling.md) |
+| `GET` | `/extensions/solution-selling/prompters/discovery/` | [Solution Selling](solution-selling.md) |
+| `POST` | `/extensions/solution-selling/prompters/bulk-delete/preflight/` | [Solution Selling](solution-selling.md) |
+| `POST` | `/extensions/solution-selling/prompters/bulk-delete/` | [Solution Selling](solution-selling.md) |
 | `GET` | `/extensions/solution-selling/prompters/{uid}/` | [Solution Selling](solution-selling.md) |
 | `PATCH` | `/extensions/solution-selling/prompters/{uid}/` | [Solution Selling](solution-selling.md) |
 | `POST` | `/extensions/solution-selling/prompters/{uid}/render/` | [Solution Selling](solution-selling.md) |
