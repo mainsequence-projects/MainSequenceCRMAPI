@@ -8,7 +8,7 @@ import pytest
 from metatables import DataSourceResolutionError
 from metatables.runtime_contract import RuntimeContext
 from src.crm.metatables import MODELS
-from src.crm.platform.catalog import CatalogRegistry
+from src.crm.platform.catalog import CatalogRegistry, CatalogValidationError
 
 
 @pytest.fixture
@@ -118,6 +118,15 @@ def test_missing_binding_fails_before_execution(monkeypatch):
         "src.crm.platform.catalog.MetaTable.filter", lambda **filters: catalog_rows()[1:]
     )
     with pytest.raises(RuntimeError, match="incomplete"):
+        CatalogRegistry().validate()
+
+
+def test_missing_prompt_names_the_required_migration_job(monkeypatch):
+    monkeypatch.setattr(
+        "src.crm.platform.catalog.MetaTable.filter",
+        lambda **filters: [row for row in catalog_rows() if row.identifier != "mainsequence_crm__prompt"],
+    )
+    with pytest.raises(CatalogValidationError, match="mainsequence_crm__prompt.*migrate-crm"):
         CatalogRegistry().validate()
 
 

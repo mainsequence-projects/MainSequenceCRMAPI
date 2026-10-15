@@ -34,6 +34,27 @@ or `crm-settings`) in the `503` response. A settings read timeout returns `CRM_N
 stage-specific message. The loopback launcher also bounds the SDK signed-user
 lookup to 20 seconds and returns `LOCAL_SIGN_IN_TIMEOUT` with HTTP `503` if
 that lookup stalls. These errors do not expose credentials or partial CRM data.
+The frontend startup screen preserves the public error code/message and failed
+readiness checks, with a Retry action. A local launcher bootstrap timeout no
+longer shuts down the services; see [local development](../delivery/local-development.md).
+
+Readiness failures retain safe diagnostics in the existing check's `message`:
+an upstream HTTP status, recognized gateway code (`authentication_unavailable`,
+`runtime_starting` or `gateway_error`) and a validated upstream UUID request ID
+when present. Gateway messages come from a fixed safe mapping, not arbitrary
+upstream bodies. Missing active catalog bindings name the expected CRM table
+identifiers and direct hosted operators to the `migrate-crm` deployment Job.
+Checks that cannot run because the catalog failed are `pending`, not additional
+settings/pipeline failures. Authorization remains fresh when the catalog is
+available, and an actual CRM read refusal remains `403`.
+
+The API logs `crm.readiness_check_failed` with the stage, exception type, CRM
+request UID and safe upstream correlation. Raw SDK exception strings, URLs,
+response bodies, headers and tracebacks are not logged or returned by this
+diagnostic path. Unknown failures keep a generic public message. The readiness
+and bootstrap shapes, authentication boundary and `503` status are unchanged;
+these are CRM-owned contracts, not new Command Center SDK wire contracts.
+
 A platform Organization Environment UID is distinct from a CRM workspace or
 tenant UID. Assistant identity comes from `.agents/agent_card.json`; CRM YAML
 has no assistant section. At each bootstrap, a trusted, ready local Tau is

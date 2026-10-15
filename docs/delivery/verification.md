@@ -17,6 +17,82 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### CRM-owned readiness diagnostics and gateway escalation (2026-10-15)
+
+This fix is local to the API working tree based on `067b8f3`. It changes
+`api/crm/main.py`, `src/crm/platform/{catalog,runtime,readiness_errors}.py`,
+their focused tests and the API/delivery documentation. Other in-flight
+Solution Selling changes in the shared checkout were preserved, not edited by
+this readiness fix. No frontend or infrastructure source was changed in this
+scope.
+
+Readiness now reports a safe upstream HTTP status, recognized gateway code and
+validated UUID correlation, rather than swallowing the catalog exception.
+Missing expected CRM catalog bindings name the identifiers and direct hosted
+operators to the existing migration Job. A connected settings/bootstrap adapter
+blocked by catalog failure is pending; a missing adapter remains failed.
+Structured `crm.readiness_check_failed` logs retain correlation without raw
+SDK exception strings, headers, bodies, URLs or tracebacks. Identity, fresh
+capability evaluation, fail-closed readiness and response shapes are unchanged.
+
+Actual checks:
+
+- `.venv/bin/pytest tests/test_readiness_errors.py tests/test_catalog.py
+  tests/test_contracts.py tests/test_bootstrap_responsiveness.py
+  tests/test_bootstrap_runtime.py tests/test_local_auth.py
+  tests/test_request_identity.py -q`: **72 passed**. The new failure cases use
+  actual SDK exception objects and serialized HTTP through the installed
+  caller-assertion verifier, with fixture signing keys and controlled runtime
+  ports. External HTTP is forbidden in the new tests. They prove gateway error
+  correlation/redaction, actionable missing-Prompt diagnostics, blocked-stage
+  truth, continued fresh policy checks and final bootstrap error handling.
+- `.venv/bin/pytest -q --tb=short`: **325 passed, 5 failed** in a shared working
+  tree being changed concurrently. The failures were the in-flight Prompter
+  validate route's documentation parity, three MCP catalogue-count expectations
+  after a new tool, and a disposable Prompter audit-constraint fixture. No
+  readiness-related case failed on that run. This is not a green full-suite
+  claim or a review of that separate feature's changes.
+- Repository-wide Ruff, strict MkDocs and `git diff --check` pass for the
+  checked working-tree state. Documentation route parity is a separate check
+  and was not green on the full-suite run above. A later separate
+  `.venv/bin/pytest tests/test_documentation.py -q` passed (**1 test**) after
+  the concurrent route-index update; this readiness fix did not edit that index.
+
+The external gateway defect is reported as
+[infrastructure #90](https://github.com/Main-Sequence-Server-Side/infrastructure/issues/90),
+with read-only live evidence and a separate isolated NGINX reproduction. No
+external project was patched or redeployed. The earlier read-only metadata
+check reported CRM catalog revision `0009` and no active core Prompt binding;
+that is catalog evidence, not physical-schema inspection. Revision `0010` is
+already authored here; hosted migration/finalization still belongs to the
+candidate image's `migrate-crm` Job, not a developer-side hosted command.
+
+On re-verification later on 2026-10-15, fresh runtime access reached the active
+MetaTables revision `91a78391-86df-4bb9-b348-aabba600a1b7`, but both the
+one-table and full 27-table catalog requests returned **401**, with
+`Invalid or missing caller assertion.` The earlier 503 was not reproduced;
+the dependency is nevertheless not ready for CRM. The full-query request ID
+was `2536d7d9ccf1abdc12abfb7c12559df2`.
+Owner-scoped logs for that request place the 401 in `fapi_runtime`, with a
+1.491 ms rejected request; the gateway forwarded the same 401. This is a
+runtime caller-assertion rejection, not evidence that the original gateway
+buffer failure persists. The exact assertion-verification cause is unproven.
+
+Executed `.venv/bin/python scripts/verify_local_agent.py` with the workflow's
+real `openai-codex/gpt-5.6-luna`, medium thinking and Tau `2.0.13`. Local
+authentication, provider control and storage became ready, but protected CRM
+bootstrap returned **503** because catalog access returned **401**. CRM policy
+and directory connections were ready; settings, bootstrap and authorization
+were correctly pending. The business tool turn and restart/read-back assertions
+were therefore not reached. Sanitized report and local logs are retained under
+ignored `.local/agent-pre-push/e86ad48c-8be8-41f5-ba17-84aed400a5dd/`.
+
+The 72 focused tests and the documentation parity test passed again; focused
+Ruff, strict MkDocs and `git diff --check` passed. No hosted data/schema change,
+migration or deployment was performed. Publishing remains blocked by the
+repository's required live pre-push check; do not bypass it. The normal
+deployment workflow's `migrate-crm` Job is still required for hosted `0010`.
+
 ### Core fixed-Markdown Prompts (2026-10-13)
 
 Implemented locally in the uncommitted API working tree based on `d825f53`

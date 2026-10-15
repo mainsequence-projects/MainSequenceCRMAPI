@@ -85,9 +85,35 @@ process-only `/healthz` success does not imply that the Main Sequence backend
 is reachable. SDK calls may
 continue in their worker after the response deadline; restart the stack after
 fixing a persistent backend or sign-in failure.
-The VS Code local stack checks the protected bootstrap before printing its
-ready message. If bootstrap returns a failed check or does not respond within
-100 seconds, the launcher prints that failure and stops all four services.
+The VS Code local stack prints its frontend URL before checking the protected
+bootstrap. If bootstrap returns a failed check or does not respond within
+100 seconds, the launcher prints a warning and keeps API, Tau, guide and Vite
+running. It does not report the backend as ready. The frontend's independent
+110-second deadline keeps its startup screen bounded. That screen shows the
+public backend error code/message and failed readiness checks when available,
+or states that no complete response arrived. Resolve the error and select
+**Retry** without restarting Vite. The launch terminal retains API output for
+errors that cannot return a response. Failed startup prerequisites and actual
+child-process crashes still stop the launch; stopping it manually stops all
+four services.
+
+For catalog or settings failures, match the CRM request UID to
+`crm.readiness_check_failed` in the API output. The safe message includes the
+upstream HTTP status, recognized gateway code and upstream UUID request ID
+when available. A catalog failure leaves the unexecuted settings/bootstrap
+checks pending. Missing active bindings are named explicitly; a failed check
+does not prove the physical table is absent or that the caller lacks CRM access.
+Do not log SDK exception strings to investigate this path: they may contain
+URLs and arbitrary upstream content.
+
+The read-only 2026-10-15 investigation found a gateway failure on the full CRM
+catalog query, reported as
+[infrastructure #90](https://github.com/Main-Sequence-Server-Side/infrastructure/issues/90),
+and a separate hosted catalog still reporting `0009` without an active core
+Prompt binding. The revision `0010` is already authored in this repository.
+Repair/finalize hosted application migrations only through the deployment's
+`migrate-crm` Job; isolated local development uses `--local` below. No hosted
+migration was performed by that investigation or the CRM diagnostic fix.
 
 ## Apply migrations locally
 

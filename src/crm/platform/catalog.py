@@ -23,6 +23,10 @@ class CatalogBinding:
     alembic_revision: str
 
 
+class CatalogValidationError(RuntimeError):
+    """An application-authored catalog diagnostic safe for protected readiness."""
+
+
 class CatalogRegistry:
     """Bind only the active, provider-owned tables authored by this CRM."""
 
@@ -40,7 +44,7 @@ class CatalogRegistry:
         for row in rows:
             identifier = row.identifier
             if identifier not in expected or identifier in seen_identifiers:
-                raise RuntimeError("CRM MetaTable catalog has unexpected or duplicate identifiers")
+                raise CatalogValidationError("CRM MetaTable catalog has unexpected or duplicate identifiers")
             seen_identifiers.add(identifier)
             physical = expected[identifier]
             if (
@@ -52,16 +56,16 @@ class CatalogRegistry:
                 or row.schema_management_mode != "alembic_managed"
                 or row.provisioning_status != "active"
             ):
-                raise RuntimeError(f"CRM MetaTable {identifier} has an invalid catalog binding")
+                raise CatalogValidationError(f"CRM MetaTable {identifier} has an invalid catalog binding")
             try:
                 table_uid = str(uuid.UUID(str(row.uid)))
                 data_source_uid = str(uuid.UUID(str(row.data_source_uid)))
             except (TypeError, ValueError, AttributeError) as exc:
-                raise RuntimeError(f"CRM MetaTable {identifier} has invalid UIDs") from exc
+                raise CatalogValidationError(f"CRM MetaTable {identifier} has invalid UIDs") from exc
             provider = row.migration_provider_key
             revision = row.alembic_revision
             if not provider or not revision:
-                raise RuntimeError(f"CRM MetaTable {identifier} has no finalized migration")
+                raise CatalogValidationError(f"CRM MetaTable {identifier} has no finalized migration")
             providers.add(provider)
             revisions.add(revision)
             data_sources.add(data_source_uid)
@@ -73,9 +77,13 @@ class CatalogRegistry:
                 alembic_revision=revision,
             )
         if seen_identifiers != set(expected):
-            raise RuntimeError("CRM MetaTable catalog is incomplete")
+            missing = ", ".join(sorted(set(expected) - seen_identifiers))
+            raise CatalogValidationError(
+                f"CRM MetaTable catalog is incomplete. Missing active bindings: {missing}. "
+                "Apply this version's CRM migrations; for hosted data use the migrate-crm deployment Job."
+            )
         if len(providers) != 1 or len(revisions) != 1 or len(data_sources) != 1:
-            raise RuntimeError("CRM MetaTables span multiple providers, revisions or data sources")
+            raise CatalogValidationError("CRM MetaTables span multiple providers, revisions or data sources")
         return bindings
 
     def binding(self, logical_name: str) -> CatalogBinding:
@@ -104,7 +112,7 @@ class CatalogRegistry:
         response = MetaTable.execute_operation(operation)
         rows = response.get("rows")
         if not isinstance(rows, list) or len(rows) != 1 or rows[0].get("key") != "default":
-            raise RuntimeError("CRM settings are not initialized")
+            raise CatalogValidationError("CRM settings are not initialized")
 
 
 @lru_cache(maxsize=1)

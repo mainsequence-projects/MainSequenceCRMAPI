@@ -10,6 +10,7 @@ from fastapi import HTTPException, Request
 from mainsequence.client import RequestIdentityError, User
 
 from .catalog import configured_registry
+from .readiness_errors import report_readiness_failure
 
 CAPABILITIES = frozenset(
     {
@@ -92,23 +93,25 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
         }
     )
     catalog_ready = False
+    catalog_message = "Active MetaTable catalog is unavailable"
     if registry is not None:
         request.state.crm_readiness_step = "catalog"
         try:
             registry.validate()
-        except Exception:
-            pass
+        except Exception as exc:
+            catalog_message = report_readiness_failure(request, "catalog", exc, catalog_message)
         else:
             catalog_ready = True
     checks.append(
         {
             "id": "catalog",
             "status": "ready" if catalog_ready else "failed",
-            "message": "Resolved" if catalog_ready else "Active MetaTable catalog is unavailable",
+            "message": "Resolved" if catalog_ready else catalog_message,
         }
     )
     settings_ready = False
     bootstrap_ready = False
+    bootstrap_message = "CRM settings read service is not connected"
     if catalog_ready and bootstrap_port:
         request.state.crm_readiness_step = "bootstrap"
         try:
@@ -116,15 +119,23 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
             # Keep its document for this request's bootstrap response so the
             # same platform operation is not repeated three times.
             request.state.crm_bootstrap_document = bootstrap_port.read(actor_uid)
-        except Exception:
-            pass
+        except Exception as exc:
+            bootstrap_message = report_readiness_failure(
+                request, "bootstrap", exc, "CRM settings or default pipeline are unavailable"
+            )
         else:
             settings_ready = bootstrap_ready = True
+    # A wired service blocked by catalog failure has not failed its own read.
+    # A missing adapter, however, is independently known to be unavailable.
+    blocked_by_catalog = not catalog_ready and bootstrap_port is not None
     checks.append(
         {
             "id": "crm-settings",
-            "status": "ready" if settings_ready else "failed",
-            "message": "Resolved" if settings_ready else "CRM settings are unavailable",
+            "status": "ready" if settings_ready else "pending" if blocked_by_catalog else "failed",
+            "message": (
+                "Resolved" if settings_ready else
+                "Waiting for the CRM catalog" if blocked_by_catalog else bootstrap_message
+            ),
         }
     )
     if directory:
@@ -134,12 +145,14 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
                 raise ValueError("Missing display name")
             if not directory.is_selectable(actor_uid):
                 raise ValueError("Actor is not selectable")
-        except Exception:
+        except Exception as exc:
             checks.append(
                 {
                     "id": "directory",
                     "status": "failed",
-                    "message": "Existing directory lookup failed",
+                    "message": report_readiness_failure(
+                        request, "directory", exc, "Existing directory lookup failed"
+                    ),
                 }
             )
         else:
@@ -158,8 +171,8 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
         checks.append(
             {
                 "id": "bootstrap",
-                "status": "failed",
-                "message": "CRM settings or default pipeline are unavailable" if bootstrap_port else "CRM settings read service is not connected",
+                "status": "pending" if blocked_by_catalog else "failed",
+                "message": "Waiting for the CRM catalog" if blocked_by_catalog else bootstrap_message,
             }
         )
     if catalog_ready and policy:
@@ -172,12 +185,14 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
                 raise HTTPException(status_code=403, detail="CRM read access denied")
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
             checks.append(
                 {
                     "id": "authorization",
                     "status": "failed",
-                    "message": "Existing policy could not authorize CRM read access",
+                    "message": report_readiness_failure(
+                        request, "authorization", exc, "Existing policy could not authorize CRM read access"
+                    ),
                 }
             )
         else:
@@ -187,7 +202,7 @@ def readiness(request: Request, actor_uid: uuid.UUID) -> dict:
             {
                 "id": "authorization",
                 "status": "pending",
-                "message": "Waiting for policy and settings",
+                "message": "Waiting for the CRM catalog" if not catalog_ready else "Waiting for CRM policy",
             }
         )
     return {

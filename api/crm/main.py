@@ -21,6 +21,7 @@ from src.crm.config import crm_config
 from src.crm.google_workspace.config import google_workspace_enabled
 from src.crm.models.bootstrap import Bootstrap
 from src.crm.platform.hosted_runtime import install_platform_services
+from src.crm.platform.readiness_errors import report_readiness_failure
 from src.crm.platform.runtime import authenticated_actor, readiness, request_port
 from src.crm.solution_selling.config import solution_selling_enabled
 
@@ -103,7 +104,7 @@ async def _bounded_readiness(request: Request, actor_uid) -> dict:
             asyncio.to_thread(readiness, request, actor_uid),
             timeout=BOOTSTRAP_STAGE_TIMEOUT_SECONDS,
         )
-    except TimeoutError:
+    except TimeoutError as exc:
         step = getattr(request.state, "crm_readiness_step", "platform-readiness")
         labels = {
             "policy": "CRM policy connection",
@@ -121,7 +122,10 @@ async def _bounded_readiness(request: Request, actor_uid) -> dict:
             "checks": [{
                 "id": step,
                 "status": "failed",
-                "message": f"{label} did not respond within {BOOTSTRAP_STAGE_TIMEOUT_SECONDS:g} seconds.",
+                "message": report_readiness_failure(
+                    request, step, exc,
+                    f"{label} did not respond within {BOOTSTRAP_STAGE_TIMEOUT_SECONDS:g} seconds.",
+                ),
             }],
         }
 
@@ -158,14 +162,19 @@ async def bootstrap(request: Request, actor_uid=Depends(authenticated_actor)):
             request.app.state.crm_local_tau_origin
         )
         return Bootstrap.model_validate(document).model_dump(mode="json")
-    except TimeoutError:
+    except TimeoutError as exc:
         return JSONResponse(
-            _error(request, "CRM_NOT_READY", f"Main Sequence CRM settings or default pipeline did not respond within {BOOTSTRAP_STAGE_TIMEOUT_SECONDS:g} seconds."),
+            _error(request, "CRM_NOT_READY", report_readiness_failure(
+                request, "bootstrap", exc,
+                f"Main Sequence CRM settings or default pipeline did not respond within {BOOTSTRAP_STAGE_TIMEOUT_SECONDS:g} seconds.",
+            )),
             status_code=503,
         )
-    except Exception:
+    except Exception as exc:
         return JSONResponse(
-            _error(request, "CRM_NOT_READY", "CRM settings are unavailable."),
+            _error(request, "CRM_NOT_READY", report_readiness_failure(
+                request, "bootstrap", exc, "CRM settings are unavailable.",
+            )),
             status_code=503,
         )
 
