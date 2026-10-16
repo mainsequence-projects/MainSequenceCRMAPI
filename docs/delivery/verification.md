@@ -1948,6 +1948,23 @@ MkDocs passed; the frontend's 23 tests, typecheck, combined app/help build,
 documentation validation and theme audit passed separately. These checks do
 not replace the failed live-provider gate or deployed page verification.
 
+On the follow-up after the backend fix was reported, the unscoped provider
+catalog selected a different Environment with an unauthenticated credential;
+the CRM checkout's SDK-resolved Environment reported its credential authenticated.
+The CRM verifier now resolves its Environment from the current Git checkout and
+passes it to Tau's supported local provider-Environment setting. It neither
+hard-codes a UID nor changes the provider/model or authentication checks.
+This corrects verifier scope; it does not prove the cause of the earlier
+credential lifecycle failure. The live gate must still pass before publishing.
+
+The corrected working-tree run passed with the workflow's real
+`openai-codex/gpt-5.6-luna/medium`, successful provider hydration before and
+after restart, real CRM MCP discovery/settings results, durable history and
+matching fresh API read. Its private catalog was `0011` with 27 bindings.
+Evidence: `.local/agent-pre-push/faa7ddd0-daea-4b47-8df1-b413a8d4ecc2/report.json`.
+Eight documentation/workflow tests, Ruff, strict MkDocs and diff checks passed.
+Publishing and hosted migration/page checks remain separate from this result.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,

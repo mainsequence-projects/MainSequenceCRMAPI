@@ -224,6 +224,12 @@ def solution_selling_reads(fixture_path):
 
 
 def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False):
+    from mainsequence.code_repository_context import get_code_repository_context
+
+    context = get_code_repository_context()
+    require(context.code_repository_branch_uid and context.organization_environment_uid,
+            "The current Git checkout must resolve its CRM branch and Environment.")
+    environment_uid = str(uuid.UUID(str(context.organization_environment_uid)))
     if contact_uid:
         contact_uid = str(uuid.UUID(contact_uid))
     workflow = yaml.safe_load((ROOT / ".mainsequence/workflows/crm-api.yaml").read_text())
@@ -234,7 +240,8 @@ def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False
     run.mkdir(parents=True, mode=0o700)
     report = {"status": "running", "commit": git("rev-parse", "HEAD"),
               "working_tree_dirty": bool(git("status", "--porcelain")),
-              "tau_version": version("ms-tau-sdk"), **profile, "crm_calls": "read-only"}
+              "tau_version": version("ms-tau-sdk"), **profile, "crm_calls": "read-only",
+              "organization_environment_uid": environment_uid}
 
     def save():
         (run / "report.json").write_text(json.dumps(report, indent=2) + "\n")
@@ -246,6 +253,7 @@ def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False
     api, tau = f"http://127.0.0.1:{api_port}", f"http://127.0.0.1:{tau_port}"
     environment = {**os.environ, "MAINSEQUENCE_AUTH_MODE": "jwt", "TAU_LOCAL_MODE": "true",
                    "TAU_LOCAL_PROVIDER": profile["provider"], "TAU_LOCAL_MODEL": profile["model"],
+                   "TAU_LOCAL_ORGANIZATION_ENVIRONMENT_UID": environment_uid,
                    "TAU_LOCAL_THINKING": profile["thinking"], "TAU_EXCLUDE_BASE_TOOLS": "true",
                    "TAU_EXCLUDE_MAINSEQUENCE_MCP": "true", "TAU_LOCAL_STATE_ROOT": str(run / "tau"),
                    "MAINSEQUENCE_CLI": str(ROOT / ".venv/bin/mainsequence"),

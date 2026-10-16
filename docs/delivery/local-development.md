@@ -258,7 +258,12 @@ commit pending changes first. Do not bypass it with `--no-verify`.
 The check starts the real `api.tau.main:app` and `api.crm.local:app` on unused
 loopback ports. It selects the workflow's provider, model and thinking level
 (currently `openai-codex/gpt-5.6-luna/medium`), keeps broad coding and platform
-MCP tools excluded, and uses the existing Main Sequence CLI sign-in. Protected
+MCP tools excluded, and uses the existing Main Sequence CLI sign-in. Provider
+selection uses the Environment resolved from the current Git checkout
+by the Main Sequence SDK, not the backend's unscoped default Environment or a
+hard-coded UID. The verifier passes this selection only to its owned Tau child
+process through the installed SDK's local provider-Environment setting and
+records the resolved UID in its report. Protected
 CRM bootstrap must report ready before it sends one real chat turn that
 discovers CRM MCP and performs a read-only settings read against a private,
 migrated local MetaTables SQLite database. Actual successful MCP tool results are required;
