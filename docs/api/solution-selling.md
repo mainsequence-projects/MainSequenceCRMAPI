@@ -42,8 +42,9 @@ notes; it does not search these display fields.
 
 `POST /extensions/solution-selling/prompters/{uid}/render/` accepts a required
 `contact_uid` and explicit `company_uid`, optional lead/profile/deal/assessment
-references, and a string-to-string `inputs` map. It returns `{text}` for human
-review. It neither saves nor sends the draft. Rendering uses restricted Jinja
+references, and a string-to-string `inputs` map. It returns `text` (the body),
+optional `subject`, separate character counts and limits, `is_valid`, and
+`violations` for human review. It neither saves nor sends the draft. Rendering uses restricted Jinja
 text features and bounded plain-data projections; missing or inconsistent
 references fail clearly. It requires `crm.read`.
 
@@ -55,6 +56,50 @@ are not discovered before rendering. For example, `{{ inputs.topic }}` requires
 an explicit `topic` input, while a profile block guarded by `{% if profile %}`
 can be omitted. The signed-in sender is supplied by the API. The Company is
 selected explicitly and is not inferred from Contact affiliations.
+
+### Optional subjects and draft constraints
+
+Prompter create/detail/update retain the existing open `kind` and body `template`.
+`subject_template` is optional (default null) and uses the same restricted Jinja
+context as the body. Each template source is limited to 16,384 characters.
+`constraints` defaults to no business limits and accepts only
+`max_characters` (body) and `max_subject_characters` (subject): each is null or a
+strict integer from 1 through 32,768. Unknown keys, booleans and fractional limits
+are rejected. Limits belong to the prompter and are never inferred from `kind`.
+
+```json
+{
+  "name": "Short introduction",
+  "kind": "introduction",
+  "template": "Hello {{ contact.first_name }} at {{ company.name }}.",
+  "subject_template": "For {{ contact.first_name }}",
+  "constraints": {"max_characters": 200, "max_subject_characters": 40}
+}
+```
+
+Patch uses the existing `expected_version` fence. Omitted fields are preserved;
+`subject_template: null` removes the subject. A supplied `constraints` object
+replaces both limits, so `{}` clears both; null is not a valid constraints object.
+Existing records migrate to null subject and `{}` constraints without rewriting
+their templates. Detail reads normalize both absent limits to null.
+
+Limits apply to final rendered text after substitution. Counts are Unicode code
+points, including spaces and newlines; emoji and combining marks use that same
+rule in the editor. Each output part also retains a technical ceiling of 32,768
+characters even when its business limit is null. A business-limit violation
+returns HTTP 200 with the complete text, `is_valid: false`, and an entry such as
+`{"field":"subject","code":"max_characters_exceeded","actual":45,"limit":40}`.
+An absent subject has null text/count and does not violate a subject maximum.
+Invalid templates, missing context and technical-size failures remain redacted
+validation errors; business limits never silently truncate text.
+
+`POST /extensions/solution-selling/prompters/{uid}/validate/` accepts
+`{"text":"Edited body","subject":"Edited subject"}` (subject optional/null).
+It requires `crm.read`, reads the prompter's current saved constraints and returns
+the same preview structure without evaluating Jinja or saving anything. An edited
+subject/body can therefore be checked without replacing it with a rerender.
+The maximum input length is 32,768 characters per part. There is no persisted
+preview history and neither operation sends a communication.
 
 ## Prompter bulk deletion
 

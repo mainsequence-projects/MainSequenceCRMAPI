@@ -90,7 +90,8 @@ def test_solution_selling_helpers_match_rest_and_preserve_evidence(signed_caller
             assert response.status_code == 200, response.text
             assert result["structuredContent"] == {"code": "ok", "data": response.json()}
             results.append(response.json())
-    assert results[0] == {"text": "Hi Ada at Example Company"}
+    assert results[0]["text"] == "Hi Ada at Example Company"
+    assert results[0]["subject"] is None and results[0]["is_valid"] is True
     context, prepared = results[1:]
     assert context["assessment"]["key_players"][0]["status"] == "reported"
     assert context["interactions"]["pageInfo"]["pageSize"] == 2
@@ -204,7 +205,7 @@ def app_for(policy=None, store=None):
 
 def delegated(caller, person=ACTOR):
     return caller(AGENT, requester={
-        "sub": str(person), "team_uids": [], "is_organization_admin": False,
+        "sub": str(person), "is_organization_admin": False,
     })
 
 
@@ -251,11 +252,11 @@ def test_protocol_initialize_catalogue_and_strict_validation(signed_caller):
         })
         assert init["serverInfo"]["name"] == "crm"
         catalogue = rpc(client, "tools/list")["tools"]
-        assert len(catalogue) == 69
+        assert len(catalogue) == 70
         names = {tool["name"] for tool in catalogue}
         assert "crm_contacts_archive" not in names
         assert "crm_contacts_merge_execute" not in names
-        assert sum(t["annotations"]["readOnlyHint"] for t in catalogue) == 38
+        assert sum(t["annotations"]["readOnlyHint"] for t in catalogue) == 39
         result = call(client, "crm_contacts_create", {"payload": {"first_name": "Ada"}})
         assert result["structuredContent"]["code"] == "forbidden"
         result = call(client, "crm_contacts_create", {
@@ -396,7 +397,7 @@ def test_local_bridge_uses_real_mcp_protocol_and_no_duplicate_tools(monkeypatch,
     async def scenario():
         async with app.router.lifespan_context(app):
             catalogue = await tools["crm__list_tools"].execute("list", {})
-            assert len(catalogue.details["tools"]) == 69
+            assert len(catalogue.details["tools"]) == 70
             result = await tools["crm__call_tool"].execute("create", {
                 "tool": "crm_contacts_create", "arguments": {"payload": {"first_name": "Ada"}},
             })

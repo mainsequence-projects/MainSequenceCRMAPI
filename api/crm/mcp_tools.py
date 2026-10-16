@@ -39,6 +39,7 @@ from src.crm.solution_selling.config import solution_selling_enabled
 from src.crm.solution_selling.models import (
     DiagnosisPrepareRequest,
     PrompterRenderRequest,
+    PrompterValidateRequest,
     SolutionSellingContextRequest,
 )
 
@@ -345,9 +346,20 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
         add(
             "crm_prompters_render",
             "Render a stored prompter with explicit Contact and Company references. "
-            "Returns draft text; never saves or sends a message.",
+            "Returns body text, optional subject, character counts and constraint violations. "
+            "Overlong drafts are returned intact with is_valid=false; never saves or sends a message.",
             render_args,
             lambda service, args: service.render_prompter(args.uid, args.payload),
+        )
+        validate_args = create_model(
+            "PrompterValidateToolArguments", __base__=_UID, payload=(PrompterValidateRequest, ...),
+        )
+        add(
+            "crm_prompters_validate",
+            "Validate edited body text and optional subject against a saved prompter's current "
+            "constraints. Returns counts and violations without rendering, saving or sending.",
+            validate_args,
+            lambda service, args: service.validate_prompter(args.uid, args.payload),
         )
         add(
             "crm_solution_selling_context_get",

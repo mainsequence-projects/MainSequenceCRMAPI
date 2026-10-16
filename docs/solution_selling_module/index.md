@@ -56,6 +56,13 @@ to the same Deal, without an Interaction foreign key to Solution Selling.
 
 ## Prompter lifecycle
 
+A prompter can include an optional subject template and independent body/subject
+character limits. `kind` remains descriptive. Both templates render with the same
+selected CRM context; limits apply after substitution. Previews report counts and
+field-specific violations while preserving overlong text for editing. Manual
+edits can be validated against current saved limits without rerendering or saving.
+See [the API contract](../api/solution-selling.md#optional-subjects-and-draft-constraints).
+
 Prompters can be deleted in explicitly selected batches through the Command
 Center list's bulk action. Deletion archives the template, preserving its
 activity history while excluding it from active reads and rendering. All

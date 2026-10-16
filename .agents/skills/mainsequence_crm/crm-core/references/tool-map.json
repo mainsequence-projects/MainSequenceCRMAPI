@@ -65,7 +65,8 @@
       "crm_prompters_get",
       "crm_prompters_create",
       "crm_prompters_update",
-      "crm_prompters_render"
+      "crm_prompters_render",
+      "crm_prompters_validate"
     ],
     "solution-selling/crm-discovery": [
       "crm_diagnoses_list",

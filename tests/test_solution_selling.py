@@ -144,7 +144,8 @@ def test_render_is_read_only_and_uses_explicit_company():
         request=PrompterRenderRequest(contact_uid=contact_uid, company_uid=company_uid),
         actor_uid=uuid.uuid4(), sender_name="Jose", core=Core(), methodology=Methodology(),
     )
-    assert result == "Hi Maria at Example Capital"
+    assert result.text == "Hi Maria at Example Capital"
+    assert result.subject is None and result.is_valid and result.violations == []
 
 
 def test_prompter_http_create_and_versioned_patch_use_platform_policy(signed_caller):

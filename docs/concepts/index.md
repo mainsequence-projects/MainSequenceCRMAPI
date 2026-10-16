@@ -22,6 +22,12 @@ adds prospecting leads and profiles, Deal assessments, Interaction diagnoses,
 and reusable prompters. It extends rather than replaces Contact, Company,
 Deal, Task, or Interaction.
 
+A [prompter](../solution_selling_module/index.md#prompter-lifecycle) keeps a
+reusable body template, an optional subject template and optional independent
+character limits. Its kind is an open purpose label. Rendering personalizes
+both parts from explicitly selected records; preview validation reports excess
+characters without truncating, saving or sending the draft.
+
 Optional modules expose their API routes below `/extensions/<module>/` and
 mount only when enabled by the API process. Google Workspace uses
 `/extensions/google/`; Solution Selling uses `/extensions/solution-selling/`.
@@ -36,8 +42,8 @@ The optional assistant follows the same model and version rules. Its target
 tool catalogue and current gaps are recorded in
 [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). REST and the API-owned
 MCP tools share the operations in `src/crm`. Hosted operations check the
-effective person's platform-signed Team membership or Organization admin
-status on every call. The assistant's storage or platform permissions do not
+effective person's fresh SDK Team-membership lookup or signed Organization
+admin status on every call. The assistant's storage or platform permissions do not
 authorize a person. A delegated call can select that person as owner; direct
 requests can also select active human owners visible in the caller's directory.
 The CRM agent excludes Tau's coding tools and broad Main Sequence MCP while

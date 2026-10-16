@@ -47,7 +47,8 @@ cannot forward the requester's identity to platform directory APIs.
 
 The 2026-10-11 amendment connects the hosted policy and directory in
 `src/crm/platform/hosted_runtime.py`. Every operation evaluates the effective
-identity's signed Team UIDs and Organization admin flag. Existing platform
+identity's Organization admin flag and Team memberships (the 2026-10-15
+amendment below replaces signed Team lists with fresh lookups). Existing platform
 Teams can be selected with `CRM_READER_TEAM_UIDS` and `CRM_WRITER_TEAM_UIDS`
 (comma-separated UUIDs). Reader Teams grant `crm.read`; Writer Teams grant
 the implemented business capabilities except configuration and export.
@@ -150,7 +151,7 @@ represents delegation, not authentication. The prior hosted admission gate
 mistook every no-requester call for an unbound workload and denied it before
 the CRM policy could run. Hosted MCP now resolves a no-requester caller through
 SDK `reads_as_caller()` and permits only an active User with
-`identity_type == "human"`. The direct person's own signed Team/admin facts
+`identity_type == "human"`. The direct person's own Team/admin facts
 remain the policy input; an unbound workload, inactive identity, non-human
 identity, or failed caller-scoped lookup fails closed.
 
@@ -194,4 +195,16 @@ uses `User.filter(uid=caller.uid, identity_type="human")` within
 `reads_as_caller()` and requires exactly one matching UID with `is_active`
 true. Empty, mismatched, duplicate or inactive results are denied; lookup
 errors fail closed. Explicit workload types still require delegation. The
-effective person's signed capability checks remain unchanged.
+effective person's capability checks remain unchanged.
+
+## 2026-10-15 amendment: identity-only proofs and fresh Team lookup
+
+MetaTables 0.1.38 requires Main Sequence SDK 9.0.27, which removes Team lists
+from verified identities and rejects the retired `team_uids` assertion claim.
+CRM now asks the effective identity's public `in_teams()` helper about the
+configured reader and writer Teams with `max_age_seconds=0`. Every non-admin
+operation obtains a fresh answer, even if an earlier check ran in the same
+request. The signed Organization admin policy and existing capability sets
+are unchanged. Delegated checks concern only the requester; a missing lookup
+or backend failure cannot borrow the workload's grants or reuse cached access.
+This changes no Team configuration, resource grant, storage schema or migration.

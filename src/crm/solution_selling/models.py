@@ -262,6 +262,13 @@ class LeadChanges(NonEmptyChanges):
     notes: str | None = None
 
 
+class PrompterConstraints(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    max_characters: conint(strict=True, ge=1, le=32768) | None = None
+    max_subject_characters: conint(strict=True, ge=1, le=32768) | None = None
+
+
 class PrompterFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -269,6 +276,8 @@ class PrompterFields(BaseModel):
     kind: constr(min_length=1, max_length=100)
     description: str | None = None
     template: constr(min_length=1, max_length=16384)
+    subject_template: constr(min_length=1, max_length=16384) | None = None
+    constraints: PrompterConstraints = Field(default_factory=PrompterConstraints)
 
 
 class PrompterCreate(PrompterFields):
@@ -286,6 +295,8 @@ class PrompterChanges(NonEmptyChanges):
     kind: constr(min_length=1, max_length=100) | None = None
     description: str | None = None
     template: constr(min_length=1, max_length=16384) | None = None
+    subject_template: constr(min_length=1, max_length=16384) | None = None
+    constraints: PrompterConstraints = Field(default_factory=PrompterConstraints)
 
 
 class VersionedPatch(BaseModel):
@@ -326,7 +337,30 @@ class PrompterRenderRequest(BaseModel):
     inputs: dict[str, str] = Field(default_factory=dict)
 
 
+class PrompterValidateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: constr(max_length=32768)
+    subject: constr(max_length=32768) | None = None
+
+
+class PrompterConstraintViolation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    field: Literal["text", "subject"]
+    code: Literal["max_characters_exceeded"] = "max_characters_exceeded"
+    actual: int
+    limit: int
+
+
 class PrompterRenderResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: str
+    subject: str | None = None
+    character_count: int
+    subject_character_count: int | None = None
+    max_characters: int | None = None
+    max_subject_characters: int | None = None
+    is_valid: bool
+    violations: list[PrompterConstraintViolation] = Field(default_factory=list)

@@ -310,4 +310,5 @@ This inventory records the support status of public resource methods and CLI com
 | `runtime status` | tested | visible | Read bootstrap and effective runtime state before or after initialization. |
 | `runtime initialize` | tested | visible | Explicit Local API system migrations under current admin admission; Hosted answers 409 (the deployment migrates). |
 | `runtime upgrade` | tested | visible | Deployment gate: verify, migrate and register the runtime database declared in configuration.yaml and its Environment Secret. |
+| `runtime check-security` | tested | visible | The daily security check Job (ADR 0023): compare everything MetaTables secures with the plan, repair what differs and record the outcome; the Admin starts it with --trigger admin. |
 | `admin repair` | tested | visible | Explicitly stage pinned source/dependencies; refuse replacement while in use. |

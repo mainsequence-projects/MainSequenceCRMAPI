@@ -41,6 +41,10 @@ Best,
 {{ sender.display_name }}
 ```
 
-Template length is bounded at 16,384 characters and rendered output at 32,768.
-Keep loops and inputs short; an over-limit render is a validation failure,
-not a partially saved message.
+Inspect both `template` (body) and optional `subject_template`; they use the same
+context and restricted syntax. Each source is bounded at 16,384 characters and
+each rendered part at 32,768. Technical-limit failures are validation errors.
+Optional `constraints.max_characters` and `constraints.max_subject_characters`
+are independent business limits on final text, counted as Unicode code points.
+Exceeding these returns the full preview with `is_valid: false` and per-field
+violations; no text is truncated or saved. An absent subject stays null.

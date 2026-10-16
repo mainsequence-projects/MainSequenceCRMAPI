@@ -275,3 +275,10 @@ class SolutionSellingPrompter(VersionedRecord, PlatformManagedMetaTable, Base):
         nullable=False,
         info=_info("Template", "Sandboxed Jinja text, not executable Python."),
     )
+    subject_template: Mapped[str | None] = mapped_column(
+        Text(), info=_info("Subject template", "Optional Jinja subject for an outreach draft."),
+    )
+    constraints: Mapped[Any] = mapped_column(
+        JSONB(), nullable=False, server_default=text("'{}'"),
+        info=_info("Draft constraints", "Optional independent maximum character counts for the rendered body and subject."),
+    )

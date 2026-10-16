@@ -5,13 +5,16 @@ Sequence backend, exactly as it verifies any direct Bearer caller locally.
 """
 
 import os
+import uuid
 from threading import Event
 from types import SimpleNamespace
 
 import pytest
+import requests
 from fastapi.testclient import TestClient
 
 from api.crm.local import create_app
+from mainsequence.client.exceptions import AuthenticationError, ServerError, TransportError
 
 ACTOR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 OTHER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
@@ -64,7 +67,11 @@ def test_local_signin_cache_expires_and_revalidates(monkeypatch, local_sign_in):
     assert local_sign_in.lookups == 2
 
 
-def test_local_launcher_rejects_remote_and_invalid_signin(local_sign_in):
+def test_local_launcher_rejects_remote_and_invalid_signin(monkeypatch, local_sign_in):
+    def rejected():
+        raise AuthenticationError("Fixture credentials were refused")
+
+    monkeypatch.setattr("api.crm.local.User.get_authenticated_user_details", rejected)
     app = create_app()
     app.state.crm_google_service = SimpleNamespace(
         callback=lambda **_: "/extensions/google/oauth/done/?google_status=failed"
@@ -77,6 +84,39 @@ def test_local_launcher_rejects_remote_and_invalid_signin(local_sign_in):
     assert callback.status_code == 303
     assert client.get("/api/crm/v1/readiness/").status_code == 401
     assert local_sign_in.backend.lookups == []
+
+
+@pytest.mark.parametrize("phase", ["user", "token"])
+@pytest.mark.parametrize("failure", ["connection", "transport", "backend", "unknown"])
+def test_local_signin_unavailable_is_not_bad_credentials(phase, failure, monkeypatch, local_sign_in, caplog):
+    local_sign_in.as_user(SimpleNamespace(uid=ACTOR, username="local"))
+    response = requests.Response()
+    response.status_code = 503
+    response.url = "https://private.invalid/?token=PRIVATE_TOKEN"
+    errors = {
+        "connection": requests.ConnectionError("PRIVATE_TOKEN"),
+        "transport": TransportError("PRIVATE_TOKEN"),
+        "backend": ServerError("PRIVATE_TOKEN", response=response),
+        "unknown": RuntimeError("PRIVATE_TOKEN"),
+    }
+
+    def unavailable():
+        raise errors[failure]
+
+    target = "User.get_authenticated_user_details" if phase == "user" else "get_authorization_headers"
+    monkeypatch.setattr(f"api.crm.local.{target}", unavailable)
+    result = local_client(create_app()).get("/api/crm/v1/bootstrap/")
+    assert result.status_code == 503
+    error = result.json()["error"]
+    assert error["code"] == "LOCAL_SIGN_IN_UNAVAILABLE"
+    assert uuid.UUID(error["request_uid"])
+    record = next(r for r in caplog.records if getattr(r, "crm_stage", None) == f"local-sign-in-{phase}")
+    assert record.crm_request_uid == error["request_uid"]
+    assert record.error_type == type(errors[failure]).__name__
+    assert record.exc_info is None
+    assert local_sign_in.backend.lookups == []
+    assert "PRIVATE_TOKEN" not in result.text + caplog.text
+    assert "private.invalid" not in result.text + caplog.text
 
 
 def test_backend_refusal_or_outage_stops_the_request(monkeypatch, local_sign_in):

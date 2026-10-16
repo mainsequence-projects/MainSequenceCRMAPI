@@ -19,6 +19,7 @@ indicated. This applies to introductions, follow-ups and conversation preparatio
 | Find a template and inspect its stored text | `crm_prompters_list`, `crm_prompters_get` |
 | Save or edit a reusable template | `crm_prompters_create`, `crm_prompters_update` |
 | Render the selected template from CRM records and inputs | `crm_prompters_render` |
+| Check edited subject/body against current saved limits | `crm_prompters_validate` |
 
 ## Resolve what the template needs
 
@@ -54,6 +55,13 @@ assessment's Company and Deal when supplied. Reconcile mismatched references
 from actual reads; do not remove a reference just to evade its validation.
 
 Inspect `code: ok` and `data.text`, then present the text as an unsaved draft.
+Present `data.subject` separately when supplied. Inspect `is_valid` and
+`violations`: an overlong business draft returns `code: ok` with
+`is_valid: false`, preserving its full text for revision. Body and subject
+limits count Unicode code points separately, including spaces and newlines.
+After editing either part, call `crm_prompters_validate` with the prompter UID
+and `payload: {text, subject}`. It reads the current saved constraints without
+rerendering, saving or sending; do not claim an unchecked edit is validated.
 Rendering does not send a communication or create a Note, Interaction or Task.
 A profile's suggested pain remains a hypothesis in the rendered message.
 
@@ -65,7 +73,13 @@ so. A separately written suggestion must be identified as such.
 ## Author or maintain a reusable template
 
 For an explicit template save or the required prospecting template creation,
-use create with name, kind and template. Update an indicated existing template
+use create with name, kind and template. Optionally supply `subject_template`
+and `constraints` containing independent `max_characters` (body) and
+`max_subject_characters` limits. Limits are null or integers from 1 to 32768;
+`kind` stays an open descriptive label. An omitted subject defaults to null
+and constraints to no business limits. On patch, omitting a field preserves
+it, null clears `subject_template`, and `constraints: {}` clears both limits
+(the constraints object is replaced). Update an indicated existing template
 only with a freshly read version and requested changes. Read the context
 reference for a working Jinja example and supported fields. Keep optional
 context guarded and customer-specific facts in records or supplied inputs.

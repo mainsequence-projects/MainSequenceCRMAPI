@@ -1,5 +1,25 @@
 # Persistence and migrations
 
+The CRM requires `mainsequence-metatable>=0.1.39,<0.2`; the lockfile and runtime
+requirements select `0.1.39` and its required Main Sequence SDK `9.0.27`.
+Migration execution continues through the public
+`upgrade_application` entry point in the deployment Job, which receives the
+installed package's migration improvements automatically. Updating the client
+does not deploy the shared MetaTables API or apply CRM revisions to hosted data.
+
+## Prompter subjects and constraints (revision 0011)
+
+Revision `0011`, downstream of `0010`, adds nullable `subject_template` and nonnull
+JSON `constraints` (default `{}`) to `mainsequence_crm__solution_selling_prompter`.
+Existing prompters keep their body, open kind, identity and versions. Constraints
+are a typed value object on that record; no new table or application scope is
+introduced. Existing governed atomic create/update/activity writes and version
+fences cover the new fields. SQLite uses native additive DDL to preserve the
+unnamed checks from revision `0006` during upgrade and downgrade.
+
+This change is local implementation, not a hosted migration or deployment.
+Hosted schema changes remain exclusively the workflow's `migrate-crm` Job.
+
 ## Core Prompts (revision 0010)
 
 Revision `0010`, downstream of `0009`, adds `mainsequence_crm__prompt` to the
@@ -199,7 +219,7 @@ hand. The assistant calls the API-owned MCP tools, so its deployment waits
 for the API deployment as well as its own prepared image. All business writes
 continue through the API's governed CRM operations.
 
-The repository locks `mainsequence-metatable` 0.1.35. Before rollout, verify
+The repository locks `mainsequence-metatable` 0.1.39. Before rollout, verify
 the Environment's hosted API and its system migrations against this version.
 The historical 0.1.19 minimum addressed only the removal of runtime-switch
 fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));

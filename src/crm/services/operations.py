@@ -37,12 +37,14 @@ from ..solution_selling.models import (
     DiagnosisPatch,
     DiagnosisPrepareRequest,
     LeadPatch,
+    PrompterConstraints,
     PrompterPatch,
     PrompterRenderRequest,
+    PrompterValidateRequest,
     ProspectingProfilePatch,
     SolutionSellingContextRequest,
 )
-from ..solution_selling.prompters import render_prompter
+from ..solution_selling.prompters import render_prompter, validate_draft
 from ..solution_selling.workflows import prepare_diagnosis, solution_selling_context
 
 
@@ -446,7 +448,7 @@ class CRMOperations:
         existing = self.records.detail(resource, uid)
         changes = payload.changes.model_dump(mode="json", exclude_unset=True)
         candidate_data = {
-            key: existing[key] for key in RECORDS[resource].create.model_fields
+            key: existing[key] for key in RECORDS[resource].create.model_fields if key in existing
         } | changes
         try:
             candidate = RECORDS[resource].create.model_validate(candidate_data)
@@ -464,12 +466,12 @@ class CRMOperations:
             candidate,
         )
 
-    def render_prompter(self, uid: uuid.UUID, payload: BaseModel) -> dict[str, str]:
+    def render_prompter(self, uid: uuid.UUID, payload: BaseModel) -> dict[str, Any]:
         self.context.require("crm.read")
         self._record_enabled("prompters")
         payload = validated_model(PrompterRenderRequest, payload)
         try:
-            text = render_prompter(
+            result = render_prompter(
                 prompter_uid=uid,
                 request=payload,
                 actor_uid=self.context.actor_uid,
@@ -479,7 +481,18 @@ class CRMOperations:
             )
         except ValueError as exc:
             raise self._invalid("payload") from exc
-        return {"text": text}
+        return result.model_dump(mode="json")
+
+    def validate_prompter(self, uid: uuid.UUID, payload: BaseModel) -> dict[str, Any]:
+        self.context.require("crm.read")
+        self._record_enabled("prompters")
+        payload = validated_model(PrompterValidateRequest, payload)
+        record = self.records.detail("prompters", uid)
+        result = validate_draft(
+            text=payload.text, subject=payload.subject,
+            constraints=PrompterConstraints.model_validate(record.get("constraints", {})),
+        )
+        return result.model_dump(mode="json")
 
     def solution_selling_context(self, payload: BaseModel | dict[str, Any]) -> dict[str, Any]:
         self.context.require("crm.read")

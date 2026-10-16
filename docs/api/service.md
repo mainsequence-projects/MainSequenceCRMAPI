@@ -34,6 +34,14 @@ or `crm-settings`) in the `503` response. A settings read timeout returns `CRM_N
 stage-specific message. The loopback launcher also bounds the SDK signed-user
 lookup to 20 seconds and returns `LOCAL_SIGN_IN_TIMEOUT` with HTTP `503` if
 that lookup stalls. These errors do not expose credentials or partial CRM data.
+The loopback launcher's preliminary sign-in lookup distinguishes an explicit
+SDK authentication refusal (`401`, `LOCAL_SIGN_IN_REQUIRED`) from a platform
+lookup refusal (`403`, `LOCAL_SIGN_IN_DENIED`) and an unavailable or unclassified
+verification (`503`, `LOCAL_SIGN_IN_UNAVAILABLE`). Connection resets, transport
+errors, backend errors and ambiguous SDK refresh failures do not establish bad
+credentials and must not return `401`. Failures use the existing safe error
+envelope and correlated diagnostics; all still deny access. SDK caller
+verification remains a separate mandatory check on every protected request.
 The frontend startup screen preserves the public error code/message and failed
 readiness checks, with a Retry action. A local launcher bootstrap timeout no
 longer shuts down the services; see [local development](../delivery/local-development.md).
@@ -80,8 +88,10 @@ The application's installed request identity supplies the verified caller;
 see [request conventions](conventions.md#identity-and-scope). The application
 neither accepts a caller-selected workspace nor maintains a separate user/role
 store.
-Hosted defaults evaluate the effective identity's signed Team UIDs and
-Organization admin flag. Existing Teams selected by `CRM_READER_TEAM_UIDS`
+Hosted defaults evaluate the effective identity's signed Organization admin
+flag and fetch current membership with the SDK's scoped
+`in_teams(..., max_age_seconds=0)` for each non-admin operation. The identity
+contains no Team list, and lookup failure never grants access. Existing Teams selected by `CRM_READER_TEAM_UIDS`
 grant read access; `CRM_WRITER_TEAM_UIDS` grants implemented business writes.
 Only verified Organization admins receive `crm.configure`; export remains
 unavailable. The comma-separated Team UUID configuration grants nothing when

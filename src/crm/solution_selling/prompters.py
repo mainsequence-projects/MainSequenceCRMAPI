@@ -12,7 +12,14 @@ from jinja2.sandbox import SandboxedEnvironment
 from src.crm.repositories.records import VersionedRecordStore
 from src.crm.repositories.resources.store import GovernedResourceStore
 
-from .models import PrompterRenderRequest
+from .models import (
+    PrompterConstraints,
+    PrompterConstraintViolation,
+    PrompterRenderRequest,
+    PrompterRenderResult,
+)
+
+MAX_DRAFT_CHARACTERS = 32768
 
 _ROOTS = {"contact", "company", "lead", "profile", "deal", "solution_selling", "sender", "inputs"}
 _ALLOWED_NODES = (
@@ -100,7 +107,7 @@ def render_prompter(
     sender_name: str,
     core: GovernedResourceStore,
     methodology: VersionedRecordStore,
-) -> str:
+) -> PrompterRenderResult:
     """Return a preview; never persist or dispatch generated text."""
     if len(request.inputs) > 50 or any(
         len(key) > 100 or len(value) > 500 for key, value in request.inputs.items()
@@ -162,16 +169,50 @@ def render_prompter(
         "sender": {"uid": str(actor_uid), "display_name": sender_name},
         "inputs": request.inputs,
     }
-    environment = _validate_template(template_record["template"])
+    text = _render_text(template_record["template"], context)
+    subject_source = template_record.get("subject_template")
+    subject = _render_text(subject_source, context) if subject_source is not None else None
+    return validate_draft(
+        text=text, subject=subject,
+        constraints=PrompterConstraints.model_validate(template_record.get("constraints", {})),
+    )
+
+
+def _render_text(source: str, context: dict[str, Any]) -> str:
+    environment = _validate_template(source)
     try:
-        stream = environment.from_string(template_record["template"]).generate(**context)
+        stream = environment.from_string(source).generate(**context)
         output: list[str] = []
         length = 0
         for part in stream:
             length += len(part)
-            if length > 32768:
-                raise ValueError("Rendered draft exceeds 32 KiB")
+            if length > MAX_DRAFT_CHARACTERS:
+                raise ValueError("Rendered draft exceeds 32768 characters")
             output.append(part)
     except TemplateError as exc:
         raise ValueError("Template references missing or unsupported data") from exc
     return "".join(output)
+
+
+def validate_draft(
+    *, text: str, subject: str | None, constraints: PrompterConstraints,
+) -> PrompterRenderResult:
+    """Count Unicode code points, preserving exact text and optional subject."""
+    counts = {"text": len(text), "subject": None if subject is None else len(subject)}
+    violations = []
+    for field, limit in (
+        ("text", constraints.max_characters),
+        ("subject", constraints.max_subject_characters),
+    ):
+        actual = counts[field]
+        if actual is not None and actual > MAX_DRAFT_CHARACTERS:
+            raise ValueError("Draft exceeds 32768 characters")
+        if limit is not None and actual is not None and actual > limit:
+            violations.append(PrompterConstraintViolation(field=field, actual=actual, limit=limit))
+    return PrompterRenderResult(
+        text=text, subject=subject,
+        character_count=counts["text"], subject_character_count=counts["subject"],
+        max_characters=constraints.max_characters,
+        max_subject_characters=constraints.max_subject_characters,
+        is_valid=not violations, violations=violations,
+    )

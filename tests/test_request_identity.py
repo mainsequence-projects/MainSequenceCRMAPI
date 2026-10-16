@@ -146,6 +146,10 @@ def _rejected_headers(signed_caller, case):
         ),
         "other_environment": signed_caller(ACTOR, organization_environment_uid=str(uuid.uuid4())),
         "invalid_teams": signed_caller(ACTOR, team_uids="not-a-list"),
+        "legacy_teams": signed_caller(ACTOR, team_uids=[]),
+        "legacy_requester_teams": signed_caller(OTHER, requester={
+            "sub": str(ACTOR), "team_uids": [], "is_organization_admin": False,
+        }),
         "invalid_admin_flag": signed_caller(ACTOR, is_organization_admin="true"),
         "unknown_signer": signed_caller(ACTOR, signing_key=Ed25519PrivateKey.generate()),
         "duplicate": [*signed_caller(ACTOR).items(), *signed_caller(ACTOR).items()],
@@ -163,6 +167,8 @@ def _rejected_headers(signed_caller, case):
         "other_release",
         "other_environment",
         "invalid_teams",
+        "legacy_teams",
+        "legacy_requester_teams",
         "invalid_admin_flag",
         "unknown_signer",
         "duplicate",
@@ -243,7 +249,7 @@ def test_authenticated_actor_fails_closed_outside_a_verified_request():
 
 def test_delegated_rest_uses_verified_requester(signed_caller):
     response, policy = principals(signed_caller(OTHER, requester={
-        "sub": str(ACTOR), "team_uids": [], "is_organization_admin": False,
+        "sub": str(ACTOR), "is_organization_admin": False,
     }))
     assert response.status_code == 200
     assert response.json()["items"][0]["uid"] == str(ACTOR)

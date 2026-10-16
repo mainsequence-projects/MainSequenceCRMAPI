@@ -139,6 +139,7 @@ FastAPI's generated OpenAPI paths.
 | `GET` | `/extensions/solution-selling/prompters/{uid}/` | [Solution Selling](solution-selling.md) |
 | `PATCH` | `/extensions/solution-selling/prompters/{uid}/` | [Solution Selling](solution-selling.md) |
 | `POST` | `/extensions/solution-selling/prompters/{uid}/render/` | [Solution Selling](solution-selling.md) |
+| `POST` | `/extensions/solution-selling/prompters/{uid}/validate/` | [Solution Selling](solution-selling.md) |
 
 | `POST` | `/extensions/solution-selling/context/` | [Solution Selling](solution-selling.md) |
 | `POST` | `/extensions/solution-selling/diagnoses/prepare/` | [Solution Selling](solution-selling.md) |

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import json
+import subprocess
+import sys
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -17,6 +20,49 @@ from metatables.migrations.connection import migration_engine
 from src.crm.migrations import migration
 
 
+def test_prompter_revision_preserves_legacy_checks_and_reopens_in_fresh_process(tmp_path):
+    database = tmp_path / "prompter-revision.sqlite"
+    config = alembic_config_for_provider(migration, sqlalchemy_url=f"sqlite:///{database}")
+    with migration_engine(config) as engine, engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0010")
+        connection.commit()
+        before_checks = sa.inspect(connection).get_check_constraints("mainsequence_crm__solution_selling_prompter")
+        connection.exec_driver_sql(
+            "INSERT INTO mainsequence_crm__solution_selling_prompter "
+            "(uid, name, kind, template, version, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            (uuid.uuid4().hex, "Existing", "free label", "Hello {{ contact.first_name }}"),
+        )
+        connection.commit()
+        command.upgrade(config, "head")
+        connection.commit()
+        after_checks = sa.inspect(connection).get_check_constraints("mainsequence_crm__solution_selling_prompter")
+        assert after_checks == before_checks
+        row = connection.exec_driver_sql("SELECT template, subject_template, constraints FROM mainsequence_crm__solution_selling_prompter").one()
+        assert tuple(row) == ("Hello {{ contact.first_name }}", None, "{}")
+        connection.exec_driver_sql("UPDATE mainsequence_crm__solution_selling_prompter SET subject_template=?, constraints=?", ("Hello", '{"max_characters":200,"max_subject_characters":30}'))
+        connection.commit()
+        config.attributes.pop("connection")
+    # A new interpreter reopens the file and the current authored model, proving
+    # values and schema do not depend on an already-bound process/session.
+    result = subprocess.run([sys.executable, "-c", """
+import json, sys, sqlalchemy as sa
+from src.crm.metatables import MODELS
+model = MODELS['solution_selling_prompter']
+with sa.create_engine('sqlite:///' + sys.argv[1]).connect() as db:
+    row = db.execute(sa.select(model.__table__.c.subject_template, model.__table__.c.constraints)).one()
+    print(json.dumps(list(row)))
+""", str(database)], check=True, capture_output=True, text=True)
+    assert json.loads(result.stdout) == ["Hello", {"max_characters": 200, "max_subject_characters": 30}]
+    with migration_engine(config) as engine, engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.downgrade(config, "0010")
+        connection.commit()
+        assert connection.exec_driver_sql("SELECT template FROM mainsequence_crm__solution_selling_prompter").scalar_one() == "Hello {{ contact.first_name }}"
+        assert "subject_template" not in {c["name"] for c in sa.inspect(connection).get_columns("mainsequence_crm__solution_selling_prompter")}
+
+
 def test_prompt_revision_enforces_utf8_bytes_and_preserves_source_on_local_sqlite(tmp_path):
     database = tmp_path / "prompt-revision.sqlite"
     config = alembic_config_for_provider(migration, sqlalchemy_url=f"sqlite:///{database}")
@@ -28,7 +74,7 @@ def test_prompt_revision_enforces_utf8_bytes_and_preserves_source_on_local_sqlit
             connection.exec_driver_sql(
                 "SELECT version_num FROM mainsequence_crm__alembic_version"
             ).scalar_one()
-            == "0010"
+            == "0011"
         )
         table = sa.Table("mainsequence_crm__prompt", sa.MetaData(), autoload_with=connection)
         connection.commit()
@@ -294,7 +340,7 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         migrate("upgrade", "head")
 
         version = sa.text("SELECT version_num FROM mainsequence_crm__alembic_version")
-        assert one(version).version_num == "0010"
+        assert one(version).version_num == "0011"
         settings = _table("mainsequence_crm__settings", name=S, default_currency=S)
         assert tuple(one(sa.select(settings))) == ("Legacy", "EUR")
         affiliation = _table("mainsequence_crm__contact_company_affiliation", uid=U)
@@ -322,5 +368,5 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         legacy_contact = _table("mainsequence_crm__contact", linkedin_url=S)
         assert one(sa.select(legacy_contact)).linkedin_url == LINKEDIN
         migrate("upgrade", "head")
-        assert one(version).version_num == "0010"
+        assert one(version).version_num == "0011"
         assert one(sa.select(contact)).socials == {"linkedin": LINKEDIN}

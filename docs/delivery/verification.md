@@ -17,6 +17,259 @@ compared with the [mounted route index](../api/route-index.md);
 
 ## Evidence boundaries
 
+### Authorized deployment stopped at the mandatory agent gate (2026-10-16)
+
+The user authorized deployment through the existing CRM workflow. Preflight
+resolved this checkout's `main` branch and commit `86707f3` to its registered
+branch; SDK `9.0.27` matches the requirements. The push remote is the normal
+GitHub SSH URL, with no disabled push URL. Installed the existing required
+`.githooks` path in local Git configuration; no hook was removed or bypassed.
+
+Executed `.venv/bin/python scripts/verify_local_agent.py` with the normal trusted
+local CA bundle. The actual local Tau `2.0.13` runtime initialized with the
+workflow's `openai-codex/gpt-5.6-luna`, thinking `medium`. Its protected CRM
+bootstrap then returned `503 CRM_NOT_READY`, correlation
+`9339416a-1ae7-4350-9510-df0165af6b6f`, explicitly naming missing binding
+`mainsequence_crm__prompt`. The script exited `1` before starting a model turn
+or obtaining a successful MCP result; provider readiness alone is not a live
+agent pass. Its owned processes shut down normally.
+
+Failed-run evidence remains under ignored
+`.local/agent-pre-push/8a6f7bdf-da59-4747-9cb0-11e85dfc41f7/` (`report.json`,
+`crm.log` and `agent.log`). The current gate's use of the unmigrated hosted
+catalog blocks the push that would trigger the migration Job. No commit,
+push, hosted migration or deployment was performed. Resolving this needs a
+verification-environment or explicit gate-policy decision, not a manual hosted
+migration or an unapproved bypass. Other projects were not changed.
+
+### MetaTables 0.1.39 update and actual CRM stack restart (2026-10-15)
+
+Updated `mainsequence-metatable` from `0.1.38` to the newly published,
+non-yanked `0.1.39` through CodeRepository dependency sync. The dependency
+floor, lockfile, exported requirements and installed environment agree.
+Main Sequence remains `9.0.27` and Tau remains `2.0.13`; no other dependency
+version changed. Refreshed only the five MetaTables-owned skills using its
+package copier after a dry run. Separate SDK guidance was not refreshed.
+No business implementation or tests were changed for this update.
+
+Executed the full suite: **342 passed**, with the existing 37 deprecation
+warnings. The SDK compatibility check, repository-wide Ruff, documentation
+route check, strict MkDocs and `git diff --check` passed.
+
+Stopped the verified CRM launcher and reran the normal frontend
+`scripts/dev-stack.mjs` with Node 24, using the API's updated Python environment.
+The saved-session refresh succeeded. API health, local Tau health/readiness,
+guide, Vite, and Vite's Tau/guide/platform proxies passed. All four services
+remained running after the failed bootstrap; this is not the stale-process
+check recorded for `0.1.38` below.
+
+The real browser at `http://127.0.0.1:38644/contacts` still shows the startup
+error gate, not a ready Contacts list. A serialized bootstrap through Vite
+returned `503 CRM_NOT_READY` in 4.52 seconds, correlation
+`4682345a-e25b-4141-a143-e45d516f1256`, explicitly naming missing active binding
+`mainsequence_crm__prompt`; catalog-dependent checks remained pending.
+A fresh `0.1.39` metadata request independently confirmed 26 of 27 expected
+active CRM bindings, all at revision `0009`, with only that binding absent.
+The previous caller-assertion `401` did not recur. Directly requesting a
+25-contact page returned `500`; the actual API traceback ends in the same
+CRM `CatalogValidationError` from the incomplete registry, before governed
+contact SQL executes. This is an additional unhandled-error response path,
+not a successful list read or another authentication refusal.
+
+CRM revision `0010` authors the Prompt table; the normal `migrate-crm`
+deployment Job must apply/finalize the application's pending revisions before
+this checkout can become ready against that hosted catalog. Updating the client
+does not run that Job. No hosted migrations, business data writes, commit,
+push, deployment or other-project changes were performed. Browser conformance
+was limited to the actual startup/error gate; ready-state layout, contact data
+access and persistence remain unverified while the catalog is incomplete.
+
+### MetaTables 0.1.38 and identity-only SDK compatibility (2026-10-15)
+
+Updated the installed `0.1.37` client to the non-yanked
+[MetaTables 0.1.38 release](https://pypi.org/project/mainsequence-metatable/0.1.38/).
+It requires Main Sequence SDK `>=9.0.27,<10`; the dependency floors, lockfile,
+exported requirements and installed environment now select `0.1.38` and
+`9.0.27`. The supported CodeRepository sync updated only these two dependency
+versions. Tau remains `2.0.13`. The package's copier refreshed its five owned
+skills and reference snapshots after a dry run. The separate Main Sequence
+skill copy remains `9.0.23`, intentionally not refreshed without that request;
+version-matched SDK guidance was read from the installed `9.0.27` bundle.
+
+The initial compatibility run exposed the removed legacy signed Team-list
+contract. CRM's hosted policy now uses the effective person's public
+`in_teams(..., max_age_seconds=0)` lookup instead of `identity.team_uids`.
+Existing reader/writer/admin capability sets and requester-only delegation
+remain unchanged. Signed test fixtures now use identity-only proofs; explicit
+legacy caller and requester Team claims are still tested as rejected. Scoped
+policy checks exercise the actual SDK helper while replacing only its platform
+membership fetch. They cover revocation within one request and unavailable
+membership lookup returning `503` without a business write or workload fallback.
+These controlled checks do not prove a deployed membership endpoint.
+
+Executed the complete suite: **342 passed**. Repository-wide Ruff,
+`python -m metatables.sdk_compat`, strict MkDocs and `git diff --check` passed.
+Existing FastAPI lifespan and Starlette/AnyIO deprecation warnings remain;
+there is no longer a legacy `team_uids` accessor warning from the CRM policy.
+The suite's isolated database fixtures are not hosted business writes.
+
+A fresh read-only catalog request returned `200`, with 26 of the expected 27
+active bindings, revision `0009`, and only `mainsequence_crm__prompt` missing.
+The earlier catalog caller-assertion `401` was not reproduced. A separate fresh
+process exercised the actual local launcher through its serialized ASGI
+interface with the saved SDK sign-in and no replaced identity or catalog
+ports: health returned `200`; bootstrap returned `503 CRM_NOT_READY` after
+14.01 seconds with the explicit missing-Prompt diagnostic and correlation
+`4076ac2d-f874-462f-829e-2e0f7bdab66e`. Catalog-dependent checks remained pending.
+This proves the updated launcher's diagnosis, not a ready CRM UI, physical
+schema verification or successful business data access. Existing long-running
+development processes were not restarted by this check.
+
+Hosted revisions must still run through the normal `migrate-crm` deployment
+Job. No hosted migration, other-project change, commit, push or deployment was
+performed for this update. The real-provider agent check remains mandatory
+before any push.
+
+### Local sign-in classification and upstream caller-assertion trace (2026-10-15)
+
+Traced two separate failures. The local runner previously caught every SDK
+sign-in exception and returned `401`, even when a control-plane connection reset
+had not judged credentials. `api/crm/local.py` now reserves `401` for explicit
+SDK authentication refusal or an absent Bearer credential, preserves a forbidden
+lookup as `403`, and returns `503 LOCAL_SIGN_IN_UNAVAILABLE` for transport,
+backend and otherwise unclassified verification failures. Timeouts keep their
+specific `503` code. Failures log their user/token phase, safe exception type
+and upstream status with the same UUID returned in the existing error envelope.
+Loopback restrictions, caller-header rejection, per-request SDK verification,
+policy binding and fail-closed behavior are unchanged.
+
+Executed the complete suite: **338 passed**. Eight serialized HTTP cases cover
+connection, SDK transport, backend-503 and unknown exceptions in both preliminary
+sign-in phases, with correlation and secret redaction. The invalid-credentials
+fixture now raises the SDK's actual authentication exception, not an ambiguous
+RuntimeError. Focused identity/readiness checks, repository-wide Ruff, strict
+MkDocs and `git diff --check` passed. These controlled cases do not claim that
+an actual platform outage was induced.
+
+The independent live catalog 401 is reported as
+[MetaTables #69](https://github.com/mainsequence-projects/MetaTables/issues/69).
+At `2026-10-15T20:30:26Z`, request
+`33ac968405c3167970bb43381f727841` was rejected inside `fapi_runtime` before
+route matching in 1.532 ms; the gateway forwarded the same 401. The same saved
+SDK sign-in successfully read the platform user. Owner-log revision context
+identified active MetaTables commit `c3cd9f0d15e410e4d537b517230a1ff6930ea48e`,
+whose requirements pin SDK `9.0.19`; its active revision remained older than
+its desired revision. A synthetic Ed25519 proof without `team_uids` was rejected
+by the official `9.0.19` verifier with a missing-claim cause and accepted by the
+installed `9.0.26` verifier. Both accepted the legacy fixture. This establishes
+a code-level compatibility risk, not inspection of the live proof: the actual
+runtime log does not expose its precise verifier sub-branch. The issue records
+that uncertainty and asks the owning project to verify its active deployment.
+
+No other project's source or deployment was changed. No hosted migration or
+business write was performed, and no commit or push is claimed for this fix.
+
+### MetaTables 0.1.37 dependency update (2026-10-15)
+
+Updated the existing local `0.1.36` installation to the newly published,
+non-yanked [MetaTables 0.1.37 release](https://pypi.org/project/mainsequence-metatable/0.1.37/).
+Its package metadata requires `mainsequence[mcp]>=9.0.26,<10`; the supported
+`mainsequence code-repository sync --path .` therefore updated the SDK from
+`9.0.23` to `9.0.26` too. Only those two dependency versions changed. The
+dependency floor, lockfile, exported requirements and installed environment
+agree; Tau remains `2.0.13`.
+
+The package's copier refreshed its five MetaTables-owned skills and reference
+snapshots after a dry run. Its sentinel now reports `0.1.37`. The separate
+Main Sequence skill copy still reports `9.0.23`; that namespace and `AGENTS.md`
+were not refreshed because no separate skill/instruction update was requested.
+Version-matched maintenance guidance was read from the installed SDK bundle.
+
+Executed checks: the complete existing test suite passed (**330 tests**),
+`python -m metatables.sdk_compat` passed against SDK `9.0.26`, repository-wide
+Ruff passed, strict MkDocs passed and `git diff --check` passed. Existing
+deprecation warnings remain, including the SDK's warning on the legacy
+`RequestUserIdentity.team_uids` accessor. No business implementation or tests
+were added or changed for this dependency update.
+
+Two fresh read-only catalog attempts stopped before contacting MetaTables:
+the configured control-plane endpoint reset the connection to
+`/api/v1/code-repository-branches/resolve-git-context/`, producing
+`CodeRepositoryContextError`. This does not establish whether the earlier
+runtime caller-assertion 401 is fixed or still present. No database migrations,
+push, deployment or other project changes were performed. The real-agent
+pre-push check remains required before publishing.
+
+### MetaTables 0.1.36 upgrade before prompter delivery (2026-10-15)
+
+Upgraded `mainsequence-metatable` from `0.1.35` to the latest non-yanked PyPI
+release, `0.1.36`, verified from its package metadata on this date. The dependency
+floor, `uv.lock`, exported `requirements.txt` and installed `.venv` agree. The
+Main Sequence SDK remains `9.0.23`. The supported CodeRepository sync command
+performed the lock, environment sync and runtime export; after explicit approval,
+the package's copier refreshed its five owned skills and reference snapshots.
+
+Executed `.venv/bin/python -m pytest -q`: **330 passed** on `0.1.36`. The focused
+migration/prompter/catalog selection also passed (**33 tests**), covering the
+disposable PostgreSQL write lifecycle and SQLite upgrade/downgrade with a fresh
+interpreter read. Revision `0011` retains its SQLite additive DDL because the
+installed batch implementation still does not preserve the old unnamed checks
+when recreating the table. No applied revision was rewritten.
+
+The existing `migrate-crm` Job already calls the public `upgrade_application`
+path and gates API deployment; the assistant waits for the API. The client
+upgrade does not establish that the shared MetaTables API has been upgraded.
+Hosted schema execution, live catalog verification and deployment remain
+unverified, and no push was performed.
+
+### Optional prompter subject and independent draft constraints (2026-10-15)
+
+Implemented in the API working tree based on `067b8f3` and the paired frontend
+working tree based on `dcd5502`. Prompters retain their open `kind` and existing
+body `template`, with optional `subject_template` and a typed `constraints`
+object. Both render and read-only edited-draft validation return independent
+counts, limits and violations; business overflow preserves the complete draft.
+API/MCP contracts, both copies of the CRM usage pack and the served user guide
+were updated together.
+
+Executed checks:
+
+- `.venv/bin/python -m pytest -q`: **330 passed**. Prompter coverage includes
+  strict limit payloads, Unicode boundaries, legacy defaults, optional subjects,
+  strict Jinja behavior, REST/MCP parity, read authorization and current saved
+  constraints. Actual compiled atomic CRM statements ran against the test's
+  private disposable PostgreSQL cluster, including create/update/read-back,
+  stale versions, injected audit failure/rollback and fixture cleanup. The
+  MetaTables transport and identity ports were mocked; this is not evidence
+  of platform-enforced table permissions. Temporary SQLite migration tests
+  upgraded legacy records through `0011`, preserved existing checks, reopened
+  persisted values with the authored model in a fresh interpreter and verified
+  downgrade behavior.
+- Targeted Ruff checks and `git diff --check` passed. Strict MkDocs and mounted
+  route documentation checks passed.
+- With Node 24, frontend `npm test`: **23 passed**; `npm run docs:check`, the
+  combined app/user-guide build and the closed SDK theme audit passed.
+- `node tests/prompters.browser.mjs` used an owned Vite process and isolated
+  in-memory API fixtures, with external requests blocked. It verified subject
+  creation/removal, independent limits, unchanged legacy records, full overlong
+  previews, Unicode counts, current-rule revalidation, failure retention and
+  preservation of edits during delayed responses. The SDK default coarse/fine
+  matrix used real touch/mobile contexts and light/dark presets; computed form
+  and preview control colors matched the applied theme tokens. Invalid fields
+  expose `aria-invalid` and validation feedback uses a live status region.
+- `node tests/docs-artifact.browser.mjs` served only `dist/` on an owned loopback
+  port and passed application/help entry points, every generated guide route,
+  nested links and mobile/desktop light/dark checks.
+
+Live boundaries: the read-only local MetaTables runtime check reported SQLite
+Local mode but no active CRM catalog bindings. A fresh client therefore failed
+`CatalogRegistry.validate()` with an incomplete-catalog diagnostic; live catalog
+binding and platform authorization remain unverified. The shared local database
+was not initialized or migrated. Revision `0011` has not been applied to hosted
+data; the normal `migrate-crm` deployment Job must apply it before release. No
+push or deployment was performed, and the real-provider agent pre-push gate was
+not run for this unpushed change.
+
 ### CRM-owned readiness diagnostics and gateway escalation (2026-10-15)
 
 This fix is local to the API working tree based on `067b8f3`. It changes
@@ -92,6 +345,55 @@ Ruff, strict MkDocs and `git diff --check` passed. No hosted data/schema change,
 migration or deployment was performed. Publishing remains blocked by the
 repository's required live pre-push check; do not bypass it. The normal
 deployment workflow's `migrate-crm` Job is still required for hosted `0010`.
+
+### Non-fatal local bootstrap failures (2026-10-15)
+
+Implemented in the paired frontend working tree based on `dcd5502`; API
+documentation is based on `067b8f3`. These are uncommitted local changes, not a
+deployment. No API route, identity, permission, database or SDK dependency was
+changed.
+
+The CRM-owned `scripts/dev-stack.mjs` previously threw on a failed or timed-out
+bootstrap, reaching its outer `stop(1)` handler and terminating its children.
+It now uses `scripts/bootstrap-probe.mjs` to return a non-ready diagnostic,
+prints the frontend URL before probing and keeps the services running. Failed
+prerequisites and actual child-process crashes remain fatal. The frontend and
+launcher share public error/readiness extraction in `src/api-error.ts`.
+`src/App.tsx` preserves the startup gate and Retry action; it does not claim
+that the backend is reachable when no complete response arrives.
+
+Actual checks, all exiting successfully:
+
+- Frontend `npm test`: **22 passed**, including bootstrap HTTP failures,
+  actual elapsed deadlines before headers and during the body, malformed
+  responses, network failure and subsequent successful probing.
+- `node tests/bootstrap.browser.mjs`: real Vite proxy, disposable loopback HTTP
+  backend and Chromium. HTTP `503` preserves `CRM_NOT_READY` and the failed
+  catalog check; the startup shell is checked at 375, 768 and 1280 pixels in
+  light/dark presets, with real coarse/fine pointer contexts. Keyboard Retry
+  reaches the ready shell and public SDK page-layout assertions pass. Vite
+  stays available after a real elapsed probe timeout. Browser deadlines are
+  shortened in test code only to exercise stalls before headers and during
+  an error response body. Screenshots were inspected locally.
+- `node tests/prompts.browser.mjs`: existing isolated Prompt UI checks pass
+  with **31** fixture requests, including stale-version and uncertain-response
+  recovery. `node tests/docs-artifact.browser.mjs` verifies the built app,
+  help home and all **21** generated guide links on an owned static server.
+- `npm run docs:check`: **22** pages; `npm run build`: app typecheck, Vite
+  artifact and Docusaurus guide pass. Existing large-chunk and Docusaurus
+  update-check warnings remain non-fatal. The public SDK theme audit passes
+  for all **3** authored CSS files.
+- API documentation route parity: **1 passed**; strict MkDocs and both
+  repositories' `git diff --check` pass.
+
+The local transport uses native same-origin fetch, not the SDK's hosted
+delegated transport. The installed SDK's `ApplicationStatusScreen` renders the
+supplied message unchanged, and the browser shows the complete public backend
+error. No Command Center SDK defect was established, so no SDK issue was opened.
+These checks do not run the full authenticated four-process launcher, refresh
+the developer sign-in, contact production, test live provider inference or
+verify a hosted session. No push or deployment was performed; the real-provider
+Tau pre-push gate remains required before publishing API changes.
 
 ### Core fixed-Markdown Prompts (2026-10-13)
 

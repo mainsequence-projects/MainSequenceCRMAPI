@@ -104,7 +104,6 @@ class SignedCaller:
             "sub": str(user_uid),
             "resource_release_uid": RELEASE_UID,
             "organization_environment_uid": ENVIRONMENT_UID,
-            "team_uids": [],
             "is_organization_admin": False,
             "iat": now,
             "nbf": now,

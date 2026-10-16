@@ -60,6 +60,26 @@
 > full repair. An explicit admin repair remains a full sweep. A routine catalog
 > update must not establish a new native baseline for unverified outside drift.
 
+> Amendment (2026-10-15, [MetaTables #66](https://github.com/mainsequence-projects/MetaTables/issues/66)):
+> On PostgreSQL/TimescaleDB, deployment and the admin repair compare what
+> MetaTables' roles actually hold with the plan and change only what differs. One
+> query reads those roles' attributes, memberships and grants on the database,
+> on schemas and on relations the login owns or the plan names; table policies
+> are read in one query as well. Statements go out in batches, one round trip
+> each. This replaces the native-security fingerprint, which hashed every object
+> the shared login owns and so changed with any application table, column, index
+> or new data, and the full repair that revoked every grant and granted it back.
+> TimescaleDB's internal schemas are never read or changed: chunks inherit their
+> hypertable's grants. Schema `USAGE` and `CONNECT` are granted only where the
+> login may grant them. Login passwords are set again only on credential
+> rotation, failed login validation, pending or uninitialized state.
+
+> Amendment (2026-10-15, [ADR 0023](0023-daily-security-check.md)): The full sweep
+> no longer runs in every deployment's migration Job. It runs as a daily Job, which
+> administrators can also start from the Admin; the admin repair that paused caller
+> SQL is removed. A deployment runs it only on first setup or after system migrations,
+> so grants changed outside MetaTables are repaired within a day.
+
 > Amendment (2026-10-09): [ADR 0022](0022-concurrent-requests-and-connection-reuse.md)
 > reuses login-role connections within a pod, only by the login role that opened them
 > and never through `SET ROLE`; no session state carries over from one use to the next.

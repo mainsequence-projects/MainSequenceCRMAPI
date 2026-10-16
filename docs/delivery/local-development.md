@@ -49,6 +49,15 @@ signed-in user's details, which the local policy and display name use, are
 cached for at most five minutes and then revalidated; concurrent requests
 share that lookup and failed lookups are never cached. The per-request check
 is not cached. A responsive `/healthz` only proves the API process is running.
+An explicit preliminary SDK authentication refusal returns `401`
+(`LOCAL_SIGN_IN_REQUIRED`); a forbidden user lookup returns `403`
+(`LOCAL_SIGN_IN_DENIED`). A connection reset, transport failure, backend error
+or unclassified SDK refresh failure returns `503`
+(`LOCAL_SIGN_IN_UNAVAILABLE`), not a claim that the credentials are invalid.
+Timeouts retain `LOCAL_SIGN_IN_TIMEOUT`. These errors include a request UID;
+the matching `crm.readiness_check_failed` log identifies `local-sign-in-user`
+or `local-sign-in-token` and the safe exception type/upstream status without
+logging credentials, raw exceptions or tracebacks.
 If protected routes stall or return `503`, check the Main Sequence
 `/api/v1/users/me/` response and the SDK sign-in; Google authorization cannot
 start until that identity check succeeds.

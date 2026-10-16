@@ -144,8 +144,10 @@ the platform grants it on push. It:
    database or ownership of the `metatables` schema, and `CREATE` on the default schema;
 2. applies the system migrations;
 3. registers the runtime DataSource, or updates its connection if the declaration changed;
-4. reapplies database access setup. Per-User role passwords derive from the login
-   password, so a rotated password reaches them.
+4. sets up database access as far as the new release needs: the owner role, login
+   passwords again after a rotation (per-User role passwords derive from the login
+   password), and pending changes. It runs the full security check only on first setup
+   or after system migrations; the daily security check covers the rest.
 
 Any failure blocks the rollout. The Job prints `status` (`initialized`, `upgraded`
 or `up_to_date`), `previous_revisions`, `revisions` and `data_source_uid`. A new
@@ -156,6 +158,25 @@ database server's SQLSTATE and message when the server answered. The
 `metatables.bootstrap` logger writes the full error with its traceback to the Job
 log, with passwords, tokens and connection-string credentials redacted. Settings
 and API errors never carry driver text, which can include hosts and connection strings.
+
+## Daily security check
+
+The `check-security` Job (`jobs/check_security.py`, exactly
+`metatables runtime check-security`) runs daily at 03:00 UTC
+([ADR 0023](../adr/api/0023-daily-security-check.md)). It reads `configuration.yaml`
+and the Secret like the migration Job, waits for a running migration, and skips while
+the database still awaits its image's system migrations. It compares everything
+MetaTables secures with the catalog's grants, repairs what differs, and records the
+outcome, which the Admin's Database permissions panel shows. Caller SQL keeps running.
+A failed check fails the Job run, changes nothing, and is recorded with its error code.
+
+Run it from the Admin with **Run security check now**:
+
+- after deploying a release whose notes list access rule changes;
+- after changing grants, owners or roles directly in the database.
+
+The API starts the Job (its workload has `edit` on `check-security`); a second request
+while a run is pending or running is refused.
 
 ## API pods and Settings
 

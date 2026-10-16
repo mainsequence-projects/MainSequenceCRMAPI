@@ -20,7 +20,8 @@ TimescaleDB, MySQL or MSSQL runtime DataSource their deployment declares, for bo
 roles; the deployment's migration Job initializes it. Local Settings initializes or
 selects the SQLite file. Both use the same bootstrap operation.
 
-The SDK supplies trusted User identity, active Team UIDs, Organization admin status,
+The SDK supplies trusted User identity, membership answers for the Teams MetaTables
+grants name, Organization admin status,
 and independent Git source facts. MetaTables owns workspace identity and
 Reader/Writer table/namespace grants. It does not store an independent membership
 registry or replicate platform Organization policy. See the implemented

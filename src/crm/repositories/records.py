@@ -89,6 +89,7 @@ RECORDS: dict[str, RecordSpec] = {
 }
 
 JSON_FIELDS = {
+    "constraints",
     "participants",
     "key_players",
     "pain_chain",

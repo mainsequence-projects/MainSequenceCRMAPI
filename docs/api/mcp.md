@@ -7,7 +7,7 @@ is not public ingress and is outside the REST OpenAPI route index. The Main
 Sequence SDK rejects other methods and unapproved browser Origins.
 
 The catalogue is built from the same typed models as the CRM service. It has
-69 tools (38 reads, 31 writes) with Solution Selling active, or 46 tools when
+70 tools (39 reads, 31 writes) with Solution Selling active, or 46 tools when
 disabled. Tool names retain `crm_<resource>_<operation>`. Discover the exact
 schema through `tools/list`; for example:
 
@@ -42,9 +42,11 @@ admitted call rechecks the effective person's capability through
 conventions](conventions.md). Missing policy or directory wiring returns
 `unavailable`.
 
-The hosted adapters evaluate only the requester's signed Team/admin facts on a
-delegated call, never the agent's facts. A direct human uses its own signed
-facts. Owner selection in a delegated tool is limited to the requester; another
+The hosted adapters evaluate only the requester's signed admin flag and fresh
+SDK Team-membership lookup on a delegated call, never the agent's facts. A direct
+human uses its own identity and memberships. Each non-admin check uses
+`in_teams(..., max_age_seconds=0)`; lookup failures cannot reuse cached access or
+borrow workload rights. Owner selection in a delegated tool is limited to the requester; another
 owner returns `validation_error` without querying the workload's directory.
 Safe denial logs include the tool, request correlation, identity mode, denial
 reason, and—when policy rejects the call—the required capability. They never
@@ -72,10 +74,10 @@ The five authored business skills live under `.agents/skills/mainsequence_crm/`:
 | `crm-core` | 37 | Contacts, Companies, affiliations, Notes, tags, activity, Tasks, Interactions, owner selection, settings and Contact merge previews. |
 | `crm-deals` | 9 | Deal records, pipeline metadata, stages, boards and versioned moves. |
 | `solution-selling/crm-prospecting` | 8 | Prospecting profiles and the required-prompter outreach workflow, actual Interaction recording, Lead state and linking the next Contact Task. |
-| `solution-selling/crm-prompters` | 5 | Template maintenance, context inspection and rendering unsaved drafts. |
+| `solution-selling/crm-prompters` | 6 | Template maintenance, subject/body rendering and validation of edited unsaved drafts. |
 | `solution-selling/crm-discovery` | 10 | Diagnosis preparation and records, Deal assessments and Solution Selling context. |
 
-The allocation covers all 69 business tools exactly once; workflows can reuse
+The allocation covers all 70 business tools exactly once; workflows can reuse
 another skill's operations. With Solution Selling disabled, the 46 core/Deal tools
 remain. Simple record operations stay grouped in core; separate skills cover
 the workflows with distinct decisions and evidence requirements.
@@ -185,13 +187,21 @@ until these changes are deployed; no deployment or push was performed.
 
 ## Solution Selling read workflows
 
-When the module is active, `crm_prompters_render`,
+When the module is active, `crm_prompters_render`, `crm_prompters_validate`,
 `crm_solution_selling_context_get`, and `crm_diagnoses_prepare` require
 `crm.read`. They share the REST service and never persist or dispatch drafts.
 Their inputs and results are described in the
 [Solution Selling API](solution-selling.md). The five module resources retain
 their existing list/get/create/update tools. Lists advertise only their own
 UUID or text filters; unknown filter keys fail input validation.
+
+Prompter create/update tool schemas include optional `subject_template` and the
+typed `constraints` object. Render retains `data.text` and adds optional subject,
+separate counts/limits, `is_valid` and per-field violations. Business-limit
+violations are successful read results (`code: ok`, `isError: false`) with
+`is_valid: false`; inspect that flag before presenting a draft as validated.
+`crm_prompters_validate` takes `{uid, payload: {text, subject}}`, reads current
+saved limits and validates manual edits without Jinja, persistence or dispatch.
 
 Context includes the assessment's existing evidence statuses and a bounded
 Interaction page, with source UIDs and versions. It is a composition of reads,

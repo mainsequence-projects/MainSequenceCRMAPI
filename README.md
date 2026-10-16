@@ -71,7 +71,7 @@ existing policy and directory adapters, an active MetaTable catalog, and a
 default pipeline are available. The API does not accept a caller-supplied
 identity header or workspace selector.
 
-The 26-table migration provider is `src.crm.migrations:migration`. A fresh API
+The 27-table migration provider is `src.crm.migrations:migration`. A fresh API
 process resolves its active, provider-owned MetaTables directly from the platform
 catalog; no local bindings file or application tenant setting is used.
 Migration `0004` replaces the old workspace table with singleton CRM settings
@@ -80,7 +80,7 @@ empty provider. Nothing migrates at HTTP startup. Hosted environments are
 migrated only by the `migrate-crm` Job (`jobs/migrate_crm.py`), which
 `.mainsequence/workflows/crm-api.yaml` runs before it deploys the API and the
 CRM assistant. That file is the repository's only workflow file. The API now
-uses Main Sequence 9.0.23 and MetaTables 0.1.35. Before rollout, verify the
+uses Main Sequence 9.0.27 and MetaTables 0.1.39. Before rollout, verify the
 hosted MetaTables API and its system migrations against that client version,
 and provision the CRM Team's namespace access described in
 [persistence and migrations](docs/delivery/persistence.md#migration-and-runtime-boundary).

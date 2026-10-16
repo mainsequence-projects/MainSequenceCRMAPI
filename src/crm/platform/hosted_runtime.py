@@ -30,7 +30,7 @@ def _team_uids(name: str) -> frozenset[str]:
 
 @dataclass(frozen=True)
 class PlatformPolicy:
-    """Evaluate the effective person's signed facts on every operation.
+    """Evaluate the effective person's identity and fresh Team memberships.
 
     Team configuration names existing platform Teams; it stores no people,
     memberships or credentials. Storage workload grants are independent.
@@ -50,7 +50,9 @@ class PlatformPolicy:
         # Export is not available until its immutable-output live gate passes.
         if identity.is_organization_admin:
             return set(CAPABILITIES - {"crm.transfer.export"})
-        teams = frozenset(identity.team_uids)
+        teams = identity.in_teams(
+            self.reader_team_uids | self.writer_team_uids, max_age_seconds=0
+        )
         if teams & self.writer_team_uids:
             return set(CAPABILITIES - {"crm.transfer.export", "crm.configure"})
         if teams & self.reader_team_uids:

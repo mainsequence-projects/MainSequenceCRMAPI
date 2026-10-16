@@ -63,10 +63,10 @@ These methods and paths are mounted by the current application. See the [OpenAPI
 | GET | `/runtime-context/` | Runtime Context | 200 |
 | POST | `/runtime-migrations/{lease_uid}/release/` | Release Migration | 200 |
 | GET | `/security/access-history/` | Security History | 200 |
+| POST | `/security/checks/` | Run Security Check Now | 200 |
 | GET | `/security/database-permissions/` | Database Permission Status | 200 |
 | POST | `/security/namespaces/` | Create Namespace | 201 |
 | GET | `/security/principals/` | Principal Search | 200 |
-| POST | `/security/reconcile/` | Reconcile Database Permissions | 200 |
 | GET | `/security/resources/` | Security Resources | 200 |
 | GET | `/table-update-runs/` | List Runs | 200 |
 | POST | `/table-update-runs/` | Create Update Run | 201 |

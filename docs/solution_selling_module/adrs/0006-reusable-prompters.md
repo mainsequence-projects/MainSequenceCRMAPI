@@ -20,12 +20,18 @@ a mutation of the template.
 
 ## Decision
 
-Use one proposed Pydantic model with a Jinja template string:
+Use one prompter with Jinja template strings and embedded constraints. Its
+simplified contract is:
 
 ```python
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+
+
+class PrompterConstraints(BaseModel):
+    max_characters: int | None = None
+    max_subject_characters: int | None = None
 
 
 class SolutionSellingPrompter(BaseModel):
@@ -36,6 +42,8 @@ class SolutionSellingPrompter(BaseModel):
     kind: str
     description: str | None = None
     template: str
+    subject_template: str | None = None
+    constraints: PrompterConstraints
 ```
 
 `kind` is a flexible classification, not an enum or another table. Values
@@ -148,6 +156,27 @@ save the draft.
 
 Expose the existing bounded renderer as `crm_prompters_render` with required
 prompter UID, Contact UID and explicit Company UID; other context is optional.
-It requires `crm.read` and returns the same `{text}` preview as REST. Invalid
+It requires `crm.read` and returns the same preview as REST, retaining `text`. Invalid
 references or template data return a redacted validation error. Rendering
 never writes an Interaction, changes a template, or sends a communication.
+
+## 2026-10-15 amendment: Optional subject and independent limits
+
+Keep one prompter entity with an open descriptive `kind`. An optional
+`subject_template` uses the same authorized Jinja context as the body `template`.
+The embedded typed `PrompterConstraints` value object contains optional
+`max_characters` and `max_subject_characters`; it has no independent identity.
+Limits are strict positive integers through 32,768, or null. No channel taxonomy
+or channel-derived limits are introduced.
+
+Revision `0011` adds nullable subject source and nonnull JSON constraints defaulted
+to `{}`. Existing body templates and classifications are retained. Rendering and
+validation report separate Unicode-code-point counts, effective business limits,
+overall validity and field-specific violations. Overlong business drafts remain
+intact for revision; existing technical bounds still fail safely. Subject absence
+stays null rather than becoming an empty subject.
+
+The read-only validate operation checks edited text against current saved rules
+without rerendering it. API, MCP and frontend use the same semantics; frontend
+counters update immediately and edited text requires explicit server validation.
+Rendering, validation and manual edits do not save or send a communication.

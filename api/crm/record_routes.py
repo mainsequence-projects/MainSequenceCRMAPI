@@ -20,6 +20,8 @@ from src.crm.solution_selling.models import (
     PrompterCreate,
     PrompterPatch,
     PrompterRenderRequest,
+    PrompterRenderResult,
+    PrompterValidateRequest,
     ProspectingProfileCreate,
     ProspectingProfilePatch,
     SolutionSellingContextRequest,
@@ -234,6 +236,11 @@ def update_prompter(uid: uuid.UUID, request: Request, payload: PrompterPatch):
     return _patch("prompters", request, uid, payload)
 
 
-@module_router.post("/prompters/{uid}/render/")
+@module_router.post("/prompters/{uid}/render/", response_model=PrompterRenderResult)
 def render_prompter_preview(uid: uuid.UUID, request: Request, payload: PrompterRenderRequest):
     return invoke(lambda: service_for(request).render_prompter(uid, payload))
+
+
+@module_router.post("/prompters/{uid}/validate/", response_model=PrompterRenderResult)
+def validate_prompter_preview(uid: uuid.UUID, request: Request, payload: PrompterValidateRequest):
+    return invoke(lambda: service_for(request).validate_prompter(uid, payload))

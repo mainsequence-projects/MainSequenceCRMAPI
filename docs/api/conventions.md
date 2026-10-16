@@ -9,9 +9,11 @@ verifies the caller of every request before any CRM middleware or route runs:
   assertion (`X-MainSequence-Caller-Assertion`). The SDK checks its Ed25519
   signature, issuer, audience, this release, the Environment and its lifetime
   of at most five minutes against the deployment's trusted configuration.
-  SDK 9.0.19 also requires the signed `team_uids` list and Boolean
-  `is_organization_admin` claim. Missing or malformed caller facts are rejected
-  before CRM code runs; the platform supplies these claims.
+  SDK 9.0.27 uses identity-only assertions with a Boolean
+  `is_organization_admin` claim and rejects the retired `team_uids` claim,
+  including on a requester. Missing or malformed caller facts are rejected
+  before CRM code runs; the platform supplies these claims. Team membership
+  comes from the SDK's scoped `in_teams()` lookup, not from a signed team list.
 - Outside a deployment, the request must carry a direct `Authorization:
   Bearer` token, which the SDK checks with
   `MAINSEQUENCE_ENDPOINT/api/v1/users/me/`. The
@@ -30,6 +32,10 @@ checks the required capability (`crm.read`, `crm.create`, `crm.edit`,
 `crm.archive`, `crm.merge`, `crm.transfer.import`, or `crm.configure`). Owner
 UUIDs are checked against the existing platform directory. Missing adapters,
 settings, or catalog state fail closed.
+Hosted non-admin capability checks query only the configured reader/writer
+Teams for the effective person with `in_teams(..., max_age_seconds=0)` on every
+operation. Membership lookup failure never falls back to the workload's rights
+or a previously cached answer.
 
 Only the routes the deployment declares as public ingress, and the platform
 gateway admits as such, run without a caller: the Google OAuth callback and

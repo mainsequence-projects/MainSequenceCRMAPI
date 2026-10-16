@@ -98,11 +98,17 @@ choice, not an authorization mechanism.
 Use the compatible published SDK prerequisite described in
 [installation](../client/installation-and-connection.md). In hosted mode the SDK
 request identity verifies the existing signed caller assertion. Admission takes the
-caller, its active Team UIDs and its admin flag from `User.get_logged_user()`, as
-the platform signed them, and looks up no User
+caller and its admin flag from `User.get_logged_user()`, as the platform signed
+them, and looks up no User
 ([ADR 0017](../adr/api/0017-hosted-request-identity.md)). Workload Users are
-admitted like people. An assertion without those facts admits the caller with no
-Teams and no admin access. Local admission resolves facts for the running SDK user,
+admitted like people. The assertion carries no Teams: admission asks the platform,
+with `in_teams()`, which of the Teams that MetaTables grants name the caller belongs
+to. Each pod reuses an answer for 24 hours, so a person removed from a Team can
+keep reading through that Team's grants for up to a day. Writes act on an answer
+at most a minute old. Migration credentials, table deletion, finalization and
+permission changes always ask the platform at once, and a login's database role
+memberships change only on such a fresh answer. A failed check fails the request;
+it never counts as "not a member". Local admission resolves facts for the running SDK user,
 whose platform User response must supply `is_organization_admin` and
 `active_team_uids`.
 
@@ -148,15 +154,25 @@ grants. MySQL records durable pending work because its permission statements com
 independently; it admits queries only after reconciliation succeeds.
 
 The Admin Security page reads `GET /security/database-permissions/` to show caller
-SQL admission, pending synchronization, and policy coverage for active tables.
+SQL admission, pending synchronization, policy coverage for active tables, and the
+last security check.
 This admin-only read does not repair permissions or resolve credential Secrets.
 It reports durable catalog state; it does not audit native grants changed outside
 MetaTables. SQLite uses a connection authorizer rather than database roles.
 
-**Repair database permissions** on the Admin Security page re-establishes native
-permissions from catalog grants and rechecks physical safeguards. The corresponding
-admin-only endpoint is `POST /security/reconcile/`. Queries pause during repair.
-If permission repair fails, caller SQL stays disabled until repair succeeds.
+A security check compares everything MetaTables secures in the database with the
+catalog's grants and repairs what differs, including grants changed directly in the
+database. It runs daily at 03:00 UTC as the `check-security` Job of a hosted API's
+workflow ([ADR 0023](../adr/api/0023-daily-security-check.md)). **Run security check
+now** on the Admin Security page runs it at any time; the admin-only endpoint is
+`POST /security/checks/`. Hosted starts the Job, Local runs the check in the request.
+Queries keep running during a check, and a failed check changes nothing. The page
+shows the last check: what started it, when, and whether it passed, repaired
+something or failed with an error code.
+
+Grants changed outside MetaTables are repaired within a day. A release that changes
+how MetaTables computes access reaches the database at the next check; its release
+notes say to run the check after deploying.
 Client migration finalization refreshes the affected catalog contracts and SQL policies. Grant editing never requires a platform authentication change.
 
 The API cancels work at its deadline and bounds fetched rows. PostgreSQL, MySQL

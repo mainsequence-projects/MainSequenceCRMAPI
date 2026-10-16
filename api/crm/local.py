@@ -15,6 +15,7 @@ import ipaddress
 import json
 import os
 import time
+import uuid
 from collections.abc import Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
@@ -25,11 +26,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from mainsequence.client import User
+from mainsequence.client.exceptions import AuthenticationError, PermissionDeniedError
 from mainsequence.client.utils import get_authorization_headers
 from src.crm.google_workspace.config import google_workspace_enabled
 from src.crm.platform.catalog import configured_registry
 from src.crm.platform.local_runtime import build_local_services
+from src.crm.platform.readiness_errors import report_readiness_failure
 
+from .main import _error
 from .main import create_app as create_crm_app
 
 LOCAL_SIGN_IN_TIMEOUT_SECONDS = 20
@@ -101,8 +105,33 @@ def _signed_in_authorization() -> bytes:
     value = str(get_authorization_headers().get("Authorization") or "")
     scheme, _, token = value.partition(" ")
     if scheme.lower() != "bearer" or not token.strip():
-        raise RuntimeError("The SDK sign-in has no Bearer token.")
+        raise AuthenticationError("The SDK sign-in has no Bearer token.")
     return f"Bearer {token.strip()}".encode("latin-1")
+
+
+def _sign_in_failure(request: Request, stage: str, error: Exception) -> JSONResponse:
+    # This middleware runs outside the ordinary request-UID middleware. Keep
+    # one correlation ID even when identity fails before reaching the CRM app.
+    request.state.crm_request_uid = uuid.uuid4()
+    if isinstance(error, TimeoutError):
+        status, code = 503, "LOCAL_SIGN_IN_TIMEOUT"
+        message = (
+            f"Main Sequence local sign-in did not respond within {LOCAL_SIGN_IN_TIMEOUT_SECONDS} seconds. "
+            "Check the local Main Sequence backend and SDK session."
+        )
+    elif isinstance(error, AuthenticationError):
+        status, code = 401, "LOCAL_SIGN_IN_REQUIRED"
+        message = "A valid Main Sequence local sign-in is required."
+    elif isinstance(error, PermissionDeniedError):
+        status, code = 403, "LOCAL_SIGN_IN_DENIED"
+        message = "Main Sequence refused the local signed-in user lookup."
+    else:
+        # A reset, failed refresh, malformed response or backend outage is not
+        # proof that the user's credentials were refused. Never call it a 401.
+        status, code = 503, "LOCAL_SIGN_IN_UNAVAILABLE"
+        message = "Main Sequence local sign-in could not be verified. Check the local backend and SDK session."
+    message = report_readiness_failure(request, stage, error, message)
+    return JSONResponse(_error(request, code, message), status_code=status)
 
 
 def create_app() -> FastAPI:
@@ -167,22 +196,16 @@ def create_app() -> FastAPI:
             return JSONResponse(
                 {"detail": "Local CRM does not accept caller identity headers."}, status_code=401
             )
+        stage = "local-sign-in-user"
         try:
             signed_user = await locally_signed_user()
+            stage = "local-sign-in-token"
             authorization = await asyncio.wait_for(
                 asyncio.to_thread(_signed_in_authorization),
                 timeout=LOCAL_SIGN_IN_TIMEOUT_SECONDS,
             )
-        except TimeoutError:
-            return JSONResponse(
-                {"error": {"code": "LOCAL_SIGN_IN_TIMEOUT", "message":
-                    f"Main Sequence signed-in user lookup did not respond within {LOCAL_SIGN_IN_TIMEOUT_SECONDS} seconds. Check the local Main Sequence backend and SDK session."}},
-                status_code=503,
-            )
-        except Exception:
-            return JSONResponse(
-                {"detail": "A valid Main Sequence local sign-in is required."}, status_code=401
-            )
+        except Exception as error:
+            return _sign_in_failure(request, stage, error)
         registry = configured_registry()
         request.state.crm_registry = registry
         try:

@@ -5025,7 +5025,7 @@
     },
     "/caller/": {
       "get": {
-        "description": "Who this request runs as: the User, Teams and admin flag the API admitted, named\nthrough the platform directory as that User sees it.\n\nHosted, the identity comes from the platform-signed caller assertion (ADR 0017);\nLocal and developer runtimes admit the developer's own SDK session.",
+        "description": "Who this request runs as: the User, Teams and admin flag the API admitted, named\nthrough the platform directory as that User sees it.\n\nHosted, the identity comes from the platform-signed caller assertion (ADR 0017),\nand the Teams are those MetaTables grants name that the caller belongs to (SDK\n#225); Local and developer runtimes admit the developer's own SDK session.",
         "operationId": "admitted_caller_caller__get",
         "responses": {
           "200": {
@@ -7709,6 +7709,26 @@
         ]
       }
     },
+    "/security/checks/": {
+      "post": {
+        "description": "Run the full security check now; caller SQL keeps running (ADR 0023).\n\nHosted starts the daily check Job and answers 202; its outcome appears in the\npermission state when it finishes. Local runs the check in this request.",
+        "operationId": "run_security_check_now_security_checks__post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run Security Check Now",
+        "tags": [
+          "Security"
+        ]
+      }
+    },
     "/security/database-permissions/": {
       "get": {
         "description": "Read durable permission/admission state without resolving Secrets or repairing grants.",
@@ -7806,26 +7826,6 @@
           }
         },
         "summary": "Principal Search",
-        "tags": [
-          "Security"
-        ]
-      }
-    },
-    "/security/reconcile/": {
-      "post": {
-        "description": "Repair native grants; a failed repair leaves SQL admission disabled.",
-        "operationId": "reconcile_database_permissions_security_reconcile__post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Reconcile Database Permissions",
         "tags": [
           "Security"
         ]
