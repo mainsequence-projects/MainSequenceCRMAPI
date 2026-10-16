@@ -1932,6 +1932,22 @@ This SQLite settings check does not establish PostgreSQL Contact-query or
 browser correctness; hosted migration and page verification remain separate
 deployment checks.
 
+The subsequent normal push of clean commit `b95c020` did not publish: its hook
+failed at Tau startup because the backend hydration endpoint returned
+`409 model_provider_credential_unavailable` at 07:13:49 UTC, despite successful
+hydrations at 07:10:19, 07:10:23 and 07:10:46 UTC after credential reconnect.
+A standalone check of the same clean commit reproduced the 409 at 07:14:42 UTC.
+The backend's precise refresh/selection cause is not established; it is reported
+in [backend issue 995](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/995).
+Evidence remains under ignored `.local/agent-pre-push/ea9a9941-21d4-4625-aa0b-080779df9bfc/`
+and `.local/agent-pre-push/1462dd12-6b60-418e-bb16-8f96608783df/`.
+No gate was bypassed, neither repository was pushed, and no hosted migration
+or deployment was run. The existing Contacts browser still reports the missing
+Prompt binding, so it is not verified ready. All 343 API tests, Ruff and strict
+MkDocs passed; the frontend's 23 tests, typecheck, combined app/help build,
+documentation validation and theme audit passed separately. These checks do
+not replace the failed live-provider gate or deployed page verification.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,
