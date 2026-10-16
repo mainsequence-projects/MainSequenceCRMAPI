@@ -12,7 +12,10 @@ import uuid
 from collections.abc import Mapping
 from typing import Any, Protocol
 
+from sqlalchemy import select
+
 from metatables import MetaTable
+from metatables.compiled_sql.v1 import compile_sqlalchemy_statement
 
 from ..google_workspace.config import google_workspace_enabled
 from ..metatables import MODELS
@@ -34,24 +37,24 @@ class CatalogSettingsStore:
         self.registry = registry or configured_registry()
 
     def bootstrap_record(self) -> Mapping[str, Any]:
-        settings_table = MODELS["settings"].__tablename__
-        pipeline_table = MODELS["pipeline"].__tablename__
+        settings = MODELS["settings"].__table__
+        pipeline = MODELS["pipeline"].__table__
         response = MetaTable.execute_operation(
-            {
-                "operation": "select",
-                "statement": {
-                    "sql": (
-                        "SELECT s.default_currency, s.timezone, s.configuration, "
-                        "s.configuration_version, p.uid AS default_pipeline_uid "
-                        f'FROM "{settings_table}" AS s '
-                        f'JOIN "{pipeline_table}" AS p ON p.is_default = TRUE '
-                        "WHERE s.key = 'default' LIMIT 2"
-                    ),
-                    "parameters": {},
-                },
-                "data_source_uid": self.registry.data_source_uid,
-                "limits": {"max_rows": 2, "statement_timeout_ms": 5000},
-            }
+            compile_sqlalchemy_statement(
+                select(
+                    settings.c.default_currency,
+                    settings.c.timezone,
+                    settings.c.configuration,
+                    settings.c.configuration_version,
+                    pipeline.c.uid.label("default_pipeline_uid"),
+                )
+                .select_from(settings.join(pipeline, pipeline.c.is_default.is_(True)))
+                .where(settings.c.key == "default")
+                .limit(2),
+                operation="select",
+                data_source_uid=self.registry.data_source_uid,
+                limits={"max_rows": 2, "statement_timeout_ms": 5000},
+            )
         )
         rows = response.get("rows")
         if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], Mapping):

@@ -260,22 +260,31 @@ loopback ports. It selects the workflow's provider, model and thinking level
 (currently `openai-codex/gpt-5.6-luna/medium`), keeps broad coding and platform
 MCP tools excluded, and uses the existing Main Sequence CLI sign-in. Protected
 CRM bootstrap must report ready before it sends one real chat turn that
-discovers CRM MCP and performs a uniquely scoped,
-read-only contact search. Actual successful MCP tool results are required;
+discovers CRM MCP and performs a read-only settings read against a private,
+migrated local MetaTables SQLite database. Actual successful MCP tool results are required;
 an assistant's success claim alone does not pass. Both processes are restarted
 to verify local conversation persistence and compare a fresh CRM API read.
-`--contact-uid <UID>` instead verifies one explicitly selected record.
+`--hosted-data --contact-uid <UID>` instead verifies one explicitly selected
+record in the Environment database; `--hosted-data` alone keeps the uniquely
+scoped empty Contact search used for a separate hosted-data smoke check.
 
 Tau's state and private process logs stay under ignored
 `.local/agent-pre-push/<run>/`; each `report.json` records the version, model,
 result and evidence boundary. Tau runs locally, but its provider and user
-authentication are real remote services, and CRM business reads still use the
-Environment's hosted PostgreSQL MetaTables. This check creates no CRM fixture
-and runs no migration. An unavailable provider, sign-in or database blocks the
-push. If legacy credentials in `.env` override the saved CLI login, repair
+authentication are real remote services. The default gate launches the installed
+MetaTables local API with the real SDK identity, a separate storage directory,
+configuration and file credential store owned by that run. It verifies Local
+mode, SQLite and the exact private path before initializing system migrations
+and applying the CRM provider. It validates fresh catalog bindings and settings
+before starting CRM/Tau. Neither the developer's ordinary local database nor the
+hosted database is selected or migrated. The MCP/business smoke calls remain
+read-only. PostgreSQL-specific Contact queries are verified separately against
+the deployed runtime; the SQLite gate does not claim their portability.
+An unavailable provider, sign-in or private database blocks the push.
+If legacy credentials in `.env` override the saved CLI login, repair
 the sign-in with `.venv/bin/mainsequence refresh-token`; never print or copy
 the token values. The developer also needs Reader access to the CRM namespace
-for this read-only gate: workload Team grants do not grant the developer access,
+for the optional hosted-data check: workload Team grants do not grant the developer access,
 and administrator rights to manage grants do not grant table reads. Obtain the
 namespace owner's approval for any additional grant. Tests and ASGI imports
 remain useful separate checks.
@@ -425,7 +434,7 @@ After a Solution Selling tool change, run the real local agent against explicit,
 owned fixture references before committing:
 
 ```bash
-.venv/bin/python scripts/verify_local_agent.py --solution-selling-fixture /absolute/path/to/fixture.json
+.venv/bin/python scripts/verify_local_agent.py --hosted-data --solution-selling-fixture /absolute/path/to/fixture.json
 ```
 
 The untracked JSON contains `deal_uid`, `company_uid`, `contact_uid`,
@@ -439,4 +448,4 @@ The workflow's real provider/model and the normal saved CLI login remain require
 Local mode describes the agent/conversation store; the CRM dataset remains the
 configured environment. Remove only disposable records explicitly owned by the
 test, after verifying their current state. Never replay an uncertain setup write.
-The pre-push hook still runs its read-only Contact gate on the committed revision.
+The pre-push hook runs its isolated, read-only settings gate on the committed revision.

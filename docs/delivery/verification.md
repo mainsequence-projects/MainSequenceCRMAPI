@@ -1910,6 +1910,28 @@ the empty second page and exact count. Read-check evidence is ignored under
 `.local/lead-display-verification/`.
 Deployed delivery remains unverified; no push was performed.
 
+## 2026-10-16 isolated real-agent pre-push verification
+
+The pre-push verifier now launches an owned private MetaTables runtime, asserts
+its SQLite file and runtime identity before initialization, and applies CRM
+revisions through the installed public migration client. It does not migrate
+the hosted database or alter another local runtime. The settings bootstrap
+read now uses the runtime-aware SQLAlchemy compiler rather than declaring
+PostgreSQL SQL against SQLite. Existing bootstrap contract tests exercise both
+dialects; permissions and query limits are unchanged.
+
+After reconnecting the real `openai-codex` credential, Tau 2.0.13 with the
+workflow's `gpt-5.6-luna` model and medium thinking passed actual CRM discovery,
+the persisted `crm_settings_get` read, process restart/history recovery, and an
+independent fresh API read. The private catalog reached `0011` with 27 bindings
+and protected CRM bootstrap returned `200`/ready. Evidence for this working-tree
+run is retained in ignored
+`.local/agent-pre-push/5709f771-55a5-47cb-a52f-1545d6c87cc5/report.json`.
+The hook must repeat the check on the clean committed revision at push.
+This SQLite settings check does not establish PostgreSQL Contact-query or
+browser correctness; hosted migration and page verification remain separate
+deployment checks.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,

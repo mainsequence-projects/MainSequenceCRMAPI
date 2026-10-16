@@ -229,9 +229,15 @@ fails the Job and blocks both deployments.
 
 The API installs the hosted policy, directory and governed bootstrap adapters;
 see [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md). No startup migration
-or workload-permission fallback is added. The workflow retains automatic
-promotion and its migration-before-deploy graph. Keep the local push guard
-until the Production namespace Writer grant is explicitly approved. A tested
+or workload-permission fallback is added. The governed settings/default-pipeline
+bootstrap read uses the installed MetaTables SQLAlchemy compiler, selecting the
+runtime's actual SQL dialect and retaining its two-row bound. This also lets
+the isolated local agent gate validate real persisted SQLite settings before
+the hosted migration Job has published new model bindings.
+The workflow retains automatic promotion and its migration-before-deploy graph.
+The former `DISABLED-until-orchestrator-push` transport gate was removed after
+the user confirmed the Production Writer grant was resolved; the required
+real-agent pre-push hook remains enabled. A tested
 provisioning variant with initial automatic deployment disabled was rejected
 by the backend because new services then require pinned image UIDs; that
 invalid variant was not committed or pushed.

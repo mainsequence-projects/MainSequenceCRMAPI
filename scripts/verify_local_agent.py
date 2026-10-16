@@ -1,7 +1,8 @@
 """Live local-mode Tau/CRM MCP check, also run by the Git pre-push hook.
 
-Uses the normal CLI login and configured real provider. CRM calls are read-only;
-local Tau state and sanitized evidence stay in ignored .local/agent-pre-push/.
+Uses the normal CLI login and configured real provider. By default, migrations
+and read-only CRM settings checks use an owned, private local MetaTables runtime.
+Local state and sanitized evidence stay in ignored .local/agent-pre-push/.
 """
 
 from __future__ import annotations
@@ -61,14 +62,100 @@ def stop(process):
 
 
 def start(module, listen_port, environment, log, stack):
+    return start_command(
+        [sys.executable, "-m", "uvicorn", module, "--host", "127.0.0.1",
+         "--port", str(listen_port)], environment, log, stack,
+    )
+
+
+def start_command(command, environment, log, stack):
     stream = stack.enter_context(log.open("ab"))
     process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", module, "--host", "127.0.0.1",
-         "--port", str(listen_port)],
+        command,
         cwd=ROOT, env=environment, stdout=stream, stderr=subprocess.STDOUT,
     )
     stack.callback(stop, process)
     return process
+
+
+def isolated_catalog(environment, run, stack):
+    """Use the installed local launcher and real SDK identity, never a shared DB."""
+    from metatables.local_connection import read_development_client
+
+    storage = run / "metatables"
+    storage.mkdir(mode=0o700)
+    configuration = storage / "configuration.yaml"
+    configuration.write_text(yaml.safe_dump({
+        "local_mode_available": True,
+        "local_credentials": {"provider": "file", "key_directory": str(storage / "keys")},
+    }))
+    selected = {**environment, "METATABLES_LOCAL_STORAGE_DIR": str(storage)}
+    # A stale URL/token from another shell must not select a different runtime.
+    selected.pop("METATABLES_API_URL", None)
+    selected.pop("METATABLES_LOCAL_TOKEN", None)
+    process = start_command(
+        [str(ROOT / ".venv/bin/metatables"), "serve", "--local", "--port", str(port()),
+         "--configuration", str(configuration), "--no-open-browser"],
+        selected, run / "metatables.log", stack,
+    )
+    deadline = time.monotonic() + 100
+    connection = None
+    while time.monotonic() < deadline:
+        require(process.poll() is None, "Private MetaTables launcher exited; inspect metatables.log.")
+        try:
+            connection = read_development_client(storage / "server.json")
+            with httpx.Client(trust_env=False, timeout=2) as client:
+                if client.get(connection["api_url"] + "/openapi.json", headers={
+                    "X-MetaTables-Local-Token": connection["token"],
+                }).status_code == 200:
+                    break
+        except (RuntimeError, httpx.RequestError):
+            pass
+        time.sleep(0.5)
+    else:
+        raise RuntimeError("Private MetaTables API did not become ready; inspect metatables.log.")
+    require(connection is not None, "Private MetaTables connection is unavailable.")
+    selected.update(METATABLES_API_URL=connection["api_url"],
+                    METATABLES_LOCAL_TOKEN=connection["token"])
+    # Execute the public migration client in a fresh process. No SDK identity,
+    # provider, MCP, storage or catalog port is replaced by a fixture.
+    setup = """
+import json, sys
+from pathlib import Path
+from metatables import configure_local_client, get_runtime_status, initialize_runtime, upgrade_application
+configure_local_client()
+before = get_runtime_status()
+expected = Path(sys.argv[1]).resolve()
+assert before['local_mode'] is True
+assert Path(before['bootstrap']['candidate']['configuration']['path']).resolve() == expected
+initialize_runtime()
+state = get_runtime_status()
+assert state['local_mode'] is True and state['dialect'] == 'sqlite'
+assert state['data_source']['class_type'] == 'sqlite'
+assert state['bootstrap']['active'] is True and not state.get('data_source_error')
+result = upgrade_application('src.crm.migrations:migration')
+assert result['data_source_uid'] == state['data_source']['uid']
+from src.crm.platform.catalog import CatalogRegistry
+registry = CatalogRegistry()
+registry.validate()
+registry.validate_settings()
+Path(sys.argv[2]).write_text(json.dumps({
+    'local_mode': True, 'dialect': 'sqlite', 'database_path': str(expected),
+    'data_source_uid': state['data_source']['uid'], 'revision': result['revision'],
+    'bindings': len(registry.bindings), 'identity': 'real-sdk-session',
+}))
+"""
+    with (run / "metatables-setup.log").open("ab") as log:
+        result = subprocess.run(
+            [sys.executable, "-c", setup, str(storage / "metatables.sqlite"),
+             str(run / "catalog.json")], cwd=ROOT, env=selected,
+            stdout=log, stderr=subprocess.STDOUT, timeout=300,
+        )
+    require(result.returncode == 0, "Private local migration failed; inspect metatables-setup.log.")
+    metadata = json.loads((run / "catalog.json").read_text())
+    print(f"Private local MetaTables ready at CRM revision {metadata['revision']} "
+          f"with {metadata['bindings']} bindings.", flush=True)
+    return selected, metadata
 
 
 def wait_for_http(client, process, url):
@@ -136,7 +223,7 @@ def solution_selling_reads(fixture_path):
     ]
 
 
-def verify(contact_uid=None, solution_selling_fixture=None):
+def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False):
     if contact_uid:
         contact_uid = str(uuid.UUID(contact_uid))
     workflow = yaml.safe_load((ROOT / ".mainsequence/workflows/crm-api.yaml").read_text())
@@ -173,6 +260,11 @@ def verify(contact_uid=None, solution_selling_fixture=None):
     requests = (solution_selling_reads(solution_selling_fixture) if solution_selling_fixture else
                 [{"tool": requested_tool, "arguments": arguments,
                   "path": "/api/crm/v1/" + query, "params": params}])
+    if not hosted_data:
+        require(not contact_uid and not solution_selling_fixture,
+                "Existing hosted fixtures require explicit --hosted-data.")
+        requests = [{"tool": "crm_settings_get", "arguments": {},
+                     "path": "/api/crm/v1/settings/", "params": {}}]
     expected = [{"tool": r["tool"], "arguments": r["arguments"]} for r in requests]
     report.update(business_reads=expected)
     prompt = ("Perform a read-only CRM verification. Discover the CRM MCP schemas with "
@@ -184,6 +276,9 @@ def verify(contact_uid=None, solution_selling_fixture=None):
         prompt += " Load the solution-selling project skill before using its workflow."
     try:
         with ExitStack() as stack, httpx.Client(trust_env=False, timeout=90) as client:
+            if not hosted_data:
+                environment, report["isolated_catalog"] = isolated_catalog(environment, run, stack)
+                save()
             crm = start("api.crm.local:app", api_port, environment, run / "crm.log", stack)
             agent = start("api.tau.main:app", tau_port, environment, run / "agent.log", stack)
             wait_for_http(client, crm, api + "/healthz")
@@ -276,10 +371,16 @@ def verify(contact_uid=None, solution_selling_fixture=None):
             elif contact_uid:
                 require(results[0]["uid"] == contact_uid, "MCP returned a different Contact.")
                 report["read_evidence"] = {k: results[0].get(k) for k in ("uid", "version")}
-            else:
+            elif hosted_data:
                 require(results[0]["items"] == [] and results[0]["pageInfo"]["totalItems"] == 0,
                         "The unique read-only search must have no matches.")
                 report["read_evidence"] = {"total_items": 0}
+            else:
+                require(results[0]["configuration_version"] > 0,
+                        "MCP must read initialized persisted CRM settings.")
+                report["read_evidence"] = {
+                    "configuration_version": results[0]["configuration_version"],
+                }
             report["mcp_read_verified"] = True
             save()
             # Restart both processes: confirm local conversation durability and fresh API binding.
@@ -317,13 +418,15 @@ def verify(contact_uid=None, solution_selling_fixture=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pre-push", action="store_true")
+    parser.add_argument("--hosted-data", action="store_true",
+                        help="Explicit read-only check against the Environment database, not the private local gate.")
     parser.add_argument("--contact-uid", help="Read this exact controlled contact instead of an empty search.")
     parser.add_argument("--solution-selling-fixture", help="JSON file with explicit existing fixture UIDs; exercises all three read helpers.")
     args = parser.parse_args()
     require(not (args.contact_uid and args.solution_selling_fixture), "Choose one live read scenario.")
     if args.pre_push:
         check_push()
-    return verify(args.contact_uid, args.solution_selling_fixture)
+    return verify(args.contact_uid, args.solution_selling_fixture, hosted_data=args.hosted_data)
 
 
 if __name__ == "__main__":

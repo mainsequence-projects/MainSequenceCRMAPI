@@ -5,9 +5,11 @@ from __future__ import annotations
 import uuid
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.crm.local import create_app
+from metatables.compiled_sql.v1 import compile_sqlalchemy_statement
 from src.crm.metatables import MODELS
 from src.crm.models.bootstrap import Bootstrap
 from src.crm.platform.local_runtime import LocalSdkUserPolicy
@@ -55,7 +57,8 @@ def _settings_row():
     }
 
 
-def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch, local_sign_in):
+@pytest.mark.parametrize("dialect", ["postgresql", "sqlite"])
+def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch, local_sign_in, dialect):
     # Bootstrap resolves the assistant: Tau /ready when a local origin is set,
     # then the platform Agent. Keep both inside the test process.
     monkeypatch.delenv("CRM_LOCAL_TAU_ORIGIN", raising=False)
@@ -77,15 +80,24 @@ def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch, lo
         )
     )
     operations = []
+    monkeypatch.setattr(
+        "src.crm.services.application.compile_sqlalchemy_statement",
+        lambda statement, **kwargs: compile_sqlalchemy_statement(statement, dialect=dialect, **kwargs),
+    )
 
     def execute(operation):
+        operation = operation.model_dump(mode="json")
         operations.append(operation)
         sql = operation["statement"]["sql"]
         if sql.startswith("SELECT key FROM"):
             return {"rows": [{"key": "default"}]}
-        assert 'JOIN "mainsequence_crm__pipeline"' in sql
-        assert operation["statement"]["parameters"] == {}
+        assert "JOIN" in sql and "mainsequence_crm__pipeline" in sql
+        assert operation["dialect"] == dialect
+        assert "default" in operation["statement"]["parameters"].values()
+        assert 2 in operation["statement"]["parameters"].values()
         assert operation["data_source_uid"] == str(DATA_SOURCE)
+        assert operation["limits"]["max_rows"] == 2
+        assert operation["limits"]["statement_timeout_ms"] == 5000
         return {"rows": [_settings_row()]}
 
     monkeypatch.setattr("src.crm.services.application.MetaTable.execute_operation", execute)
@@ -111,7 +123,7 @@ def test_local_runtime_is_ready_and_bootstrap_is_a_governed_read(monkeypatch, lo
     assert payload["default_pipeline_uid"] == str(PIPELINE)
     assert "crm.read" in payload["capabilities"]
     assert any("mainsequence_crm__settings" in item["statement"]["sql"] for item in operations)
-    assert any(item["statement"]["sql"].endswith("LIMIT 2") for item in operations)
+    assert all("LIMIT" in item["statement"]["sql"] for item in operations)
     assert len(operations) == 2  # One governed settings read per request.
     assert payload["assistant"] == {
         "enabled": False,
