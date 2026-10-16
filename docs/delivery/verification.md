@@ -1965,6 +1965,24 @@ Evidence: `.local/agent-pre-push/faa7ddd0-daea-4b47-8df1-b413a8d4ecc2/report.jso
 Eight documentation/workflow tests, Ruff, strict MkDocs and diff checks passed.
 Publishing and hosted migration/page checks remain separate from this result.
 
+## 2026-10-16 deployment retry after temporary outage
+
+Commit `9eb6a29` passed the clean-commit live-agent hook and was pushed. Its
+workflow built the exact CRM image successfully, but migration run
+`637c060d-9bf7-4f61-acd5-1623981d90c5` failed when the hosted MetaTables
+`/runtime-context/` read returned `503 Caller authentication is unavailable`.
+The API and assistant deployments remained gated by the failed migration;
+the paired frontend was not published. These results do not establish the
+hosted schema revision or a successful Contacts page load.
+
+The operator identified [issue 1001](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/1001)
+as a temporary service outage, not a confirmed platform code defect, and
+authorized a fresh commit and push after recovery. This retry changes no CRM
+behavior and bypasses no checks: the normal push hook must pass again, and
+the repository workflow must run `migrate-crm` before API and assistant
+deployment. Hosted migrations are not run manually. Retry success, frontend
+publication and browser verification remain unverified until observed.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,
