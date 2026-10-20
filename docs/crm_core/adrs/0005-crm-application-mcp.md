@@ -75,8 +75,8 @@ before dispatch starts no operation; a started synchronous write may finish
 after cancellation or loss of the response. Never replay automatically: read
 current server state before considering another write.
 
-The assistant declares `mcp_applications: [{resource: crm}]`, resource-level
-`acts_for_requester: true`, and view access to the CRM release. An Organization
+The assistant declares `mcp_applications: [{resource: crm}]` and resource-level
+`acts_for_requester: true`. An Organization
 admin must enable that delegation. It no longer needs direct MetaTables access
 for CRM tools. Keep `TAU_EXCLUDE_BASE_TOOLS=true` and
 `TAU_EXCLUDE_MAINSEQUENCE_MCP=true`. Application MCP is independent of broad
@@ -99,10 +99,11 @@ The workflow remains the sole `.mainsequence/workflows/crm-api.yaml` file.
 Each service has its own image step; migration precedes API deployment, and
 the assistant waits for API deployment. The migration Job still owns hosted
 schema updates. This change creates no migration and performs no startup DDL.
-The API declares view access to its own `crm-assistant` resource so bootstrap
-can discover the deployed Agent. The assistant declares view access to `crm`
-for application MCP. These access declarations do not add execution dependencies
-or grant the assistant storage access or permission to act for a person.
+The platform's workflow API 3.0.0 refuses peer-workload grants between the API
+and assistant. The workflow therefore omits those declarations. Bootstrap
+Agent discovery and application MCP authorization must be checked against the
+deployed requester and workload access paths; neither a declaration nor chat
+readiness proves the assistant can reach CRM tools.
 
 The 2026-10-11 dependency amendment pins Tau 2.0.11 and requires Main Sequence
 9.0.20. The public SDK sender now uses the A2A `ROLE_USER` / `ROLE_AGENT`

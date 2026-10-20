@@ -308,10 +308,13 @@ recreated. The Production Team, grant and members are recorded in the
 [verification evidence](verification.md#hosted-adapter-repair-and-controlled-provisioning-2026-10-11);
 package upgrades do not change them.
 
-The API workflow now uses platform workflow API `3.0.0`, with `policy` entries
-for the API, assistant, and MetaTables branch workload grants. The live backend
-validated it on 2026-10-20 with no errors or warnings. The frontend has an explicit `deploy_site` step; its
-Static Site build is owned by that deployment. The MCP migration renames the API resource key from `crm-api` to `crm`,
+The API workflow now uses platform workflow API `3.0.0`, with `policy: reader`
+for the MetaTables branch workload grants. The platform refused declarations
+that gave the API and assistant workload Users access to each other; those
+cross-resource grants are omitted. The live backend validated the corrected
+file on 2026-10-20 with no errors or warnings. The frontend has an explicit
+`deploy_site` step; its Static Site build is owned by that deployment. The MCP
+migration renames the API resource key from `crm-api` to `crm`,
 changing its release identity when applied. Coordinate frontend, OAuth and
 workload grants as described in [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md).
 Validation does not apply either workflow or verify a rollout.

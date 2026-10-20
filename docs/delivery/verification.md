@@ -71,11 +71,15 @@ pack and any non-CRM business calls.
 The backend rejected the pushed SDK commits' workflow before creating any
 DeploymentRun: workflow API `2.3.0` is no longer supported, and the old
 `level` grants are invalid. The platform's current template advertises
-workflow API `3.0.0`. The revised CRM workflow declares `policy: reader` on
-the MetaTables branch and `policy: user` for the API and assistant resources.
-The authenticated `validate-workflow` endpoint returned `valid: true`, no
-errors, and no warnings for the revised file. Validation does not start a run;
-the exact committed workflow still needs deployment and active-revision checks.
+workflow API `3.0.0`. The first revision declared `policy: reader` on the
+MetaTables branch and `policy: user` between the API and assistant resources.
+It passed static validation and was pushed as `315f5c1`, but the webhook worker
+refused both cross-resource grants: “A workload never gives another workload
+access.” The execution graph was therefore not admitted and created no
+DeploymentRuns. The second revision keeps the MetaTables branch grant and
+omits the peer-workload grants. The authenticated `validate-workflow` endpoint
+returned `valid: true`, no errors, and no warnings. This still needs a push,
+deployment and active-revision checks.
 
 ## Evidence boundaries
 
