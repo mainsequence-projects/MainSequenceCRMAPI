@@ -1,17 +1,24 @@
 # Security model
 
-MetaTables separates **application administration** from **ownership of a table**.
-Organization admins configure the application. Table Writers control their own
-tables, including their data, schema, updaters, deletion, and sharing. A user does
-not need to become an Organization admin to maintain a table they created.
+MetaTables separates **application administration** from **access to namespaces
+and tables**. Organization admins configure the application and hold every action.
+Everyone else gets access through **roles** granted on a namespace or a table:
+`metadata_viewer`, `data_viewer`, `data_writer`, `editor` and `owner`. Any person can
+create a namespace or a table and owns what they create. A deployed migration Job
+creates its application's namespace on its first run, and the people who manage the
+Job manage that namespace's access. Nobody needs to become an Organization admin to
+deploy an application or maintain its tables.
 
-The API enforces this model in both local and hosted runtimes. The Admin UI and
-Python client use the same sharing endpoints. [ADR 0002](../adr/api/0002-application-administration-and-table-ownership.md)
-records the decision and the migration boundary.
+The API enforces this model in both local and hosted runtimes. In Local mode the person
+running the API administers their own SQLite runtime and holds every action, whatever
+their platform admin flag. The Admin UI and
+Python client use the same access endpoints. [ADR 0024](../adr/api/0024-namespace-and-table-access-roles.md)
+records the role model; [ADR 0002](../adr/api/0002-application-administration-and-table-ownership.md)
+records the separation from application administration.
 
 **Applications run Alembic through the client using their environment database login.**
 Direct database connections and general client-side Alembic execution remain blocked.
-Admins initialize and upgrade MetaTables system tables in Local Settings; a hosted
+The local operator initializes and upgrades MetaTables system tables in Local Settings; a hosted
 deployment's migration Job does so for its declared runtime database.
 
 ## Who owns each decision
@@ -19,7 +26,7 @@ deployment's migration Job does so for its declared runtime database.
 | Responsibility | Owner |
 | --- | --- |
 | User identity, current Team membership, and Organization admin status | The platform, supplied through the Main Sequence SDK |
-| Who can read or control a particular table | MetaTables grants in the selected runtime database |
+| Who holds which role on a namespace or table | MetaTables bindings in the selected runtime database |
 | Application Settings and global Security admission | MetaTables, using the trusted platform admin fact |
 | Sharing, lifecycle and schema admission | The MetaTables API |
 | Data access during SQL execution | Database roles and privileges; SQLite engine authorizer locally |
@@ -27,48 +34,50 @@ deployment's migration Job does so for its declared runtime database.
 | Showing permitted actions and access explanations | The Admin UI and Python client, using API decisions |
 
 MetaTables does not maintain another Organization or Environment policy model.
-It stores references to platform User and Team UIDs and the permissions assigned
-to those principals. It does not administer Team membership. Both local and hosted
+It stores references to platform User and Team UIDs and the roles granted to
+those principals. It does not administer Team membership. Both local and hosted
 runtimes use the same application permission model and operation checks.
 
 ## The two layers
 
 **Application administration** covers DataSource configuration, runtime selection,
-system-table initialization and upgrades, global Settings, and Security management.
-Organization admins can inspect and repair access across the application.
+system-table initialization and upgrades, global Settings, the security check, and
+external table imports. It belongs to Organization admins (`metatables.administer`).
 
-**Table access** has only two levels:
+**Access to namespaces and tables** is a set of nested roles. Each includes the one
+before it:
 
-- **Reader:** inspect the table and read, query, or export its data.
-- **Writer:** all Reader operations plus full table lifecycle and sharing control.
-  Writer is ownership; there is no separate Owner role.
+- **`metadata_viewer`:** see descriptions, schemas and lineage, not rows.
+- **`data_viewer`:** read, query and export rows.
+- **`data_writer`:** insert, update and delete rows.
+- **`editor`:** change, migrate, operate updaters and delete; on a namespace, also
+  create tables in it.
+- **`owner`:** decide who has access.
 
-The [permission matrices](permissions.md) specify both layers. A table Writer
-cannot change application Settings or a DataSource connection just because their
-table uses that source. Conversely, table maintenance does not require access to
-global Settings or Security.
+A role on a namespace gives the table role of the same name on every table in it,
+including tables created later. The [permission matrices](permissions.md) list every
+action and role, and [ownership and sharing](ownership-and-sharing.md) explains how
+roles are granted, inherited and revoked.
 
-Organization admins can grant or restore table access. Ordinary table operations
-still use table permissions, so an admin can explicitly grant themselves Writer
-access with an audit record. Security administration does not promise data
-confidentiality against someone allowed to change all grants.
+Organization admins hold every action on every namespace and table, reading and
+writing data included. A call an application makes for a person, such as the
+Analyst, carries only that person's access, never admin status.
 
 ## A table owner's workflow
 
-Alice is an ordinary application user. She creates a `prices` table in an available
-DataSource and receives Writer access as part of its creation. She gives Bob Reader
-access and Team Research Writer access. Bob can query prices; current members of
-Research can update data, run producers and share the table. Writers can request the environment connection for client-owned migrations; its database privileges govern DDL.
-Alice can eventually delete the managed table without asking an Organization admin.
-
-The [ownership and sharing guide](ownership-and-sharing.md) explains how these
-grants are recorded, how namespace inheritance works, and what revocation removes.
+Alice is an ordinary person. She creates namespace `prices` and becomes its owner.
+She grants Team Research `editor` on it and Bob `data_viewer`. Research's members,
+including the migration Job of the prices application, create and migrate tables in
+`prices`; Bob can query them. A FastAPI that only writes rows gets `data_writer`: it
+cannot migrate, delete or share. Alice can later grant or revoke any of these roles
+without asking an Organization admin.
 
 ## Application interface and API
 
 An admitted user can browse the application and see their permitted resources.
-Table actions live on the table page. Its **Access** panel lets Writers
-manage grants and see why each User or Team has access. Global **Settings** and
+Table actions live on the table page, namespace actions on the namespace page. Their
+**Access** panels let owners grant and revoke roles and show why each User or Team
+has access. Global **Settings** and
 **Security** belong to Organization admins.
 
 Data Sources appears once in the MetaTables catalog menu. Its list and detail
@@ -85,9 +94,10 @@ other users are directed to an admin when configuration is needed.
 
 These are browser routes. Resource API URLs remain unchanged and enforce their
 own permissions: DataSource mutations and validation, runtime configuration and
-selection, system migrations, local database destruction, namespace grants, and
-global Security operations require admin admission. Table sharing remains
-available to the table's Writers.
+selection, system migrations, local database destruction, external imports and
+global Security operations require admin admission. Granting roles on a namespace or
+table is available to its owners, and on a namespace also to the managers of the
+workload that created it.
 
 Every operation is enforced by the API, including requests from the Python client.
 The UI shows the API's effective permissions. Hidden buttons are a presentation
@@ -121,16 +131,18 @@ next caller assertion. Already admitted work may finish. Expired facts are never
 if refresh fails; missing facts, an inactive User, or an unavailable platform then
 fails closed with 503. MetaTables stores no independent Team membership.
 
-Table and namespace grants remain live catalog decisions: revoking them does not
-wait for cache expiry. Grant mutations recheck current catalog grants under the
-catalog mutation lock and reject stale sharing revisions with 409. Restart the
+Role bindings remain live catalog decisions: revoking one does not wait for cache
+expiry. Access changes recheck current bindings under the catalog mutation lock and
+reject a stale access revision with 409. Restart the
 API after changing its SDK account or endpoint.
 
 ## SQL and schema boundary
 
-SQL runs unchanged as a restricted database identity for the caller. Reader means
-`SELECT`; Writer additionally means `INSERT`, `UPDATE` and `DELETE`. Separate read
-and write identities ensure that a read request cannot write even for a Writer.
+SQL runs unchanged as a restricted database identity for the caller. `data_viewer`
+means `SELECT`; `data_writer`, `editor` and `owner` add `INSERT`, `UPDATE` and
+`DELETE`; `metadata_viewer` gives no database privilege. Organization admins' login
+roles are members of an admin role with write privileges on every managed table.
+Separate read and write identities ensure that a read request cannot write.
 The API owns sharing, schema and lifecycle actions and never executes caller SQL
 as its privileged schema-management login. SQLite enforces the same grants with
 its engine authorizer callback.
@@ -146,7 +158,7 @@ tables that reference a table never change who may write it. See
 [foreign keys and cascades](permissions.md#foreign-keys-and-cascades).
 
 PostgreSQL stores the catalog in `metatables` and owns managed tables through a
-non-login owner role. User, Team and namespace grants become database privileges
+non-login owner role. User, Team and namespace bindings become database privileges
 and role memberships. The cached Team membership projection follows the platform
 facts used at admission; it does not become a second membership authority.
 PostgreSQL and SQL Server mirror permission changes transactionally with catalog
@@ -182,7 +194,7 @@ another statement fails. See [ADR 0007](../adr/api/0007-database-enforced-table-
 for the complete contract.
 
 Application-table Alembic code runs in the application's Python process. The API
-checks Writer access to provider catalog entries before returning the selected
+checks `tables.migrate` on provider catalog entries before returning the selected
 runtime connection. No provider allowlist or API installation is required.
 
 Direct database DDL uses the configured login's privileges, outside governed SQL.

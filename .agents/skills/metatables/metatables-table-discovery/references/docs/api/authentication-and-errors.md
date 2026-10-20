@@ -1,7 +1,7 @@
 # Authentication and errors
 
 The [Security model](../security/index.md) defines application administration,
-Reader/Writer ownership, live namespace inheritance, and sharing endpoints.
+roles on namespaces and tables, live namespace inheritance, and access endpoints.
 
 ## Hosted requests
 

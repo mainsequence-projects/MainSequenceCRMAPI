@@ -17,7 +17,7 @@ import time
 import uuid
 from contextlib import ExitStack
 from importlib.metadata import version
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import httpx
 import yaml
@@ -352,11 +352,16 @@ def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False
                             any(t.get("name") == request["tool"] for t in
                                 p.get("result", {}).get("details", {}).get("tools", []))
                             for p in discovery), "CRM discovery did not return a requested tool.")
-            allowed = {"crm__list_tools", "crm__call_tool"}
-            if solution_selling_fixture:
-                allowed.add("read")  # SDK-owned read is restricted to discovered project skills.
+            allowed = {"crm__list_tools", "crm__call_tool", "read"}
             require(all(p["toolName"] in allowed for p in calls),
                     "The agent used a tool outside the requested CRM read workflow.")
+            for call in calls:
+                if call["toolName"] == "read":
+                    path = PurePosixPath(str(call.get("args", {}).get("path", "")))
+                    require(not call.get("isError") and not path.is_absolute() and
+                            ".." not in path.parts and
+                            path.parts[:3] == (".agents", "skills", "mainsequence_crm"),
+                            "The agent's skill read left the CRM business skill pack.")
             business = [p for p in calls if p["toolName"] == "crm__call_tool"]
             require([p["args"] for p in business] == expected,
                     "Require exactly the scoped CRM MCP reads in order; no retries or writes.")

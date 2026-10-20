@@ -15,6 +15,33 @@ must accompany material changes. The running FastAPI OpenAPI document can be
 compared with the [mounted route index](../api/route-index.md);
 `tests/test_documentation.py` enforces method/path parity.
 
+### SDK update preflight (2026-10-20)
+
+The API lockfile now selects Main Sequence `9.0.29`, MetaTables `0.1.50`, and
+Tau `2.0.20`; the paired frontend selects Command Center SDK `0.5.18` and
+Command Center AI `0.0.16`. Published Main Sequence `9.0.30` cannot be used
+with MetaTables `0.1.50`: the latter imports `ShareableObjectMixin` from
+`mainsequence.client.base`, and `9.0.30` removed that symbol. The published
+`9.0.29` wheel still provides it. The `9.0.29` pin is deliberate until the
+SDK owners restore compatibility.
+
+Executed locally with those selected packages: 357 API tests passed, Ruff and
+`metatables.sdk_compat` passed, and the real Tau local-mode verification passed
+with the workflow's `openai-codex/gpt-5.6-luna` model. That check used the real
+CRM MCP bridge, compared its successful read with a fresh API read, and verified
+local session history after restart. Its ignored evidence is under
+`.local/agent-pre-push/981302c5-0f23-4b1c-8144-dcfc4a364083/`.
+The paired frontend passed 33 unit tests, documentation validation, application
+and guide builds, and the SDK theme audit with Node 24. These are local checks;
+hosted migration and release verification still require the workflow run.
+
+The clean compatibility commit passed 343 API tests. Its first pre-push agent
+check rejected two successful reads of `crm-core` skill files, although Tau
+intentionally exposes skill-scoped `read`. The verifier now admits successful
+reads only within `.agents/skills/mainsequence_crm/` and still requires exactly
+the requested CRM MCP call. The real check then passed against revision `0011`;
+evidence is under `.local/agent-pre-push/60c9fe9d-6715-4c18-9fce-8afc0b181d96/`.
+
 ## Evidence boundaries
 
 ### Authorized deployment stopped at the mandatory agent gate (2026-10-16)

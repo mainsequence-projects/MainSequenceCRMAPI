@@ -1,7 +1,10 @@
 # Persistence and migrations
 
-The CRM requires `mainsequence-metatable>=0.1.39,<0.2`; the lockfile and runtime
-requirements select `0.1.39` and its required Main Sequence SDK `9.0.27`.
+The CRM requires `mainsequence-metatable>=0.1.50,<0.2`; the lockfile and runtime
+requirements select `0.1.50` with Main Sequence SDK `9.0.29`.
+Main Sequence `9.0.30` removes `ShareableObjectMixin`, which MetaTables `0.1.50`
+still imports; keep the compatible `9.0.29` pin until that upstream contract is
+resolved. The CRM assistant pins `ms-tau-sdk` `2.0.20`.
 Migration execution continues through the public
 `upgrade_application` entry point in the deployment Job, which receives the
 installed package's migration improvements automatically. Updating the client
@@ -219,7 +222,7 @@ hand. The assistant calls the API-owned MCP tools, so its deployment waits
 for the API deployment as well as its own prepared image. All business writes
 continue through the API's governed CRM operations.
 
-The repository locks `mainsequence-metatable` 0.1.39. Before rollout, verify
+The repository locks `mainsequence-metatable` 0.1.50. Before rollout, verify
 the Environment's hosted API and its system migrations against this version.
 The historical 0.1.19 minimum addressed only the removal of runtime-switch
 fields ([MetaTables issue #33](https://github.com/mainsequence-projects/MetaTables/issues/33));

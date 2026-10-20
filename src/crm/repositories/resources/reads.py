@@ -117,6 +117,11 @@ class ResourceReads(GovernedGateway):
                 "t.recorded_at, t.actor_uid, t.origin, t.summary, t.changes "
                 f'FROM "{table}" t'
             )
+        if resource == "notes":
+            # Explicit columns let this API version keep reading notes after
+            # a later migration adds fields unknown to its strict response model.
+            fields = ", ".join(f"t.{column.name}" for column in MODELS["note"].__table__.columns)
+            return f'SELECT {fields} FROM "{table}" t'
         return f'SELECT t.* FROM "{table}" t'
 
     def _where_sql(

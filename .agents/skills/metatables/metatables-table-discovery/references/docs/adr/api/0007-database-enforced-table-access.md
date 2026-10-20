@@ -1,5 +1,10 @@
 # ADR 0007: Enforce table grants in the database
 
+> Amendment (2026-10-19): [ADR 0024](0024-namespace-and-table-access-roles.md) keeps the two
+> privilege sets: `data_viewer` maps to Reader's `SELECT`, `data_writer`, `editor` and `owner`
+> to Writer's privileges, and `metadata_viewer` to none. An admin group role holds write
+> privileges on every managed table; admins' login roles are its members.
+
 > Amendment (2026-10-01): [ADR 0013](0013-application-owned-migrations.md) establishes application-owned
 > client Alembic execution using the configured environment connection. Its DDL
 > privileges belong to the environment database role. It supersedes this ADR's

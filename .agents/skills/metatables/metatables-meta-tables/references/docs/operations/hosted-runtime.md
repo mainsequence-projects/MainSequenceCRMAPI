@@ -23,7 +23,7 @@ at least two runtime replicas; see [pods and connections](#size-pods-and-databas
 The platform applies these settings on the next successful deployment.
 
 The Python package bundles this same workflow for [client discovery](../client/installation-and-connection.md).
-Workflow API `2.3.0` derives a FastAPI release name from the directory containing
+Workflow API `3.0.0` derives a FastAPI release name from the directory containing
 `source_path`, so the declared directory is also the client's exact lookup name.
 Do not maintain a separate name constant in consuming projects. After changing
 that source path, publish/install a matching package build. Clients select the
@@ -282,8 +282,8 @@ counted; local runtimes log nothing.
 ## Application grants
 
 Platform Users, Teams and their membership are resolved through the SDK. MetaTables
-stores Reader/Writer grants on tables and namespaces. Manage those grants through
-Admin and the [security API](../security/permissions.md), and configure deletion
+stores role bindings on tables and namespaces. Manage them through the Admin's
+Access panels and the [access API](../security/ownership-and-sharing.md), and configure deletion
 protection on individual tables. The [permission model](../concepts/permissions-namespaces-labels.md)
 describes live inheritance and revocation.
 
