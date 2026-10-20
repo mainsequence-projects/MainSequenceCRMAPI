@@ -15,15 +15,15 @@ must accompany material changes. The running FastAPI OpenAPI document can be
 compared with the [mounted route index](../api/route-index.md);
 `tests/test_documentation.py` enforces method/path parity.
 
-### SDK update preflight (2026-10-20)
+### Initial SDK compatibility preflight (2026-10-20)
 
-The API lockfile now selects Main Sequence `9.0.29`, MetaTables `0.1.50`, and
+The first compatibility commit selected Main Sequence `9.0.29`, MetaTables `0.1.50`, and
 Tau `2.0.20`; the paired frontend selects Command Center SDK `0.5.18` and
-Command Center AI `0.0.16`. Published Main Sequence `9.0.30` cannot be used
+Command Center AI `0.0.16`. At that point, published Main Sequence `9.0.30` could not be used
 with MetaTables `0.1.50`: the latter imports `ShareableObjectMixin` from
 `mainsequence.client.base`, and `9.0.30` removed that symbol. The published
-`9.0.29` wheel still provides it. The `9.0.29` pin is deliberate until the
-SDK owners restore compatibility.
+`9.0.29` wheel still provided it. That compatibility commit was pushed as
+`abf6b5d`; its workflow deployment still requires separate verification.
 
 Executed locally with those selected packages: 357 API tests passed, Ruff and
 `metatables.sdk_compat` passed, and the real Tau local-mode verification passed
@@ -41,6 +41,30 @@ intentionally exposes skill-scoped `read`. The verifier now admits successful
 reads only within `.agents/skills/mainsequence_crm/` and still requires exactly
 the requested CRM MCP call. The real check then passed against revision `0011`;
 evidence is under `.local/agent-pre-push/60c9fe9d-6715-4c18-9fce-8afc0b181d96/`.
+
+### MetaTables 0.1.51 compatibility fix (2026-10-20)
+
+MetaTables `0.1.51` removed the incompatible mixin import. The current API
+lockfile and requirements select Main Sequence `9.0.30`, MetaTables `0.1.51`,
+and Tau `2.0.20`; the SDK-owned Main Sequence and MetaTables skills match the
+installed versions. The full API suite passed **357 tests**. Ruff,
+`metatables.sdk_compat`, direct package imports and `git diff --check` passed.
+The real local agent check passed against a private SQLite catalog at revision
+`0012`, using the workflow's provider/model and the actual CRM MCP bridge. It
+verified a successful business read, persisted local history after restart,
+and compared a fresh API read. Evidence is under
+`.local/agent-pre-push/f1fed05f-06b9-479e-acea-98c1452693cb/`.
+
+The frontend's six isolated browser suites passed on Node 24 with the updated
+Command Center packages, including Notes, startup/retry, Prompts, Prompters,
+async action feedback and the built guide. These checks use disposable local
+fixtures, not hosted CRM data. The hosted schema and API release still require
+the workflow's migration and deployment results.
+
+The pre-push agent may supply a CRM skill path relative to the repository or
+as its absolute path. The verifier resolves either form and requires an existing
+file inside the CRM business skill pack; it still rejects reads outside that
+pack and any non-CRM business calls.
 
 ## Evidence boundaries
 

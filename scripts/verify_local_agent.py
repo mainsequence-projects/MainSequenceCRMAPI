@@ -17,7 +17,7 @@ import time
 import uuid
 from contextlib import ExitStack
 from importlib.metadata import version
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 import httpx
 import yaml
@@ -355,12 +355,13 @@ def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False
             allowed = {"crm__list_tools", "crm__call_tool", "read"}
             require(all(p["toolName"] in allowed for p in calls),
                     "The agent used a tool outside the requested CRM read workflow.")
+            skill_root = (ROOT / ".agents/skills/mainsequence_crm").resolve()
             for call in calls:
                 if call["toolName"] == "read":
-                    path = PurePosixPath(str(call.get("args", {}).get("path", "")))
-                    require(not call.get("isError") and not path.is_absolute() and
-                            ".." not in path.parts and
-                            path.parts[:3] == (".agents", "skills", "mainsequence_crm"),
+                    path = Path(str(call.get("args", {}).get("path", "")))
+                    resolved = (path if path.is_absolute() else ROOT / path).resolve()
+                    require(not call.get("isError") and resolved.is_file() and
+                            resolved.is_relative_to(skill_root),
                             "The agent's skill read left the CRM business skill pack.")
             business = [p for p in calls if p["toolName"] == "crm__call_tool"]
             require([p["args"] for p in business] == expected,

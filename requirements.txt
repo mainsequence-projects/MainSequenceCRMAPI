@@ -143,11 +143,11 @@ linkify-it-py==2.2.0
     # via markdown-it-py
 loguru==0.7.3
     # via fastembed
-mainsequence==9.0.29
+mainsequence==9.0.30
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi
-mainsequence-metatable==0.1.50
+mainsequence-metatable==0.1.51
     # via mainsequencecrmapi
 mako==1.4.1
     # via alembic
