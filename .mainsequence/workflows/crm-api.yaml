@@ -1,4 +1,4 @@
-api_version: "2.3.0"
+api_version: "3.0.0"
 name: crm-api
 resources:
   - key: crm
@@ -6,10 +6,10 @@ resources:
     access:
       resources:
         - key: crm-assistant
-          level: view
+          policy: user
       branches:
         - repository: MetaTables
-          level: view
+          policy: reader
     spec:
       source_path: api/crm/main.py
       mcp_enabled: true
@@ -32,7 +32,7 @@ resources:
     access:
       branches:
         - repository: MetaTables
-          level: view
+          policy: reader
     spec:
       name: CRM migrations
       description: Applies the CRM MetaTables migrations before the CRM API and assistant roll out.
@@ -51,7 +51,7 @@ resources:
     access:
       resources:
         - key: crm
-          level: view
+          policy: user
     spec:
       source_path: api/tau/main.py
       mcp_applications:

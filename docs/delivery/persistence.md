@@ -297,7 +297,7 @@ migration runs, so a step could not make its schedule wait. The repository has
 no scheduled Job today.
 
 The API and migration Job declare
-`access.branches: [{repository: MetaTables, level: view}]` for hosted API
+`access.branches: [{repository: MetaTables, policy: reader}]` for hosted API
 discovery. This platform access does not grant table access. With MetaTables
 0.1.35, an Organization admin must create the `mainsequence-crm` namespace in
 each Environment and grant Writer to its CRM Team. That Team needs the workload
@@ -308,9 +308,9 @@ recreated. The Production Team, grant and members are recorded in the
 [verification evidence](verification.md#hosted-adapter-repair-and-controlled-provisioning-2026-10-11);
 package upgrades do not change them.
 
-The current local backend accepted this API workflow and the sibling
-frontend's single `crm-site.yaml` on 2026-10-09, using workflow API 2.3.0 with
-no errors or warnings. The frontend has an explicit `deploy_site` step; its
+The API workflow now uses platform workflow API `3.0.0`, with `policy` entries
+for the API, assistant, and MetaTables branch workload grants. The live backend
+validated it on 2026-10-20 with no errors or warnings. The frontend has an explicit `deploy_site` step; its
 Static Site build is owned by that deployment. The MCP migration renames the API resource key from `crm-api` to `crm`,
 changing its release identity when applied. Coordinate frontend, OAuth and
 workload grants as described in [ADR 0005](../crm_core/adrs/0005-crm-application-mcp.md).
