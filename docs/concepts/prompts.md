@@ -1,6 +1,6 @@
-# Prompts
+# Agent Prompts
 
-A Prompt is a reusable, named document of **fixed Markdown** instructions. It
+A Prompt, labeled **Agent Prompt** in the frontend, is a reusable, named document of **fixed Markdown** instructions. It
 belongs to the core CRM and is available even when optional modules are off.
 The frontend renders it for reading and offers a formatted inline editor and
 source mode. Markdown is the canonical stored content; saving or copying a

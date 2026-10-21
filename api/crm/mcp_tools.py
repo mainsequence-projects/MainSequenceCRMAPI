@@ -265,7 +265,11 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
         )
         add(
             f"crm_{resource}_create",
-            f"Create a CRM {singular}.",
+            ("Attach a free-form Markdown note to an existing contact or deal. Provide "
+             "contact_uid or deal_uid (exactly one), text (body), and occurred_at "
+             "(date/time with timezone). An optional plain-text title can name the note; "
+             "no category is required."
+             if resource == "notes" else f"Create a CRM {singular}."),
             create_args,
             lambda service, args, resource=resource: service.create_resource(
                 resource, args.payload.model_dump(mode="json", exclude_unset=True)
@@ -274,7 +278,10 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
         )
         add(
             f"crm_{resource}_update",
-            f"Update a CRM {singular} using its expected version.",
+            ("Edit a CRM note using its expected version. Changes may include title, "
+             "text (Markdown body), or occurred_at. Omit title to keep it, or set it "
+             "to null to clear it."
+             if resource == "notes" else f"Update a CRM {singular} using its expected version."),
             update_args,
             lambda service, args, resource=resource: service.update_resource(
                 resource, args.uid, args.payload.model_dump(mode="json", exclude_unset=True)

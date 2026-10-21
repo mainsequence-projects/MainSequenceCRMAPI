@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 from src.crm.repositories.resources.catalog import ORDER_COLUMNS, RESOURCE_SPECS
@@ -13,6 +15,7 @@ class DiscoveryColumn(BaseModel):
     key: str
     header: str
     importance: str
+    data_type: Literal["text", "number"] = "text"
 
 
 class DiscoverySpec(BaseModel):
@@ -22,11 +25,20 @@ class DiscoverySpec(BaseModel):
     columns: tuple[DiscoveryColumn, ...]
 
 
-def _spec(label: str, *columns: tuple[str, str, str]) -> DiscoverySpec:
+def _spec(
+    label: str,
+    *columns: tuple[str, str, str],
+    numeric_columns: frozenset[str] = frozenset(),
+) -> DiscoverySpec:
     return DiscoverySpec(
         label=label,
         columns=tuple(
-            DiscoveryColumn(key=key, header=header, importance=importance)
+            DiscoveryColumn(
+                key=key,
+                header=header,
+                importance=importance,
+                data_type="number" if key in numeric_columns else "text",
+            )
             for key, header, importance in columns
         ),
     )
@@ -34,8 +46,8 @@ def _spec(label: str, *columns: tuple[str, str, str]) -> DiscoverySpec:
 
 DISCOVERY: dict[str, DiscoverySpec] = {
     "prompts": _spec(
-        "Prompts",
-        ("name", "Prompt", "primary"),
+        "Agent Prompts",
+        ("name", "Agent Prompt", "primary"),
         ("description", "Description", "secondary"),
         ("updated_at", "Updated", "tertiary"),
     ),
@@ -45,6 +57,7 @@ DISCOVERY: dict[str, DiscoverySpec] = {
         ("sector_key", "Sector", "secondary"),
         ("contact_count", "Contacts", "secondary"),
         ("deal_count", "Deals", "tertiary"),
+        numeric_columns=frozenset({"contact_count", "deal_count"}),
     ),
     "contacts": _spec(
         "Contacts",
@@ -69,7 +82,8 @@ DISCOVERY: dict[str, DiscoverySpec] = {
     ),
     "notes": _spec(
         "Notes",
-        ("text", "Note", "primary"),
+        ("title", "Title", "primary"),
+        ("text", "Body", "secondary"),
         ("occurred_at", "Occurred", "secondary"),
         ("author_uid", "Author", "tertiary"),
     ),
@@ -96,7 +110,7 @@ def resource_discovery(resource: str) -> dict:
             "id": item.key.replace("_", "-"),
             "header": item.header,
             "value_path": item.key,
-            "data_type": "text",
+            "data_type": item.data_type,
             "default_visible": True,
             "hideable": item.importance != "primary",
             "importance": item.importance,
@@ -109,7 +123,7 @@ def resource_discovery(resource: str) -> dict:
         "resource": {
             "id": resource,
             "label": spec.label,
-            "item_label": storage.item_label,
+            "item_label": "Agent Prompt" if resource == "prompts" else storage.item_label,
             "identity": {"fields": ["uid"]},
         },
         "list": {

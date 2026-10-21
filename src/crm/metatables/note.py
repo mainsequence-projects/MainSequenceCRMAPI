@@ -48,6 +48,10 @@ class Note(PlatformManagedMetaTable, Base):
         ),
         CheckConstraint("length(trim(text)) > 0", name="ck_mainsequence_crm__note_2"),
         CheckConstraint(
+            "title IS NULL OR (length(trim(title)) > 0 AND length(title) <= 255)",
+            name="ck_mainsequence_crm__note_title",
+        ),
+        CheckConstraint(
             "jsonb_typeof(attachment_refs) = 'array'", name="ck_mainsequence_crm__note_3"
         ),
         Index("ix_mainsequence_crm__note_1", "contact_uid", "occurred_at", "uid"),
@@ -143,6 +147,15 @@ class Note(PlatformManagedMetaTable, Base):
         info={
             "label": "Source Author Label",
             "description": "Historic unresolved attribution, rendered as imported source attribution.",
+        },
+    )
+
+    title: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        info={
+            "label": "Title",
+            "description": "Optional short plain-text heading for a contact or deal note; null means no title was supplied.",
         },
     )
 

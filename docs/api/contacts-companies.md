@@ -99,9 +99,17 @@ single-company compatibility projection; the timeline is the source of truth.
 
 `CompanyCreate` requires a trimmed, nonblank `name`; optional fields cover
 owner, sector, size, web presence, address, context links and logo. The
-response includes server-computed `contact_count` and `deal_count`.
+response includes server-computed integer `contact_count` and `deal_count`.
+Company discovery declares these as numeric columns (`data_type: "number"`),
+with the stable IDs `contact-count` and `deal-count`; the text columns use
+`name` and `sector-key`. Frontend renderers must use those discovery IDs.
 The separate company `linkedin_url` field is unchanged by the contact social
 model migration.
+
+Address properties are optional, separate strings: `address` for street/address
+text, `zipcode`, `city`, `state_abbr`, and `country`. These same fields are
+returned on Company reads and accepted in create/patch payloads; there is no
+nested address object or separate street-name/building-number schema.
 
 For both resources, patch bodies have an `expected_version` and nonempty
 `changes`. See [request conventions](conventions.md) for headers and errors.

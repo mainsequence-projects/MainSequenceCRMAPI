@@ -74,7 +74,7 @@ def test_prompt_revision_enforces_utf8_bytes_and_preserves_source_on_local_sqlit
             connection.exec_driver_sql(
                 "SELECT version_num FROM mainsequence_crm__alembic_version"
             ).scalar_one()
-            == "0011"
+            == "0012"
         )
         table = sa.Table("mainsequence_crm__prompt", sa.MetaData(), autoload_with=connection)
         connection.commit()
@@ -340,7 +340,7 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         migrate("upgrade", "head")
 
         version = sa.text("SELECT version_num FROM mainsequence_crm__alembic_version")
-        assert one(version).version_num == "0011"
+        assert one(version).version_num == "0012"
         settings = _table("mainsequence_crm__settings", name=S, default_currency=S)
         assert tuple(one(sa.select(settings))) == ("Legacy", "EUR")
         affiliation = _table("mainsequence_crm__contact_company_affiliation", uid=U)
@@ -368,5 +368,65 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         legacy_contact = _table("mainsequence_crm__contact", linkedin_url=S)
         assert one(sa.select(legacy_contact)).linkedin_url == LINKEDIN
         migrate("upgrade", "head")
-        assert one(version).version_num == "0011"
+        assert one(version).version_num == "0012"
         assert one(sa.select(contact)).socials == {"linkedin": LINKEDIN}
+
+
+def test_note_title_revision_preserves_legacy_data_and_reopens_in_fresh_process(tmp_path):
+    database = tmp_path / "note-title.sqlite"
+    config = alembic_config_for_provider(migration, sqlalchemy_url=f"sqlite:///{database}")
+    table_name = "mainsequence_crm__note"
+    with migration_engine(config) as engine, engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "0011")
+        connection.commit()
+        inspector = sa.inspect(connection)
+        before_checks = inspector.get_check_constraints(table_name)
+        before_fks = inspector.get_foreign_keys(table_name)
+        before_indexes = inspector.get_indexes(table_name)
+        contact = sa.Table("mainsequence_crm__contact", sa.MetaData(), autoload_with=connection)
+        note = sa.Table(table_name, sa.MetaData(), autoload_with=connection)
+        now = datetime.now(timezone.utc)
+        uid = uuid.uuid4().hex
+        connection.execute(contact.insert().values(
+            uid=uid, first_name="Disposable migration fixture", emails=[], phones=[], socials={},
+            version=1, created_at=now, updated_at=now,
+        ))
+        connection.execute(note.insert().values(
+            uid=uuid.uuid4().hex, contact_uid=uid, text="# Existing Markdown", occurred_at=now,
+            attachment_refs=[], version=7, created_at=now, updated_at=now,
+        ))
+        legacy = dict(connection.execute(sa.select(note)).one()._mapping)
+        connection.commit()
+        command.upgrade(config, "head")
+        connection.commit()
+        inspector = sa.inspect(connection)
+        assert inspector.get_foreign_keys(table_name) == before_fks
+        assert inspector.get_indexes(table_name) == before_indexes
+        assert all(check in inspector.get_check_constraints(table_name) for check in before_checks)
+        assert connection.exec_driver_sql(f"SELECT title FROM {table_name}").scalar_one() is None
+        assert dict(connection.execute(sa.select(note)).one()._mapping) == legacy
+        for title in (" ", "😀" * 256):
+            with pytest.raises(sa.exc.IntegrityError), connection.begin_nested():
+                connection.execute(sa.text(f"UPDATE {table_name} SET title=:title"), {"title": title})
+        connection.execute(sa.text(f"UPDATE {table_name} SET title=:title"), {"title": "😀" * 255})
+        connection.commit()
+        config.attributes.pop("connection")
+    result = subprocess.run([sys.executable, "-c", """
+import json, sys, sqlalchemy as sa
+from src.crm.metatables import MODELS
+model = MODELS['note']
+with sa.create_engine('sqlite:///' + sys.argv[1]).connect() as db:
+    row = db.execute(sa.select(model.__table__.c.title, model.__table__.c.text, model.__table__.c.version)).one()
+    print(json.dumps(list(row)))
+""", str(database)], check=True, capture_output=True, text=True)
+    assert json.loads(result.stdout) == ["😀" * 255, "# Existing Markdown", 7]
+    with migration_engine(config) as engine, engine.connect() as connection:
+        config.attributes["connection"] = connection
+        command.downgrade(config, "0011")
+        connection.commit()
+        assert "title" not in {column["name"] for column in sa.inspect(connection).get_columns(table_name)}
+        assert dict(connection.execute(sa.select(note)).one()._mapping) == legacy
+        command.upgrade(config, "head")
+        connection.commit()
+        assert connection.exec_driver_sql(f"SELECT title FROM {table_name}").scalar_one() is None

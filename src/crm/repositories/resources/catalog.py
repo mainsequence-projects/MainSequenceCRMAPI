@@ -57,7 +57,7 @@ RESOURCE_SPECS: dict[str, ResourceSpec] = {
         logical_table="note",
         contract="Note",
         item_label="Note",
-        search_fields=("text",),
+        search_fields=("title", "text"),
         default_ordering="-occurred_at",
     ),
     "tags": ResourceSpec(

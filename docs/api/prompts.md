@@ -1,5 +1,9 @@
 # Prompts API
 
+The frontend names this library **Agent Prompts**. Resource discovery supplies
+that display label and the singular **Agent Prompt**; the resource ID and API
+paths remain `prompts`.
+
 Core fixed-Markdown documents use `/api/crm/v1/prompts/`. They do not require
 Solution Selling or Google Workspace. They are REST resources; this change
 does not add Prompt tools to the assistant's MCP catalogue.

@@ -117,6 +117,33 @@ def test_http_query_validation_stops_before_repository_access(signed_caller):
             assert response.json()["error"]["code"] == "CRM_REQUEST_ERROR"
 
 
+def test_company_discovery_advertises_numeric_counts(signed_caller):
+    app = create_app()
+    actor_uid = uuid.uuid4()
+    checked_actors = []
+
+    class Policy:
+        def capabilities(self, uid):
+            checked_actors.append(uid)
+            return {"crm.read"}
+
+    app.state.crm_policy = Policy()
+    app.state.crm_directory = object()
+
+    with TestClient(app, headers=signed_caller(actor_uid)) as client:
+        response = client.get("/api/crm/v1/companies/discovery/")
+
+    assert response.status_code == 200
+    assert checked_actors == [actor_uid]
+    columns = response.json()["list"]["columns"]
+    assert [(column["id"], column["value_path"], column["data_type"]) for column in columns] == [
+        ("name", "name", "text"),
+        ("sector-key", "sector_key", "text"),
+        ("contact-count", "contact_count", "number"),
+        ("deal-count", "deal_count", "number"),
+    ]
+
+
 def test_governed_operation_only_sends_backend_supported_parameter_metadata(monkeypatch, tmp_path):
     data_source_uid = uuid.uuid4()
     captured = {}

@@ -82,6 +82,7 @@ class ResourceMutations(GovernedGateway):
                 "source_updated_at": None,
             },
             "notes": {
+                "title": None,
                 "contact_uid": None,
                 "deal_uid": None,
                 "author_uid": str(actor_uid),

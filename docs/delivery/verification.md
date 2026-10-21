@@ -78,10 +78,55 @@ refused both cross-resource grants: “A workload never gives another workload
 access.” The execution graph was therefore not admitted and created no
 DeploymentRuns. The second revision keeps the MetaTables branch grant and
 omits the peer-workload grants. The authenticated `validate-workflow` endpoint
-returned `valid: true`, no errors, and no warnings. This still needs a push,
-deployment and active-revision checks.
+returned `valid: true`, no errors, and no warnings. It was pushed as `b773722`;
+its image, migration Job, API release and assistant deployment all succeeded.
+The migration Job reported revision `0011` already current with catalog
+reconciliation. The API active revision is
+`b0a14fb4-d93a-474d-b830-3d3367f58a8a`; authenticated readiness and a
+one-item Notes collection read both returned HTTP 200. Bootstrap returned
+HTTP 200 but `assistant.enabled=false`: the platform removed the former peer
+grants, leaving the API unable to discover the Agent. Automatic approval review
+rejected a persistent direct Agent grant without explicit user authorization;
+no replacement grant was made. Hosted assistant use remains unverified.
 
 ## Evidence boundaries
+
+### Frontend async action feedback (2026-10-16)
+
+Implemented in the paired frontend working tree based on `8d7aaf2`. CRM-owned
+actions now use a synchronous exclusion gate and specific operation keys with
+SDK pending buttons and activity indicators. Saving, reading, copying,
+archive/restore, pipeline refresh, quick creation, Google source actions and
+transfer actions show progress and an actual outcome. SDK resource, picker,
+bulk-action and AI-engine lifecycles remain owned by their SDK components.
+The archive/restore confirmation stays open during execution and after failure.
+The shared status includes a standalone SDK indicator, keeping activity visible
+independently of the primary button's fill.
+
+Ordinary CRM requests now bound headers and body processing at 120 seconds,
+respect earlier cancellation and expose `request_timeout` for stalled requests.
+The existing local bootstrap deadline remains terminal. No write is retried
+automatically; uncertain saves retain drafts, and uncertain transfer or Google
+requests require a state check before another write. A staged import whose
+upload fails retains the known transfer and file selection rather than
+restarting its creation chain.
+
+Executed with Node 24: **33 frontend unit tests passed**. The new isolated
+`tests/action-feedback.browser.mjs` held responses open and passed immediate
+SDK feedback, repeated-click exclusion, slow notices, clipboard failure/recovery,
+timeout/read-back recovery, confirmation persistence, partial staging failure,
+Google review-draft retention and distinct transfer actions. The SDK default
+coarse/fine matrix passed in light/dark with real touch contexts and reduced
+motion. Existing Prompt, Note, Prompter and bootstrap browser suites also passed.
+The bootstrap fixture's old `New prompt` heading was aligned with the existing
+`New agent prompt` label. All browser APIs were isolated fixtures or a disposable
+loopback backend with external requests blocked; these checks do not verify
+hosted permissions or persistence.
+
+Frontend app and packaged user-guide builds, documentation validation, the closed
+theme audit and whitespace checks passed. User and maintainer guidance were
+updated in the frontend; no CRM API route or database schema changed for this
+feedback work. No push or deployment was performed.
 
 ### Authorized deployment stopped at the mandatory agent gate (2026-10-16)
 
@@ -2048,6 +2093,106 @@ behavior and bypasses no checks: the normal push hook must pass again, and
 the repository workflow must run `migrate-crm` before API and assistant
 deployment. Hosted migrations are not run manually. Retry success, frontend
 publication and browser verification remain unverified until observed.
+
+## 2026-10-16 contact Notes editor
+
+The paired frontend adds contact Notes creation and editing with Date and Body,
+defaulting the date/time to now in the browser's local timezone. Notes reuse
+the Agent Prompts rich Markdown editor and safe reader. The existing REST and
+MCP mutations were unchanged at this stage; MCP/schema descriptions explicitly
+document Markdown and contact attachment. This date/body-only stage needed no
+migration. The title extension below supersedes that schema status.
+
+Files changed for this feature:
+
+- API: `api/crm/mcp_tools.py`, `src/crm/models/notes.py`, `tests/test_notes.py`,
+  `docs/api/engagement.md`, `docs/concepts/tasks-notes.md`, and this verification page.
+- Frontend: `src/Resources.tsx`, `src/prompts/RichMarkdownEditor.tsx`,
+  `src/notes/Notes.tsx`, `src/notes/NoteForm.tsx`, `src/notes/types.ts`,
+  `src/notes/notes.css`, `tests/notes.test.ts`, `tests/notes.browser.mjs`,
+  `docs/contacts/index.md`, and `engineering/README.md`.
+
+The focused API/MCP/catalog/documentation suite passed 50 tests, including six
+new Notes cases. These exercise the real authenticated MCP protocol and REST
+service, with compiled governed SQL executing in a private disposable PostgreSQL
+cluster. Contact/Note fixtures are created, updated and read back; stale versions,
+forged authorship, invalid parents/dates, capability revocation and atomic audit
+rollback are checked. Database fixtures are rolled back and the owned cluster
+is stopped and removed. Network transport, directory and policy are test
+substitutes; this does not establish hosted authorization or persistence.
+
+Frontend unit tests passed (28 tests), and the isolated Notes and existing Agent
+Prompts browser suites passed. Notes checks include creation/editing, rendered
+Markdown, source fallback, draft/conflict recovery, committed-but-lost response
+handling, read-only capability presentation and the six SDK viewport sizes in
+light/dark themes with actual touch contexts. Typecheck, combined app/help build,
+documentation validation, theme audit, strict MkDocs and Ruff passed.
+The built-artifact browser check also passed the application gate, help home,
+21 guide links, desktop/mobile light/dark views and return navigation.
+
+The live `.venv/bin/python scripts/verify_local_agent.py` attempt stopped before
+agent startup: Git context resolution returned `401 No auth configured` for the
+checkout's configured backend, `http://127.0.0.1:8000`. CLI auth status confirmed
+there was no usable session. Evidence is retained under ignored
+`.local/agent-pre-push/notes-2026-10-16-auth-unavailable/report.json`.
+Real-provider execution and fresh-process live catalog binding remain unverified.
+No hosted data was changed and this change was not pushed or deployed.
+
+## 2026-10-16 Note titles
+
+Notes now accept an optional plain-text title (up to 255 Unicode characters
+after trimming). The contact Notes editor, list and reader display it; older
+untitled notes display “Untitled note”. Search includes both title and body.
+REST and `crm_notes_create` / `crm_notes_update` share title validation;
+omission on update preserves the title and explicit null clears it.
+
+Files changed for this extension:
+
+- API: `src/crm/models/notes.py`, `src/crm/metatables/note.py`,
+  `src/crm/repositories/resources/{reads,writes,catalog}.py`,
+  `src/crm/migrations/versions/mainsequence_crm/0012_add_note_title.py`,
+  `api/crm/{discovery,mcp_tools}.py`, `tests/{test_notes,test_migrations}.py`,
+  and the Notes concept, engagement API, persistence and verification pages.
+- Frontend: `src/notes/{types.ts,NoteForm.tsx,Notes.tsx}`, `src/Resources.tsx`,
+  `tests/{notes.test.ts,notes.browser.mjs}`, `docs/contacts/index.md` and
+  `engineering/README.md`.
+
+Executed checks:
+
+- `pytest tests/test_notes.py tests/test_migrations.py -q`: 19 passed. The
+  Notes cases exercise authenticated MCP and REST through real compiled SQL in
+  private PostgreSQL, with test transport/policy. They verify title creation,
+  trimming, editing, omission/clearing, search, Unicode bounds, stale fences,
+  capability denial and record/audit rollback. Owned fixtures are read back,
+  rolled back and the temporary cluster removed.
+- Full-history SQLite and PostgreSQL revision checks preserve legacy notes,
+  timestamps and versions. SQLite also checks old foreign keys/checks/indexes,
+  downgrade/re-upgrade, and a fresh interpreter reading the authored Note model.
+  An extra future PostgreSQL column does not leak into strict read responses or
+  mutation read-back. These are database checks, not platform catalog binding.
+- Resource collection, MCP, resource route and catalog regression checks passed
+  101 other cases; documentation and MCP skill publication checks passed 11.
+- Frontend unit tests passed (29). Notes browser checks passed with 92 isolated
+  requests, including title create/edit/clear, title search, source preservation,
+  conflict/uncertain saves, readonly behavior and all six SDK viewport sizes in
+  light/dark themes. An intermittent title update was addressed by capturing
+  input values before queued React state updates; subsequent browser passes
+  succeeded. Mobile title/editor screenshots were inspected.
+- Node 24 typecheck/app/help build, guide validation and theme audit passed.
+  The built-artifact browser check passed the application gate, help home,
+  21 guide links, desktop/mobile light/dark views and return navigation.
+  Ruff and strict MkDocs passed.
+
+Revision `0012` is authored and locally tested, not deployed. Its
+[compatibility-first rollout prerequisite](persistence.md#note-titles-revision-0012)
+must be satisfied before the workflow applies the new column. No hosted
+migration, push or deployment was performed. CLI auth status still reports no
+usable session for the configured backend, so real-provider local-agent and
+fresh-process live catalog verification remain unavailable, as recorded above.
+The local runtime probe (`metatables --local runtime status`) also returned
+`503 Current platform identity facts are unavailable` from loopback port 18473;
+no local platform migration/finalization was attempted without verified runtime
+identity.
 
 ## Keeping this site current
 

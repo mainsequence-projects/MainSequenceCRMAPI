@@ -2,11 +2,34 @@
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    StringConstraints,
+    model_validator,
+)
 
 from .common import AssetRef
+
+
+def _single_line_title(value: str) -> str:
+    if any(character in value for character in ("\0", "\n", "\r")):
+        raise ValueError("A note title must be one line without NUL characters")
+    return value
+
+
+NoteTitle = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=255),
+    AfterValidator(_single_line_title),
+]
 
 
 class NoteCreate(BaseModel):
@@ -14,8 +37,9 @@ class NoteCreate(BaseModel):
 
     contact_uid: UUID | None = None
     deal_uid: UUID | None = None
-    text: str = Field(min_length=1, max_length=100_000)
-    occurred_at: AwareDatetime
+    title: NoteTitle | None = Field(default=None, description="Optional plain-text note title, at most 255 characters; null means untitled.")
+    text: str = Field(min_length=1, max_length=100_000, description="Note body as Markdown source; plain text is also supported.")
+    occurred_at: AwareDatetime = Field(description="Date and time of the note, including a timezone offset.")
     status_key: str | None = Field(default=None, max_length=100)
     attachment_refs: list[AssetRef] = Field(default_factory=list, max_length=20)
 
@@ -29,7 +53,8 @@ class NoteCreate(BaseModel):
 class NoteChanges(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    text: str | None = Field(default=None, min_length=1, max_length=100_000)
+    title: NoteTitle | None = Field(default=None, description="Replacement note title; omit to keep it, or send null to clear it.")
+    text: str | None = Field(default=None, min_length=1, max_length=100_000, description="Replacement note body as Markdown source.")
     occurred_at: AwareDatetime | None = None
     status_key: str | None = Field(default=None, max_length=100)
     attachment_refs: list[AssetRef] | None = Field(default=None, max_length=20)
@@ -62,6 +87,7 @@ class Note(BaseModel):
     deal_uid: UUID | None
     author_uid: UUID | None
     source_author_label: str | None
+    title: NoteTitle | None
     text: str = Field(min_length=1, max_length=100_000)
     occurred_at: AwareDatetime
     status_key: str | None

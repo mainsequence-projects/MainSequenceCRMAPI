@@ -148,6 +148,34 @@ list is a JSON array and that a Deal requires a Company, drops the old
 nullable. Its downgrade refuses while companyless, multi-person or unlinked
 Interactions exist.
 
+## Note titles (revision 0012)
+
+Revision `0012` adds nullable `note.title` (`VARCHAR(255)`) and a named check
+requiring a nonblank value of at most 255 characters when present. Existing
+notes retain null titles; no body, timestamp or version is rewritten. The API
+normalizes surrounding whitespace and rejects embedded NUL/newline characters.
+SQLite uses native `ADD COLUMN` so existing checks, foreign keys and indexes
+survive; PostgreSQL uses Alembic column and constraint operations. Downgrade
+removes the title column and therefore discards titles; it is not a rollout step.
+
+**Rollout prerequisite:** deploy the explicit Notes column projection in
+`src/crm/repositories/resources/reads.py` as a compatibility-only release using
+the old Note model and migration head, before releasing `0012` and title-aware
+models. Older code uses `SELECT t.*` with strict response validation: adding even
+a nullable column otherwise breaks its reads during the migration-before-deploy
+window. The compatibility version selects only its authored columns and also
+protects mutation read-back. Commit `b773722` completed that compatibility
+release: hosted revision `0011` was reconciled and an authenticated Notes read
+succeeded. The normal workflow can now run `migrate-crm` for `0012`, deploy the
+title-aware API/assistant, and then publish the frontend. The title release
+has not yet been performed.
+
+Temporary SQLite full-history and private PostgreSQL revision checks exercise
+legacy data preservation, constraints and read-back. Fresh-interpreter SQLite
+reads verify the new authored column against the migrated file. These checks
+are not live platform catalog finalization or hosted deployment evidence; see
+[verification](verification.md#2026-10-16-note-titles).
+
 ## Bounded core collection reads
 
 `src/crm/repositories/resources/reads.py` builds one governed read with a
