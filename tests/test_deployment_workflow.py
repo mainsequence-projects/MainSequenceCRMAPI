@@ -62,7 +62,7 @@ def test_the_repository_has_one_workflow_file():
 
 def test_api_and_assistant_deploy_only_after_the_migration_job():
     workflow = _workflow()
-    assert workflow["api_version"] == "2.3.0"
+    assert workflow["api_version"] == "3.0.0"
     resources = {item["key"]: item for item in workflow["resources"]}
     assert {key: item["kind"] for key, item in resources.items()} == {
         "crm": "fastapi",
@@ -75,18 +75,18 @@ def test_api_and_assistant_deploy_only_after_the_migration_job():
     for item in resources.values():
         assert item["spec"]["automatic_redeployment"] == EVERY_PUSH
     assert resources["migrate-crm"]["access"] == {
-        "branches": [{"repository": "MetaTables", "level": "view"}]
+        "branches": [{"repository": "MetaTables", "policy": "reader"}]
     }
-    # Bootstrap discovers only this assistant; this view grant is not a
-    # requester or storage grant and does not change the deployment graph.
+    # Workflow-owned user policies support Agent discovery and application MCP.
+    # Requester authorization and storage access remain independent checks.
     assert resources["crm"]["access"] == {
-        "branches": [{"repository": "MetaTables", "level": "view"}],
-        "resources": [{"key": "crm-assistant", "level": "view"}],
+        "branches": [{"repository": "MetaTables", "policy": "reader"}],
+        "resources": [{"key": "crm-assistant", "policy": "user"}],
     }
     assert resources["crm"]["spec"]["mcp_enabled"] is True
     assert resources["crm-assistant"]["acts_for_requester"] is True
     assert resources["crm-assistant"]["access"] == {
-        "resources": [{"key": "crm", "level": "view"}]
+        "resources": [{"key": "crm", "policy": "user"}]
     }
     assert workflow["execution"] == {
         "steps": {

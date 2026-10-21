@@ -4,6 +4,9 @@ resources:
   - key: crm
     kind: fastapi
     access:
+      resources:
+        - key: crm-assistant
+          policy: user
       branches:
         - repository: MetaTables
           policy: reader
@@ -45,6 +48,10 @@ resources:
   - key: crm-assistant
     kind: harness_agent
     acts_for_requester: true
+    access:
+      resources:
+        - key: crm
+          policy: user
     spec:
       source_path: api/tau/main.py
       mcp_applications:

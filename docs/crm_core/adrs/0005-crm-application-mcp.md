@@ -99,11 +99,22 @@ The workflow remains the sole `.mainsequence/workflows/crm-api.yaml` file.
 Each service has its own image step; migration precedes API deployment, and
 the assistant waits for API deployment. The migration Job still owns hosted
 schema updates. This change creates no migration and performs no startup DDL.
-The platform's workflow API 3.0.0 refuses peer-workload grants between the API
-and assistant. The workflow therefore omits those declarations. Bootstrap
-Agent discovery and application MCP authorization must be checked against the
-deployed requester and workload access paths; neither a declaration nor chat
-readiness proves the assistant can reach CRM tools.
+The workflow declares `policy: user` on the Agent for the API workload and on
+the API release for the assistant workload. The first supports bootstrap Agent
+discovery; the second admits application MCP calls. These bindings are owned
+and reconciled by automatic deployment. Requester authorization and CRM data
+permissions remain independent checks; neither a declaration nor chat readiness
+proves the assistant can reach CRM tools.
+
+The 2026-10-21 amendment restores these declarations after platform
+[#1137](https://github.com/Main-Sequence-Server-Side/tdag-django/issues/1137),
+fixed in `4354f8694`. The previous platform guard treated the Organization's
+automation service identity as a workload and rejected writes it made while
+lowering declared peer policies from `viewer` to `user`. The fix admits only
+that Organization's automation identity with the workflow source, after the
+existing declaration checks; the ordinary workload grant prohibition remains.
+Restore access by pushing this workflow and verifying the resulting bindings,
+bootstrap and a hosted read-only CRM tool call. Do not apply manual grants.
 
 The 2026-10-11 dependency amendment pins Tau 2.0.11 and requires Main Sequence
 9.0.20. The public SDK sender now uses the A2A `ROLE_USER` / `ROLE_AGENT`
