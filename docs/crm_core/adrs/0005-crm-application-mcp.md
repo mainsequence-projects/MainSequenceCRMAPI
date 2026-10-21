@@ -116,6 +116,17 @@ existing declaration checks; the ordinary workload grant prohibition remains.
 Restore access by pushing this workflow and verifying the resulting bindings,
 bootstrap and a hosted read-only CRM tool call. Do not apply manual grants.
 
+The later 2026-10-21 dependency amendment pins Tau 2.0.21 for
+[#111](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/111). The SDK now
+translates canonical platform Task Message records into its internal binding
+before projecting public A2A history. It preserves the platform's `user`/`agent`
+roles and snake_case read schema, and the public `ROLE_USER`/`ROLE_AGENT` wire
+contract. Accepted Task failures retain the Task and context identifiers so
+clients can inspect durable state instead of replaying the request. The
+application adds no translation shim or access changes. Release verification
+must include a hosted Task read and a read-only CRM result compared with a
+fresh API read; local checks alone do not prove the hosted path.
+
 The 2026-10-11 dependency amendment pins Tau 2.0.11 and requires Main Sequence
 9.0.20. The public SDK sender now uses the A2A `ROLE_USER` / `ROLE_AGENT`
 wire roles. Tau waits within a bounded deadline when application admission says
