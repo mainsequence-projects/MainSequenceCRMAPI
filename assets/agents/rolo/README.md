@@ -18,14 +18,14 @@ MCP application; it does not distinguish individual tools or operations.
 The SDK owns pose selection and authenticated image delivery. No application
 code, new tools, Agent Card fields or extra access grants are needed.
 
-All runtime images are square 512 x 512 RGBA PNGs, well under the platform's
-512 KiB per-file limit. The platform reads them from the exact repository
+All runtime images are square 128 x 128 RGBA PNGs, under the platform's
+128 x 128 px and 64 KiB per-file limit for agent icons. The platform reads them from the exact repository
 event commit; a local edit alone does not publish the icon.
 
 ## Artwork provenance
 
 The character follows the Casekeeper recipe from the Back Office helper: a
-64 x 64 pixel grid upscaled 8x with nearest-neighbour sampling, dark navy
+64 x 64 pixel grid upscaled 2x with nearest-neighbour sampling, dark navy
 outline, body about 60 percent of the canvas width, feet or base line at about
 88 percent from the top, three square thinking dots, motion ticks when working
 and an amber exclamation badge on error. The sprites were drawn
