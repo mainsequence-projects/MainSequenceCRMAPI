@@ -137,6 +137,20 @@ def test_the_assistant_kept_its_declaration_when_it_moved_into_this_file():
         "llm_provider": "openai-codex",
         "llm_model": "gpt-5.6-luna",
         "llm_thinking": "medium",
+        "command_center_icon": {
+            "path": "assets/agents/rolo/idle.png",
+            "rendering": "color",
+            "image_rendering": "pixelated",
+        },
+        "command_center_animations": {
+            "poses": {
+                "thinking": {"path": "assets/agents/rolo/thinking.png"},
+                "working": {"path": "assets/agents/rolo/working.png"},
+                "outreach": {"path": "assets/agents/rolo/outreach.png"},
+                "error": {"path": "assets/agents/rolo/error.png"},
+            },
+            "tools": [{"application": "crm", "pose": "outreach"}],
+        },
         "automatic_deployment": True,
         "automatic_redeployment": EVERY_PUSH,
         "revision_retention_count": 3,
