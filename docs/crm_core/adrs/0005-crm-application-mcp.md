@@ -140,6 +140,17 @@ verification requires a completed hosted Task with a persisted public artifact
 containing a successful CRM read equal to a fresh API read. A completed Task's
 optional status Message may be absent; no synthetic Message is required.
 
+The subsequent 2026-10-21 dependency amendment pins released Tau 2.0.23 for
+[#116](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/116). Its Task writer
+buffers model text while cancellation reads and ordered writes are pending,
+and persists the final buffered text before finalizing the artifact. Existing
+platform fences, output revisions and terminal settlement remain authoritative.
+The 2.0.22 hosted check exposed a tool timeout, slow output writes and a terminal
+`agent_task_executor_lost` failure. Only the output batching defect has been
+isolated and repaired upstream; a new hosted read must still prove the complete
+CRM result and fresh API equality. Keep the same workflow-owned access and
+restricted runtime profile.
+
 The 2026-10-11 dependency amendment pins Tau 2.0.11 and requires Main Sequence
 9.0.20. The public SDK sender now uses the A2A `ROLE_USER` / `ROLE_AGENT`
 wire roles. Tau waits within a bounded deadline when application admission says

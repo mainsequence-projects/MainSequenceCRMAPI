@@ -242,7 +242,7 @@ local consent testing, never the production client.
 
 ## Optional Tau runtime
 
-The current dependency baseline is Tau 2.0.22. Its hosted Task lookup reads the
+The current dependency baseline is Tau 2.0.23. Its hosted Task lookup reads the
 platform's full Task detail after resolving the public ID, so persisted answer
 artifacts reach callers. Task requester authority comes from the platform's
 runtime-owned creation, continuation or dispatch facts, while chat and
@@ -253,6 +253,15 @@ change CRM permissions. Verify the deployed version with a completed read-only
 Task whose public artifact contains `crm_settings_get` with `code=ok`, and
 compare its settings data to a fresh API read. A terminal state alone is
 insufficient. The local gate below and this hosted check are separate evidence.
+
+Tau 2.0.23 also repairs
+[#116](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/116): the model
+stream continues while cancellation checks and ordered artifact writes run,
+and the final pending text is appended before finalization. The previous
+2.0.22 hosted check reported a CRM tool timeout and ultimately
+`agent_task_executor_lost`; the causes of those failures remain unisolated.
+The streaming fix alone does not establish a successful CRM read. Hosted
+acceptance still requires the completed artifact and fresh API comparison above.
 
 ### Required live check before every push
 
