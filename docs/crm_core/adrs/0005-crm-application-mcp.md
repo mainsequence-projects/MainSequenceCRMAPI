@@ -127,6 +127,19 @@ application adds no translation shim or access changes. Release verification
 must include a hosted Task read and a read-only CRM result compared with a
 fresh API read; local checks alone do not prove the hosted path.
 
+The next 2026-10-21 dependency amendment pins Tau 2.0.22 for
+[#113](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/113) and
+[#114](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/114). The SDK resolves
+a public Task ID through the bounded platform registry, then reads Task detail
+before projecting answer artifacts. A Task attempt binds the person named in
+the platform's runtime-owned Task creation, continuation or dispatch facts;
+chat activity state and ordinary audit reads do not supply Task authority.
+The platform revalidates that delegation on each application call. Keep CRM's
+unbound-workload refusal and workflow-owned access declarations. Release
+verification requires a completed hosted Task with a persisted public artifact
+containing a successful CRM read equal to a fresh API read. A completed Task's
+optional status Message may be absent; no synthetic Message is required.
+
 The 2026-10-11 dependency amendment pins Tau 2.0.11 and requires Main Sequence
 9.0.20. The public SDK sender now uses the A2A `ROLE_USER` / `ROLE_AGENT`
 wire roles. Tau waits within a bounded deadline when application admission says

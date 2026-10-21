@@ -242,6 +242,18 @@ local consent testing, never the production client.
 
 ## Optional Tau runtime
 
+The current dependency baseline is Tau 2.0.22. Its hosted Task lookup reads the
+platform's full Task detail after resolving the public ID, so persisted answer
+artifacts reach callers. Task requester authority comes from the platform's
+runtime-owned creation, continuation or dispatch facts, while chat and
+caller-delivery turns retain their own binding path. This repairs SDK issues
+[#113](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/113) and
+[#114](https://github.com/mainsequence-sdk/ms-tau-sdk/issues/114); it does not
+change CRM permissions. Verify the deployed version with a completed read-only
+Task whose public artifact contains `crm_settings_get` with `code=ok`, and
+compare its settings data to a fresh API read. A terminal state alone is
+insufficient. The local gate below and this hosted check are separate evidence.
+
 ### Required live check before every push
 
 Run the actual local-mode agent before publishing:
