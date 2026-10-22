@@ -15,6 +15,28 @@ must accompany material changes. The running FastAPI OpenAPI document can be
 compared with the [mounted route index](../api/route-index.md);
 `tests/test_documentation.py` enforces method/path parity.
 
+### MCP stage diagnostics (2026-10-22)
+
+The CRM now correlates business calls with server-generated request UUIDs and
+times identity admission, fresh permissions, catalog binding and MetaTables
+round trips separately. Unexpected and unavailable results retain redacted
+public messages and log bounded exception types, stack locations and safe
+upstream status/correlation metadata. Error envelopes add a request reference
+and, when available, the failed stage. No mutation, permission, retry or
+catalog-caching contract changes.
+
+`tests/test_mcp_diagnostics.py` covers signed MCP calls, stage order, warm
+catalogs, permission rechecks, each stage's failure, secret redaction,
+in-progress stalls and concurrent request isolation. These tests replace
+remote catalog and data operations; they do not prove hosted performance.
+Executed locally: **365 tests passed**, Ruff, `git diff --check` and the strict
+MkDocs build passed. The real Tau local-mode check passed with the workflow's
+`openai-codex/gpt-5.6-luna` provider/model, successful CRM MCP read, persisted
+history after restart and a fresh API comparison. Its isolated SQLite evidence
+is under `.local/agent-pre-push/8aa11dde-a7d1-4f35-85bb-7c854ca6f86e/`.
+The pre-push hook repeats the live check for the committed tree. Hosted
+deployment and read/log verification remain unverified here.
+
 ### Initial SDK compatibility preflight (2026-10-20)
 
 The first compatibility commit selected Main Sequence `9.0.29`, MetaTables `0.1.50`, and

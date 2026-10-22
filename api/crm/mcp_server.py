@@ -13,6 +13,7 @@ from api.crm.service_adapter import context_for
 from mainsequence.client import User
 from mainsequence.server.fastapi import install_mcp, reads_as_caller
 from mainsequence.server.mcp_skills import skills_extension
+from src.crm.platform.diagnostics import observe_stage, request_diagnostics
 from src.crm.platform.runtime import CAPABILITIES, request_port
 from src.crm.services.operations import AccessDenied, ServiceUnavailable
 
@@ -101,16 +102,17 @@ def install_crm_mcp(application: FastAPI) -> None:
         request = active_request.get()
         if request is None:
             raise ServiceUnavailable("Missing HTTP request context")
-        identity_mode = "local"
-        if application.state.mainsequence_request_identity["mode"] != "local":
-            identity_mode = _require_hosted_person(request)
-        try:
-            context = context_for(request)
-        except HTTPException as exc:
-            if exc.status_code in {401, 403}:
-                _log_denial(request, identity_mode=identity_mode, reason="crm_identity_rejected")
-                raise AccessDenied("CRM identity required") from exc
-            raise ServiceUnavailable("CRM policy or directory unavailable") from exc
+        with observe_stage("identity"):
+            identity_mode = "local"
+            if application.state.mainsequence_request_identity["mode"] != "local":
+                identity_mode = _require_hosted_person(request)
+            try:
+                context = context_for(request)
+            except HTTPException as exc:
+                if exc.status_code in {401, 403}:
+                    _log_denial(request, identity_mode=identity_mode, reason="crm_identity_rejected")
+                    raise AccessDenied("CRM identity required") from exc
+                raise ServiceUnavailable("CRM policy or directory unavailable") from exc
 
         def report_denial(error: AccessDenied) -> None:
             required_capability = _required_capability(error)
@@ -167,7 +169,9 @@ def install_crm_mcp(application: FastAPI) -> None:
         # caller identity still comes exclusively from SDK-verified getters.
         request_token = active_request.set(Request(dict(scope), receive))
         try:
-            await transport(scope, receive, send)
+            request = active_request.get()
+            with request_diagnostics(getattr(request.state, "crm_request_uid", None)):
+                await transport(scope, receive, send)
         finally:
             active_request.reset(request_token)
 

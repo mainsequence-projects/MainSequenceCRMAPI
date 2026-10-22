@@ -20,6 +20,7 @@ from metatables.compiled_sql.v1 import compile_sqlalchemy_statement
 from ..google_workspace.config import google_workspace_enabled
 from ..metatables import MODELS
 from ..platform.catalog import CatalogRegistry, configured_registry
+from ..platform.diagnostics import observe_stage
 from ..platform.runtime import CAPABILITIES, DirectoryPort, PolicyPort
 from ..solution_selling.config import solution_selling_enabled
 
@@ -39,23 +40,26 @@ class CatalogSettingsStore:
     def bootstrap_record(self) -> Mapping[str, Any]:
         settings = MODELS["settings"].__table__
         pipeline = MODELS["pipeline"].__table__
-        response = MetaTable.execute_operation(
-            compile_sqlalchemy_statement(
-                select(
-                    settings.c.default_currency,
-                    settings.c.timezone,
-                    settings.c.configuration,
-                    settings.c.configuration_version,
-                    pipeline.c.uid.label("default_pipeline_uid"),
+        with observe_stage("catalog", cache_hit="bindings" in getattr(self.registry, "__dict__", {})):
+            data_source_uid = self.registry.data_source_uid
+        with observe_stage("metatables"):
+            response = MetaTable.execute_operation(
+                compile_sqlalchemy_statement(
+                    select(
+                        settings.c.default_currency,
+                        settings.c.timezone,
+                        settings.c.configuration,
+                        settings.c.configuration_version,
+                        pipeline.c.uid.label("default_pipeline_uid"),
+                    )
+                    .select_from(settings.join(pipeline, pipeline.c.is_default.is_(True)))
+                    .where(settings.c.key == "default")
+                    .limit(2),
+                    operation="select",
+                    data_source_uid=data_source_uid,
+                    limits={"max_rows": 2, "statement_timeout_ms": 5000},
                 )
-                .select_from(settings.join(pipeline, pipeline.c.is_default.is_(True)))
-                .where(settings.c.key == "default")
-                .limit(2),
-                operation="select",
-                data_source_uid=self.registry.data_source_uid,
-                limits={"max_rows": 2, "statement_timeout_ms": 5000},
             )
-        )
         rows = response.get("rows")
         if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], Mapping):
             raise RuntimeError("CRM settings or default pipeline have not been initialized")
@@ -80,11 +84,12 @@ class BootstrapService:
         self.read(actor_uid)
 
     def read(self, actor_uid: uuid.UUID) -> dict[str, Any]:
-        capabilities = set(self.policy.capabilities(actor_uid))
-        if not capabilities <= CAPABILITIES:
-            raise RuntimeError("Policy returned an unknown CRM capability")
-        if "crm.read" not in capabilities:
-            raise PermissionError("CRM read access denied")
+        with observe_stage("permissions"):
+            capabilities = set(self.policy.capabilities(actor_uid))
+            if not capabilities <= CAPABILITIES:
+                raise RuntimeError("Policy returned an unknown CRM capability")
+            if "crm.read" not in capabilities:
+                raise PermissionError("CRM read access denied")
         record = self.store.bootstrap_record()
         settings = self._settings(record)
         default_pipeline_uid = self._uuid(record, "default_pipeline_uid")

@@ -24,6 +24,7 @@ from src.crm.models.deals import MoveDeal
 from src.crm.models.merge import MergePreviewRequest
 from src.crm.models.queries import FILTER_MODELS, QueryScope
 from src.crm.models.record_filters import RecordFilters
+from src.crm.platform.diagnostics import observe_tool, record_exception
 from src.crm.platform.runtime import BootstrapPort
 from src.crm.repositories.errors import ResourceConflict, ResourceNotFound
 from src.crm.repositories.records import RECORDS, VersionedRecordStore
@@ -107,12 +108,17 @@ class _NoArguments(_Arguments):
     pass
 
 
-def tool_result(code: str, *, data: Any = None, message: str | None = None) -> CallToolResult:
+def tool_result(
+    code: str, *, data: Any = None, message: str | None = None,
+    diagnostics: dict[str, str] | None = None,
+) -> CallToolResult:
     details: dict[str, Any] = {"code": code}
     if data is not None:
         details["data"] = data
     if message is not None:
         details["message"] = message
+    if diagnostics is not None:
+        details["diagnostics"] = diagnostics
     serialized = json.dumps(details, default=str, ensure_ascii=False)
     if len(serialized) > MAX_RESULT_CHARS:
         details = {
@@ -142,7 +148,7 @@ def _tool(
     *,
     mutation: bool = False,
 ) -> CRMTool:
-    async def execute(arguments: Mapping[str, Any]) -> CallToolResult:
+    async def dispatch(arguments: Mapping[str, Any]) -> CallToolResult:
         try:
             parsed = arguments_model.model_validate(dict(arguments))
         except (ValidationError, TypeError, ValueError):
@@ -165,7 +171,8 @@ def _tool(
             if runtime is not None and runtime.denial_reporter is not None:
                 runtime.denial_reporter(exc)
             return tool_result("forbidden", message="CRM access denied")
-        except ServiceUnavailable:
+        except ServiceUnavailable as exc:
+            record_exception(exc)
             return tool_result("unavailable", message="CRM runtime is unavailable")
         except DomainValidationError as exc:
             return tool_result(
@@ -181,9 +188,19 @@ def _tool(
             return tool_result("not_found", message="CRM record not found")
         except ResourceConflict:
             return tool_result("conflict", message="CRM state changed; reread before retrying")
-        except Exception:
+        except Exception as exc:
+            record_exception(exc)
             return tool_result("internal_error", message="CRM operation failed")
         return tool_result("ok", data=data)
+
+    async def execute(arguments: Mapping[str, Any]) -> CallToolResult:
+        with observe_tool(name) as observation:
+            result = await dispatch(arguments)
+            details = result.structured_content
+            observation.code = details["code"]
+            if result.is_error and observation.code != "result_too_large":
+                return tool_result(**details, diagnostics=observation.public_details())
+            return result
 
     return CRMTool(
         definition=Tool(

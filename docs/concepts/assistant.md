@@ -14,6 +14,10 @@ proposal or run an available preview without claiming the action was completed.
 A healthy chat connection does not prove access to business tools. The
 assistant must report a refused or unavailable operation accurately. A timed-out
 write may already have completed; check current CRM state before trying again.
+Business errors can include a request reference and the stage that failed.
+Retain that reference when reporting a problem so protected runtime logs can
+identify time spent on identity, permissions, catalog discovery and governed
+data operations. The reference does not establish whether a write committed.
 When the CRM application is waking, the assistant waits within a bounded
 readiness deadline before calling its tools. If access still cannot be obtained,
 it reports that outcome and does not replay a business write.

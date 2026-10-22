@@ -24,12 +24,42 @@ schema through `tools/list`; for example:
 ```
 
 The call result contains `content` JSON text and matching `structuredContent`
-with `{code, data?, message?}`; errors set `isError: true`. Codes include `ok`,
+with `{code, data?, message?, diagnostics?}`; errors set `isError: true`. Codes include `ok`,
 `invalid_arguments`, `validation_error`, `forbidden`, `not_found`, `conflict`,
 `unavailable`, `internal_error`, and `result_too_large`. Invalid inputs and
 internal exceptions are redacted. Serialized business results exceeding
 128,000 characters are replaced by a short error; page sizes remain capped at
 100. A tool declares a 60-second client timeout through MCP metadata.
+
+### Request diagnostics
+
+Registered business tool errors include `diagnostics.request_uid`, a server-generated UUID
+matching the CRM request and tool logs. When an instrumented stage raises,
+`diagnostics.failed_stage` identifies `identity`, `permissions`, `catalog` or
+`metatables`. The compact `result_too_large` error omits diagnostics. Successful
+business envelopes retain their existing shape. Clients must preserve the
+business error envelope, including its code and request reference.
+
+The `src.crm.platform.diagnostics` logger emits `crm.mcp.tool.started`,
+`crm.mcp.stage.started`, `crm.mcp.stage.completed` and
+`crm.mcp.tool.completed` events. Start events identify an in-progress stage
+even before a stalled call finishes. Completion events include elapsed
+milliseconds; tool completion includes the business result code, failed stage
+and accumulated per-stage durations. Catalog events report whether bindings
+were already cached, without changing catalog or permission caching behavior.
+
+`identity` measures CRM admission and effective-person context construction
+after SDK request verification. `permissions` measures fresh capability
+evaluation; `catalog` measures binding resolution; `metatables` measures the
+governed operation's client round trip. These timings exclude plugin startup,
+token exchange, SDK request verification and MCP discovery; they do not claim
+to measure database execution alone.
+
+Unavailable and unexpected failures log bounded exception types and stack
+locations, plus an upstream HTTP status and UUID request ID when available.
+Logs exclude exception messages, source lines, locals, tool arguments, record
+contents, SQL, parameters, response bodies, URLs and credentials. Public error
+messages remain redacted; exception details stay in protected runtime logs.
 
 Hosted business calls use the verified requester when a workload is delegated
 to serve a person. A direct hosted caller has no requester: the API looks up

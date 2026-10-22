@@ -26,6 +26,7 @@ from ..models.interactions import InteractionPatch
 from ..models.merge import MergeExecuteRequest, MergePreviewRequest
 from ..models.queries import FILTER_MODELS, QueryScope
 from ..models.record_filters import RecordFilters
+from ..platform.diagnostics import observe_stage
 from ..platform.runtime import CAPABILITIES, BootstrapPort, DirectoryPort, PolicyPort
 from ..repositories.records import RECORDS, VersionedRecordStore
 from ..repositories.resources.catalog import ORDER_COLUMNS, RESOURCE_SPECS
@@ -114,14 +115,15 @@ class CRMContext:
     directory: DirectoryPort
 
     def require(self, capability: str) -> None:
-        try:
-            capabilities = frozenset(self.policy.capabilities(self.actor_uid))
-        except Exception as exc:
-            raise ServiceUnavailable("CRM policy evaluation failed") from exc
-        if not capabilities <= CAPABILITIES:
-            raise ServiceUnavailable("CRM policy returned invalid capabilities")
-        if capability not in capabilities:
-            raise AccessDenied(f"{capability} access denied")
+        with observe_stage("permissions"):
+            try:
+                capabilities = frozenset(self.policy.capabilities(self.actor_uid))
+            except Exception as exc:
+                raise ServiceUnavailable("CRM policy evaluation failed") from exc
+            if not capabilities <= CAPABILITIES:
+                raise ServiceUnavailable("CRM policy returned invalid capabilities")
+            if capability not in capabilities:
+                raise AccessDenied(f"{capability} access denied")
 
 
 class CRMOperations:

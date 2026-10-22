@@ -8,6 +8,7 @@ from typing import Any
 from metatables import MetaTable
 
 from ..platform.catalog import CatalogRegistry, configured_registry
+from ..platform.diagnostics import observe_stage
 
 
 class GovernedGateway:
@@ -23,27 +24,30 @@ class GovernedGateway:
         parameter_types: dict[str, str],
         max_rows: int = 1000,
     ) -> dict[str, Any]:
-        return MetaTable.execute_operation(
-            {
-                "operation": operation,
-                "statement": {
-                    "sql": sql,
-                    "parameters": parameters,
-                    # The current backend only normalizes temporal and JSON
-                    # metadata. All scalar values are explicitly cast by SQL
-                    # where PostgreSQL cannot infer them safely.
-                    "parameter_types": {
-                        key: value
-                        for key, value in parameter_types.items()
-                        if value in {"json", "jsonb"}
+        with observe_stage("catalog", cache_hit="bindings" in getattr(self.registry, "__dict__", {})):
+            data_source_uid = self.registry.data_source_uid
+        with observe_stage("metatables"):
+            return MetaTable.execute_operation(
+                {
+                    "operation": operation,
+                    "statement": {
+                        "sql": sql,
+                        "parameters": parameters,
+                        # The current backend only normalizes temporal and JSON
+                        # metadata. All scalar values are explicitly cast by SQL
+                        # where PostgreSQL cannot infer them safely.
+                        "parameter_types": {
+                            key: value
+                            for key, value in parameter_types.items()
+                            if value in {"json", "jsonb"}
+                        },
                     },
-                },
-                # One DataSource per request; the database enforces table
-                # permissions on the tables the SQL actually touches.
-                "data_source_uid": self.registry.data_source_uid,
-                "limits": {"max_rows": max_rows, "statement_timeout_ms": 15000},
-            }
-        )
+                    # One DataSource per request; the database enforces table
+                    # permissions on the tables the SQL actually touches.
+                    "data_source_uid": data_source_uid,
+                    "limits": {"max_rows": max_rows, "statement_timeout_ms": 15000},
+                }
+            )
 
     @staticmethod
     def _json(value: Any, *, expected: type, label: str) -> Any:
