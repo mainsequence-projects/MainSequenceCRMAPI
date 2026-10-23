@@ -138,16 +138,16 @@ def test_the_assistant_kept_its_declaration_when_it_moved_into_this_file():
         "llm_model": "gpt-5.6-luna",
         "llm_thinking": "medium",
         "command_center_icon": {
-            "path": "assets/agents/rolo/idle.png",
+            "path": "assets/agents/sequence/assets/crm/neutral/idle.png",
             "rendering": "color",
-            "image_rendering": "pixelated",
+            "image_rendering": "auto",
         },
         "command_center_animations": {
             "poses": {
-                "thinking": {"path": "assets/agents/rolo/thinking.png"},
-                "working": {"path": "assets/agents/rolo/working.png"},
-                "outreach": {"path": "assets/agents/rolo/outreach.png"},
-                "error": {"path": "assets/agents/rolo/error.png"},
+                "thinking": {"path": "assets/agents/sequence/assets/crm/neutral/thinking.png"},
+                "working": {"path": "assets/agents/sequence/assets/crm/neutral/working.png"},
+                "outreach": {"path": "assets/agents/sequence/assets/crm/neutral/working.png"},
+                "error": {"path": "assets/agents/sequence/assets/crm/neutral/error.png"},
             },
             "tools": [{"application": "crm", "pose": "outreach"}],
         },

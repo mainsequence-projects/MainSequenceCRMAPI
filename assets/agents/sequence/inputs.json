@@ -1,0 +1,16 @@
+[
+  {
+    "key": "crm",
+    "name": "CRM assistant",
+    "action": "Relationships connecting",
+    "detail": "People \u00b7 companies \u00b7 opportunities",
+    "sha256": "855ee1323df37690f5b261141326cc14b64805015c873f6744ce14485e43ee74",
+    "short": "CRM",
+    "file": "source-assets/crm.png",
+    "box": "65 107 382 375",
+    "source": {
+      "project": "CRM assistant",
+      "path": "public/crm-people-icon-512.png"
+    }
+  }
+]
