@@ -30,4 +30,9 @@ editor handles standard Markdown; unsupported constructs remain editable in
 source mode. Editing formatted content may normalize Markdown syntax; merely
 switching modes or saving unchanged content does not rewrite the source.
 
+The assistant can find saved Agent Prompts with `crm_prompts_list` and read a
+selected document with `crm_prompts_get`. Reads require `crm.read`, include
+the exact saved Markdown in the detail result, and do not execute or send it.
+These fixed instruction documents are separate from Solution Selling Prompters.
+
 See the [Prompt API](../api/prompts.md) for payloads and permissions.

@@ -2216,6 +2216,24 @@ The local runtime probe (`metatables --local runtime status`) also returned
 no local platform migration/finalization was attempted without verified runtime
 identity.
 
+## Agent Prompt MCP reads (2026-10-23)
+
+The application MCP adds read-only `crm_prompts_list` and `crm_prompts_get` for
+saved Agent Prompts. The list uses existing bounded, metadata-only Prompt
+collections; detail returns the exact stored Markdown. Both reuse the REST
+service and effective-person `crm.read` authorization. They remain available
+with Solution Selling disabled and add no Prompt mutation or rendering tools.
+The five-skill pack assigns both reads to CRM core, and its paired repository
+copy is kept identical. No schema change, dependency update or migration
+revision is needed.
+
+Regression checks cover MCP/REST equality with literal Markdown, metadata-only
+search, paging bounds, read-only annotations, denied/spoofed requests and fresh
+permission revocation. Their private PostgreSQL transport and policy are test
+substitutes. The real-provider local gate and a hosted read of the saved
+“Linkedin Connection Outreach” document are separate release acceptance checks;
+a successful catalog listing alone does not prove the document can be read.
+
 ## Keeping this site current
 
 A material change to a CRM model, business rule, mounted route, payload,

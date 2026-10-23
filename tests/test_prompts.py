@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 from referencing import Registry, Resource
+from test_mcp_tools import call, rpc
 from test_resource_collections import SOURCE
 from test_resource_collections import collection_postgres as _pg_fixture
 
@@ -85,6 +86,56 @@ def create(client, *, name="Local-only prompt", markdown=MARKDOWN):
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+@pytest.mark.parametrize("solution_selling", [True, False])
+def test_mcp_agent_prompt_reads_match_rest_and_require_read_permission(
+    prompts_api, signed_caller, config_file, solution_selling,
+):
+    config_file(solution_selling=solution_selling, google_workspace=False)
+    client, grants, calls, _store, actor = prompts_api
+    prompt = create(client, name="Linkedin Connection Outreach")
+    create(client, name="Other document", markdown="Unrelated body")
+    grants.intersection_update({"crm.read"})
+    delegated = signed_caller(uuid.uuid4(), requester={
+        "sub": str(actor), "is_organization_admin": False,
+    })
+    catalogue = {t["name"]: t for t in rpc(client, "tools/list", headers=delegated)["tools"]}
+    assert {"crm_prompts_list", "crm_prompts_get"} <= catalogue.keys()
+    assert not {"crm_prompts_create", "crm_prompts_update"} & catalogue.keys()
+    for name in ["crm_prompts_list", "crm_prompts_get"]:
+        assert catalogue[name]["annotations"]["readOnlyHint"] is True
+        assert catalogue[name]["annotations"]["destructiveHint"] is False
+    query = {"search": "Linkedin Connection Outreach", "page_size": 1, "ordering": "name"}
+    before = len(calls)
+    listed = call(client, "crm_prompts_list", query, headers=delegated)
+    assert listed["isError"] is False
+    assert listed["structuredContent"] == {
+        "code": "ok", "data": client.get("/api/crm/v1/prompts/", params=query).json(),
+    }
+    summary = listed["structuredContent"]["data"]["items"]
+    assert len(summary) == 1 and summary[0]["uid"] == prompt["uid"]
+    assert "content_markdown" not in summary[0]
+    read = call(client, "crm_prompts_get", {"uid": prompt["uid"]}, headers=delegated)
+    assert read["isError"] is False
+    assert read["structuredContent"] == {"code": "ok", "data": prompt}
+    assert read["structuredContent"]["data"]["content_markdown"] == MARKDOWN
+    assert all(operation["operation"] == "select" for operation in calls[before:])
+    for tool, arguments in [
+        ("crm_prompts_list", {"filters": {"owner_uid": str(actor)}}),
+        ("crm_prompts_list", {"page_size": 101}),
+        ("crm_prompts_list", {"ordering": "content_markdown"}),
+        ("crm_prompts_get", {"uid": prompt["uid"], "actor_uid": str(actor)}),
+    ]:
+        before = len(calls)
+        assert call(client, tool, arguments, headers=delegated)["isError"] is True
+        assert len(calls) == before
+    assert call(client, "crm_prompts_get", {"uid": str(uuid.uuid4())}, headers=delegated)["structuredContent"]["code"] == "not_found"
+    grants.clear()
+    before = len(calls)
+    for tool, arguments in [("crm_prompts_list", query), ("crm_prompts_get", {"uid": prompt["uid"]})]:
+        assert call(client, tool, arguments, headers=delegated)["structuredContent"]["code"] == "forbidden"
+    assert len(calls) == before
 
 
 def test_fixed_markdown_crud_archive_and_metadata_only_collections(prompts_api, prompts_db):

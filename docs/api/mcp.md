@@ -7,7 +7,7 @@ is not public ingress and is outside the REST OpenAPI route index. The Main
 Sequence SDK rejects other methods and unapproved browser Origins.
 
 The catalogue is built from the same typed models as the CRM service. It has
-70 tools (39 reads, 31 writes) with Solution Selling active, or 46 tools when
+72 tools (41 reads, 31 writes) with Solution Selling active, or 48 tools when
 disabled. Tool names retain `crm_<resource>_<operation>`. Discover the exact
 schema through `tools/list`; for example:
 
@@ -101,14 +101,14 @@ The five authored business skills live under `.agents/skills/mainsequence_crm/`:
 
 | Skill | Primary tools | Business workflow |
 | --- | --- | --- |
-| `crm-core` | 37 | Contacts, Companies, affiliations, Notes, tags, activity, Tasks, Interactions, owner selection, settings and Contact merge previews. |
+| `crm-core` | 39 | Contacts, Companies, affiliations, Notes, tags, activity, Tasks, Interactions, read-only Agent Prompts, owner selection, settings and Contact merge previews. |
 | `crm-deals` | 9 | Deal records, pipeline metadata, stages, boards and versioned moves. |
 | `solution-selling/crm-prospecting` | 8 | Prospecting profiles and the required-prompter outreach workflow, actual Interaction recording, Lead state and linking the next Contact Task. |
 | `solution-selling/crm-prompters` | 6 | Template maintenance, subject/body rendering and validation of edited unsaved drafts. |
 | `solution-selling/crm-discovery` | 10 | Diagnosis preparation and records, Deal assessments and Solution Selling context. |
 
-The allocation covers all 70 business tools exactly once; workflows can reuse
-another skill's operations. With Solution Selling disabled, the 46 core/Deal tools
+The allocation covers all 72 business tools exactly once; workflows can reuse
+another skill's operations. With Solution Selling disabled, the 48 core/Deal tools
 remain. Simple record operations stay grouped in core; separate skills cover
 the workflows with distinct decisions and evidence requirements.
 

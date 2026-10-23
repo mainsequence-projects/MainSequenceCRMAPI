@@ -79,7 +79,7 @@ def test_published_pack_matches_files_and_all_links_are_served(
                     destination = destination.replace("https://", "skill://", 1)
                 assert destination.split("#", 1)[0] in served, (uri, target)
         tools = rpc(client, "tools/list")["result"]["tools"]
-        assert len(tools) == (70 if solution_selling else 46)
+        assert len(tools) == (72 if solution_selling else 48)
 
 
 def test_skill_methods_require_identity_and_approved_origin(local_backend):
@@ -133,6 +133,6 @@ def test_modern_client_discovers_skill_extension_from_any_working_directory(
                     assert len(skills.skills) == 5
                     result = await session.read_resource("skill://crm-core/SKILL.md")
                     assert result.contents[0].text == (PACK / "crm-core/SKILL.md").read_text()
-                    assert len((await session.list_tools()).tools) == 70
+                    assert len((await session.list_tools()).tools) == 72
 
     anyio.run(scenario)

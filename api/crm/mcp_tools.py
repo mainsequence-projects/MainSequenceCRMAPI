@@ -246,6 +246,7 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
         "tags",
         "activity",
         "pipelines",
+        "prompts",
     ):
         filter_model = FILTER_MODELS[resource]
         list_model = create_model(
@@ -255,17 +256,23 @@ def build_crm_tools(runtime_provider: RuntimeProvider) -> tuple[CRMTool, ...]:
         )
         add(
             f"crm_{resource}_list",
-            f"List CRM {resource} with bounded paging and filters.",
+            ("Find saved Agent Prompts by name or description with bounded paging and "
+             "archive filters. Returns metadata only; read the selected UID with "
+             "crm_prompts_get for its full Markdown instructions. Agent Prompts are "
+             "separate from Solution Selling message templates (Prompters)."
+             if resource == "prompts" else f"List CRM {resource} with bounded paging and filters."),
             list_model,
             lambda service, args, resource=resource: service.list_resources(resource, args),
         )
         add(
             f"crm_{resource}_get",
-            f"Get one CRM {resource} record by UID.",
+            ("Read one saved Agent Prompt by UID, including its exact content_markdown. "
+             "Returns a stored document without rendering, executing or sending it."
+             if resource == "prompts" else f"Get one CRM {resource} record by UID."),
             _UID,
             lambda service, args, resource=resource: service.get_resource(resource, args.uid),
         )
-        if resource in {"activity", "pipelines"}:
+        if resource in {"activity", "pipelines", "prompts"}:
             continue
         singular = resource[:-1] if resource != "companies" else "company"
         create_model_type = model_for(f"{singular.title()}Create")

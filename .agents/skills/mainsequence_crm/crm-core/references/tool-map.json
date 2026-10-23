@@ -13,6 +13,8 @@
       "crm_affiliations_get",
       "crm_affiliations_create",
       "crm_affiliations_update",
+      "crm_prompts_list",
+      "crm_prompts_get",
       "crm_notes_list",
       "crm_notes_get",
       "crm_notes_create",

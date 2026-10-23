@@ -5,8 +5,33 @@ that display label and the singular **Agent Prompt**; the resource ID and API
 paths remain `prompts`.
 
 Core fixed-Markdown documents use `/api/crm/v1/prompts/`. They do not require
-Solution Selling or Google Workspace. They are REST resources; this change
-does not add Prompt tools to the assistant's MCP catalogue.
+Solution Selling or Google Workspace. The authenticated MCP catalogue exposes
+read-only `crm_prompts_list` and `crm_prompts_get` through the same service and
+effective-person `crm.read` checks as REST.
+
+## Read through MCP
+
+Use `crm_prompts_list` with `search` to find a saved Agent Prompt by its name
+or description, then `crm_prompts_get` with the selected `uid` to read its
+exact `content_markdown`. The list returns metadata only and supports the same
+bounded paging, ordering and archive filters as the REST collection. Resolve
+ambiguous matches before selecting a document. For example:
+
+```json
+{"name": "crm_prompts_list", "arguments": {"search": "Linkedin Connection Outreach", "page_size": 25}}
+```
+
+```json
+{"name": "crm_prompts_get", "arguments": {"uid": "22222222-2222-4222-8222-222222222222"}}
+```
+
+Use an actual UID returned by the list. These tools read fixed Markdown
+documents; they do not execute instructions, interpolate variables, modify
+documents or send messages. Agent Prompts remain separate from Solution Selling
+Prompters, whose tools render personalized message templates. MCP exposes no
+Agent Prompt create, update, archive or restore tools.
+
+## HTTP routes
 
 | Method | Relative path | Capability | Result |
 | --- | --- | --- | --- |
