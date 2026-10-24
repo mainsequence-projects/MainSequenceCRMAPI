@@ -58,6 +58,8 @@ nav:
           - '0004: Prospecting profiles': solution_selling_module/adrs/0004-prospecting-profiles.md
           - '0005: Lead list': solution_selling_module/adrs/0005-lead-list.md
           - '0006: Reusable prompters': solution_selling_module/adrs/0006-reusable-prompters.md
+  - Campaigns module (proposed):
+      - 'ADR 0001: Campaign task graph': campaigns_module/adrs/0001-campaign-task-graph.md
 validation:
   nav:
     omitted_files: warn

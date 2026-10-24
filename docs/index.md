@@ -14,6 +14,9 @@ This site documents the CRM service in this repository:
   [Google Cloud setup guide](google_workspace_module/setup.md). The
   [Solution Selling module](solution_selling_module/index.md) has its own
   decisions and status.
+- [Campaigns proposal](campaigns_module/adrs/0001-campaign-task-graph.md)
+  describes the task DAG, prompt specialization and per-contact progress for
+  review. This module is not implemented.
 
 The frontend is a separate Command Center application. This site does not
 describe an independent CRM login or a second user/role database: the API
