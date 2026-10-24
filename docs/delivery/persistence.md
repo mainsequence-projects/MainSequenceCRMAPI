@@ -10,6 +10,32 @@ Migration execution continues through the public
 installed package's migration improvements automatically. Updating the client
 does not deploy the shared MetaTables API or apply CRM revisions to hosted data.
 
+## Campaigns (revision 0013)
+
+Revision `0013`, downstream of `0012`, adds six tables for the optional
+Campaigns module: `mainsequence_crm__campaign`, `campaign_step`,
+`campaign_transition`, `campaign_step_prompt` (a one-to-one extension sharing
+the core Prompt's UID), `campaign_participant` (unique per campaign and
+Contact) and `campaign_progress` (the internal association unique per
+participant and step and per Task). Steps, transitions, participants and
+progress carry foreign keys to their campaign, Contact, Task and Prompt; the
+campaign's `entry_step_uid` references its own step through a key created
+after both tables exist (`fk_mainsequence_crm__campaign_entry_step`, PostgreSQL
+only, since SQLite cannot add it afterwards). JSON columns use portable
+defaults and `json_type` checks on SQLite. Existing rows are untouched;
+disabling the module keeps the tables and data.
+
+Writes are single governed statements: graph saves upsert only changed steps
+and transitions under a `FOR UPDATE` lock on the campaign row; advance creates
+the Task, the progress row and the participant version bump together; complete
+settles the Task, records the result and routes through the live transition in
+one statement. Core Task completion, reopening, contact changes and archiving,
+Prompt archiving and Contact merges include campaign guards in their existing
+statements. `tests/test_campaign_postgres.py` runs these statements, the
+two-contact scenario and revision `0013` on a disposable PostgreSQL (local
+binaries, or Docker with `CRM_TEST_POSTGRES_DOCKER=1`); `tests/test_migrations.py`
+runs the whole history on SQLite.
+
 ## Prompter subjects and constraints (revision 0011)
 
 Revision `0011`, downstream of `0010`, adds nullable `subject_template` and nonnull
@@ -44,15 +70,16 @@ The two model layers serve different purposes:
   `src/crm/solution_selling/models.py` contains the optional module's Pydantic
   contracts. `src/crm/contracts/` validates and normalizes the original core
   resources against their classes.
-- `src/crm/metatables/` contains 26 explicit SQLAlchemy-authored,
+- `src/crm/campaigns/models.py` contains the Campaigns module's contracts.
+- `src/crm/metatables/` contains 33 explicit SQLAlchemy-authored,
   platform-managed MetaTable classes. The migration
   provider uses their shared metadata. No JSON file creates classes at runtime.
 
 The tables cover singleton CRM settings; pipelines and stages; companies,
 contacts, contact-company affiliation periods, and tag links; deals and
 deal-contact links; notes, tasks and activity; redirects; source connections
-and identities; transfer jobs and rows; core Interactions; and five optional
-Solution Selling record types.
+and identities; transfer jobs and rows; core Interactions; five optional
+Solution Selling record types; and six Campaigns tables.
 Two private Google OAuth tables store single-use attempts and encrypted
 per-user grant state. They are not exposed as CRM resources. The nonsecret
 Google source account is represented in `SourceConnection` for provenance;

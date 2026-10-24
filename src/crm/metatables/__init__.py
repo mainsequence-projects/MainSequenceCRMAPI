@@ -2,6 +2,14 @@
 
 from .activity_event import ActivityEvent
 from .base import Base as Base
+from .campaigns import (
+    Campaign,
+    CampaignParticipant,
+    CampaignProgress,
+    CampaignStep,
+    CampaignStepPrompt,
+    CampaignTransition,
+)
 from .company import Company
 from .contact import Contact
 from .contact_company_affiliation import ContactCompanyAffiliation
@@ -58,4 +66,10 @@ MODELS = {
     "solution_selling_prospecting_profile": SolutionSellingProspectingProfile,
     "solution_selling_lead": SolutionSellingLead,
     "solution_selling_prompter": SolutionSellingPrompter,
+    "campaign": Campaign,
+    "campaign_step": CampaignStep,
+    "campaign_transition": CampaignTransition,
+    "campaign_step_prompt": CampaignStepPrompt,
+    "campaign_participant": CampaignParticipant,
+    "campaign_progress": CampaignProgress,
 }

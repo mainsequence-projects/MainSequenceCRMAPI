@@ -22,10 +22,10 @@ adds prospecting leads and profiles, Deal assessments, Interaction diagnoses,
 and reusable prompters. It extends rather than replaces Contact, Company,
 Deal, Task, or Interaction.
 
-The proposed [Campaigns module](../campaigns_module/adrs/0001-campaign-task-graph.md)
-defines a live DAG of task definitions, each accompanied by a specialized Agent
-Prompt, and tracks existing CRM Task instances for each enrolled Contact. Its
-models, MCP tools and usage skill are **proposed for review, not implemented**.
+The optional [Campaigns module](campaigns.md) defines a live DAG of task
+definitions, each accompanied by a specialized Agent Prompt, and tracks
+existing CRM Task instances for each enrolled Contact, with stable per-Contact
+prompt assignments and descriptive A/B comparisons.
 
 A [prompter](../solution_selling_module/index.md#prompter-lifecycle) keeps a
 reusable body template, an optional subject template and optional independent
@@ -35,7 +35,8 @@ characters without truncating, saving or sending the draft.
 
 Optional modules expose their API routes below `/extensions/<module>/` and
 mount only when enabled by the API process. Google Workspace uses
-`/extensions/google/`; Solution Selling uses `/extensions/solution-selling/`.
+`/extensions/google/`; Solution Selling uses `/extensions/solution-selling/`;
+Campaigns uses `/extensions/campaigns/`.
 The general Interaction model stays in the core CRM API.
 
 Records have stable UUIDs and relationships to other CRM records. Versions protect edits from

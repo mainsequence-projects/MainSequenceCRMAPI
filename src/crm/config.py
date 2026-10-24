@@ -20,6 +20,7 @@ class ExtensionsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     solution_selling: ExtensionConfig
     google_workspace: ExtensionConfig
+    campaigns: ExtensionConfig
 
 
 class CrmConfig(BaseModel):

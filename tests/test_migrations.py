@@ -74,7 +74,7 @@ def test_prompt_revision_enforces_utf8_bytes_and_preserves_source_on_local_sqlit
             connection.exec_driver_sql(
                 "SELECT version_num FROM mainsequence_crm__alembic_version"
             ).scalar_one()
-            == "0012"
+            == "0013"
         )
         table = sa.Table("mainsequence_crm__prompt", sa.MetaData(), autoload_with=connection)
         connection.commit()
@@ -340,7 +340,7 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         migrate("upgrade", "head")
 
         version = sa.text("SELECT version_num FROM mainsequence_crm__alembic_version")
-        assert one(version).version_num == "0012"
+        assert one(version).version_num == "0013"
         settings = _table("mainsequence_crm__settings", name=S, default_currency=S)
         assert tuple(one(sa.select(settings))) == ("Legacy", "EUR")
         affiliation = _table("mainsequence_crm__contact_company_affiliation", uid=U)
@@ -368,7 +368,7 @@ def test_revisions_upgrade_and_downgrade_on_the_local_sqlite_runtime(tmp_path):
         legacy_contact = _table("mainsequence_crm__contact", linkedin_url=S)
         assert one(sa.select(legacy_contact)).linkedin_url == LINKEDIN
         migrate("upgrade", "head")
-        assert one(version).version_num == "0012"
+        assert one(version).version_num == "0013"
         assert one(sa.select(contact)).socials == {"linkedin": LINKEDIN}
 
 

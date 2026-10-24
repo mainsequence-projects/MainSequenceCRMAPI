@@ -1,6 +1,6 @@
 ---
 name: crm-core
-description: Operate everyday CRM records through MCP. Use for Contacts, Companies, employment history, Notes, tags, activity, Tasks, Interactions, read-only Agent Prompts, owner selection, settings and Contact merge previews. Route Deal pipeline work and Solution Selling workflows to their dedicated skills.
+description: Operate everyday CRM records through MCP. Use for Contacts, Companies, employment history, Notes, tags, activity, Tasks, Interactions, read-only Agent Prompts, owner selection, settings and Contact merge previews. Route Deal pipeline work, Solution Selling workflows and Campaign graphs to their dedicated skills.
 ---
 
 # Everyday CRM work
@@ -11,7 +11,10 @@ for the request. Use [Deals](skill://crm-deals/SKILL.md) for opportunities and b
 use the Solution Selling skills for
 [prospecting](skill://solution-selling/crm-prospecting/SKILL.md),
 [draft rendering](skill://solution-selling/crm-prompters/SKILL.md) or
-[discovery](skill://solution-selling/crm-discovery/SKILL.md).
+[discovery](skill://solution-selling/crm-discovery/SKILL.md); use
+[Campaigns](skill://crm-campaigns/SKILL.md) for multi-step outreach graphs,
+enrollment and campaign task execution. A Task created by a campaign is
+completed through that skill's outcome command, not `crm_tasks_complete`.
 
 ## Tool selection
 

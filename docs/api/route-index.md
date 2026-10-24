@@ -1,9 +1,9 @@
 # Mounted route index
 
 This is the exact core method/path inventory exposed by `api.crm.main:app`.
-Both optional extensions are active in `config/crm.yaml`; their additional
-routes are described in [Solution Selling](solution-selling.md) and
-[Google Workspace](google-workspace.md). All optional extension API routes use
+All three optional extensions are active in `config/crm.yaml`; their additional
+routes are described in [Solution Selling](solution-selling.md),
+[Google Workspace](google-workspace.md) and [Campaigns](campaigns.md). All optional extension API routes use
 `/extensions/<module>/`; core CRM routes use `/api/crm/v1/`. The grouped pages explain payloads and behavior. Updating a mounted route also
 requires updating this index; `tests/test_documentation.py` compares it with
 FastAPI's generated OpenAPI paths.
@@ -143,6 +143,29 @@ FastAPI's generated OpenAPI paths.
 
 | `POST` | `/extensions/solution-selling/context/` | [Solution Selling](solution-selling.md) |
 | `POST` | `/extensions/solution-selling/diagnoses/prepare/` | [Solution Selling](solution-selling.md) |
+| `GET` | `/extensions/campaigns/campaigns/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/campaigns/` | [Campaigns](campaigns.md) |
+| `GET` | `/extensions/campaigns/campaigns/{uid}/` | [Campaigns](campaigns.md) |
+| `PATCH` | `/extensions/campaigns/campaigns/{uid}/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/campaigns/{uid}/archive/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/campaigns/{uid}/restore/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/campaigns/{uid}/graph/validate/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/campaigns/{uid}/graph/` | [Campaigns](campaigns.md) |
+| `GET` | `/extensions/campaigns/prompts/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/prompts/` | [Campaigns](campaigns.md) |
+| `GET` | `/extensions/campaigns/prompts/{uid}/` | [Campaigns](campaigns.md) |
+| `PATCH` | `/extensions/campaigns/prompts/{uid}/` | [Campaigns](campaigns.md) |
+| `GET` | `/extensions/campaigns/participants/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/participants/` | [Campaigns](campaigns.md) |
+| `GET` | `/extensions/campaigns/participants/{uid}/` | [Campaigns](campaigns.md) |
+| `PATCH` | `/extensions/campaigns/participants/{uid}/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/prepare/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/advance/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/complete/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/wait/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/block/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/report/` | [Campaigns](campaigns.md) |
+| `POST` | `/extensions/campaigns/tasks/reconcile/` | [Campaigns](campaigns.md) |
 
 Export creation and download routes are not mounted and therefore do not
 appear here.

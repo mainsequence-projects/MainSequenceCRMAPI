@@ -128,6 +128,21 @@ class ContactMerge(GovernedGateway):
         contact_tag = MODELS["contact_tag"].__tablename__
         source_identity = MODELS["source_identity"].__tablename__
         affiliation = MODELS["contact_company_affiliation"].__tablename__
+        participant = MODELS["campaign_participant"].__tablename__
+        enrolled = self._operation(
+            operation="select",
+            sql=(
+                f'SELECT count(*) AS enrollments FROM "{participant}" p WHERE p.contact_uid IN '
+                "(CAST(%(loser_uid)s AS uuid), CAST(%(survivor_uid)s AS uuid))"
+            ),
+            parameters={"loser_uid": str(loser_uid), "survivor_uid": str(survivor_uid)},
+            parameter_types={},
+            max_rows=1,
+        )
+        if int((enrolled.get("rows") or [{"enrollments": 0}])[0].get("enrollments", 0)):
+            # Enrollment identity is immutable and A/B assignments are per Contact;
+            # no merge policy combines them yet (ADR 0001 implementation plan).
+            raise ResourceConflict("Contacts enrolled in a Campaign cannot be merged")
         counts_result = self._operation(
             operation="select",
             sql=(

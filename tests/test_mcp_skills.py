@@ -52,7 +52,7 @@ def test_published_pack_matches_files_and_all_links_are_served(
         skills = rpc(client, "skills/list")["result"]["skills"]
         expected = {"skill://" + path.relative_to(PACK).as_posix() for path in PACK.rglob("SKILL.md")}
         assert {skill["uri"] for skill in skills} == expected
-        assert len(skills) == 5
+        assert len(skills) == 6
         served = {}
         for skill in skills:
             assert rpc(client, "skills/get", {"uri": skill["uri"]})["result"]["skill"] == skill
@@ -68,7 +68,7 @@ def test_published_pack_matches_files_and_all_links_are_served(
                 assert "sha256:" + hashlib.sha256(data).hexdigest() == resource["digest"]
                 assert resource["uri"] not in served
                 served[resource["uri"]] = actual["text"]
-        assert len(served) == 8
+        assert len(served) == 9
         for uri, text in served.items():
             for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
                 if target.startswith("skill://"):
@@ -79,7 +79,7 @@ def test_published_pack_matches_files_and_all_links_are_served(
                     destination = destination.replace("https://", "skill://", 1)
                 assert destination.split("#", 1)[0] in served, (uri, target)
         tools = rpc(client, "tools/list")["result"]["tools"]
-        assert len(tools) == (72 if solution_selling else 48)
+        assert len(tools) == (93 if solution_selling else 69)
 
 
 def test_skill_methods_require_identity_and_approved_origin(local_backend):
@@ -130,9 +130,9 @@ def test_modern_client_discovers_skill_extension_from_any_working_directory(
                     discovery = await session.discover()
                     assert EXTENSION in discovery.capabilities.extensions
                     skills = await session.send_request(ListSkillsRequest(), ListSkillsResult)
-                    assert len(skills.skills) == 5
+                    assert len(skills.skills) == 6
                     result = await session.read_resource("skill://crm-core/SKILL.md")
                     assert result.contents[0].text == (PACK / "crm-core/SKILL.md").read_text()
-                    assert len((await session.list_tools()).tools) == 72
+                    assert len((await session.list_tools()).tools) == 93
 
     anyio.run(scenario)

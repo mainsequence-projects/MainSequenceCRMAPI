@@ -28,6 +28,7 @@ from ..models.queries import FILTER_MODELS, QueryScope
 from ..models.record_filters import RecordFilters
 from ..platform.diagnostics import observe_stage
 from ..platform.runtime import CAPABILITIES, BootstrapPort, DirectoryPort, PolicyPort
+from ..repositories.campaigns import CampaignStore
 from ..repositories.records import RECORDS, VersionedRecordStore
 from ..repositories.resources.catalog import ORDER_COLUMNS, RESOURCE_SPECS
 from ..repositories.resources.store import GovernedResourceStore
@@ -136,11 +137,20 @@ class CRMOperations:
         resources: GovernedResourceStore | None = None,
         records: VersionedRecordStore | None = None,
         bootstrap: BootstrapPort | None = None,
+        campaign_store: CampaignStore | None = None,
     ) -> None:
         self.context = context
         self.resources = resources if resources is not None else GovernedResourceStore()
         self.records = records if records is not None else VersionedRecordStore()
         self.bootstrap = bootstrap
+        self._campaign_store = campaign_store
+
+    @property
+    def campaigns(self):
+        """Campaigns module operations over the same actor, policy and stores."""
+        from ..campaigns.service import CampaignOperations
+
+        return CampaignOperations(self.context, store=self._campaign_store, resources=self.resources)
 
     @staticmethod
     def _invalid(path: str) -> DomainValidationError:

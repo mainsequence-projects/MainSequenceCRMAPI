@@ -15,6 +15,7 @@ the concept you need:
 | [Tasks, notes, tags, and activity](engagement.md) | Follow-up work, narrative, labels, read-only history |
 | [Imports and transfers](transfers.md) | Source connections, staged imports, job state and reports |
 | [Service and settings](service.md) | Readiness, bootstrap, principal, settings, process health |
+| [Campaigns](campaigns.md) | Optional campaign graphs, step prompts, enrollment and campaign task commands |
 
 The API is consumed through Command Center's delegated transport. Main
 Sequence signs the caller of each delegated request and the API verifies that

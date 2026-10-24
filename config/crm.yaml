@@ -3,3 +3,5 @@ extensions:
     active: true
   google_workspace:
     active: true
+  campaigns:
+    active: true

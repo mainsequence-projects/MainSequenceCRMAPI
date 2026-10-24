@@ -11,8 +11,8 @@ shared reference from `crm-core`; the other skills link to that resource.
   bounds. With direct CRM tools, call those tools; with a generic CRM bridge,
   discover with `crm__list_tools` and invoke through `crm__call_tool`. Bridge
   wrappers are not business tools in the allocation.
-- Solution Selling tools are advertised only when that module is active. A
-  skill's presence does not make its tools available. Explain a missing
+- Solution Selling and Campaigns tools are advertised only when their module is
+  active. A skill's presence does not make its tools available. Explain a missing
   operation instead of substituting repository edits or undocumented API calls.
 - Search with the tool's supported filters and bounded paging, then read the
   selected UID before changing it. Resolve ambiguous names using returned
@@ -38,6 +38,7 @@ identity after a denied human request.
 | Ordinary list/get, stages/board, principals/settings reads, context, diagnosis preparation, prompter rendering | `crm.read` |
 | Ordinary record creation | `crm.create` |
 | Record updates, Task complete/reopen, Deal move | `crm.edit` |
+| Campaign graph saves, participant changes, campaign task commands | `crm.edit` (advance also `crm.create`; cancelling or withdrawing also `crm.archive`) |
 | Affiliation creation/update and primary Company transition | `crm.edit` |
 | Contact merge preview, although read-only | `crm.merge` |
 | Settings update | `crm.configure` |

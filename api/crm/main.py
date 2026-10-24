@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.crm.affiliation_routes import router as affiliation_router
+from api.crm.campaign_routes import router as campaign_router
 from api.crm.google_routes import mount_public_routes as mount_google_public_routes
 from api.crm.google_routes import router as google_router
 from api.crm.mcp_server import install_crm_mcp
@@ -17,6 +18,7 @@ from api.crm.routes import router as crm_router
 from api.crm.transfer_routes import router as transfer_router
 from mainsequence.server.fastapi import install_request_identity
 from src.crm.assistant_runtime import resolve_assistant
+from src.crm.campaigns.config import campaigns_enabled
 from src.crm.config import crm_config
 from src.crm.google_workspace.config import google_workspace_enabled
 from src.crm.models.bootstrap import Bootstrap
@@ -74,6 +76,8 @@ def create_app() -> FastAPI:
     application.include_router(core_router)
     if solution_selling_enabled():
         application.include_router(module_router)
+    if campaigns_enabled():
+        application.include_router(campaign_router)
     # Once, after every route is mounted, so the deployment's public ingress
     # routes can be checked and caller verification runs before any CRM
     # middleware or route: a platform-signed caller assertion when deployed, a

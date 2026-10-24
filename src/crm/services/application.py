@@ -17,6 +17,7 @@ from sqlalchemy import select
 from metatables import MetaTable
 from metatables.compiled_sql.v1 import compile_sqlalchemy_statement
 
+from ..campaigns.config import campaigns_enabled
 from ..google_workspace.config import google_workspace_enabled
 from ..metatables import MODELS
 from ..platform.catalog import CatalogRegistry, configured_registry
@@ -109,6 +110,7 @@ class BootstrapService:
             "modules": {
                 "solution_selling": solution_selling_enabled(),
                 "google_workspace": google_workspace_enabled(),
+                "campaigns": campaigns_enabled(),
             },
             "limits": {
                 "list_page_max": 100,

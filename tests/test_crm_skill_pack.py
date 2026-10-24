@@ -16,13 +16,15 @@ ALLOCATION = json.loads((PACK / "crm-core/references/tool-map.json").read_text()
 
 
 @pytest.mark.parametrize("solution_selling", [True, False])
-def test_every_advertised_tool_has_one_primary_skill(config_file, solution_selling):
-    config_file(solution_selling=solution_selling)
+@pytest.mark.parametrize("campaigns", [True, False])
+def test_every_advertised_tool_has_one_primary_skill(config_file, solution_selling, campaigns):
+    config_file(solution_selling=solution_selling, campaigns=campaigns)
     catalogue = {tool.definition.name for tool in build_crm_tools(lambda: None)}
     allocated = [
         name
         for skill, names in ALLOCATION.items()
-        if solution_selling or not skill.startswith("solution-selling/")
+        if (solution_selling or not skill.startswith("solution-selling/"))
+        and (campaigns or skill != "crm-campaigns")
         for name in names
     ]
     duplicates = {name for name, count in Counter(allocated).items() if count != 1}

@@ -37,6 +37,7 @@ def service_for(request: Request) -> CRMOperations:
         resources=request_port(request, "crm_resources"),
         records=request_port(request, "crm_record_store"),
         bootstrap=request_port(request, "crm_bootstrap"),
+        campaign_store=request_port(request, "crm_campaign_store"),
     )
 
 

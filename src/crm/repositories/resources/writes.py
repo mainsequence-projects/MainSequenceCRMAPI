@@ -281,12 +281,27 @@ class ResourceMutations(GovernedGateway):
             allow_existing_archived_company=resource == "contacts",
         )
         active_predicate = " AND current.archived_at IS NULL" if resource == "prompts" else ""
+        if resource == "tasks" and "contact_uid" in data:
+            # A campaign Task belongs to its participant's Contact; reassignment is rejected.
+            progress_table = MODELS["campaign_progress"].__tablename__
+            gate_extra += (
+                f' AND NOT EXISTS (SELECT 1 FROM "{progress_table}" linked '
+                "WHERE linked.task_uid=CAST(%(entity_uid)s AS uuid) "
+                "AND linked.step_uid IS NOT NULL AND CAST(%(contact_uid)s AS uuid) IS DISTINCT FROM "
+                "(SELECT contact_uid FROM current_task))"
+            )
+            ctes_prefix = [
+                f'current_task AS (SELECT contact_uid FROM "{entity_table}" WHERE uid=%(entity_uid)s::uuid)'
+            ]
+        else:
+            ctes_prefix = []
         entity_exists = (
             f'AND EXISTS (SELECT 1 FROM "{entity_table}" current '
             "WHERE current.uid=CAST(%(entity_uid)s AS uuid) "
             "AND current.version=CAST(%(expected_version)s AS bigint)" + active_predicate + ")"
         )
         ctes = [
+            *ctes_prefix,
             *(
                 [
                     f'prior_company AS (SELECT company_uid FROM "{entity_table}" '
@@ -437,13 +452,28 @@ class ResourceMutations(GovernedGateway):
                 "updated_at=NOW(), updated_by_uid=%(actor_uid)s::uuid, version=p.version+1 "
                 "FROM changed WHERE p.uid=changed.pipeline_uid RETURNING p.uid)"
             )
+        source = "changed"
+        if archived and resource in {"tasks", "prompts"}:
+            # Archiving an assigned prompt or a campaign Task blocks its open work for
+            # explicit reconciliation; it never switches variants or completes work.
+            progress_table = MODELS["campaign_progress"].__tablename__
+            link = (
+                "g.task_uid=changed.uid" if resource == "tasks"
+                else "(g.prompt_assignment->>'prompt_uid')::uuid=changed.uid"
+            )
+            ctes.append(
+                f'campaign_blocked AS (UPDATE "{progress_table}" g SET state=\'blocked\', '
+                f"blocked_reason='{resource[:-1]}_archived', updated_at=NOW() FROM changed "
+                f"WHERE {link} AND g.state IN ('open','waiting') RETURNING g.uid)"
+            )
+            source = "changed CROSS JOIN (SELECT count(*) FROM campaign_blocked) campaign_guard"
         sql = (
             "WITH " + ", ".join(ctes) + f' INSERT INTO "{activity_table}" '
             "(uid, entity_type, entity_uid, kind, occurred_at, recorded_at, "
             "actor_uid, origin, command_uid, summary, changes, source_attribution) "
             "SELECT %(event_uid)s::uuid, %(entity_type)s, changed.uid, "
             f"'{verb}d', NOW(), NOW(), %(actor_uid)s::uuid, 'live', %(command_uid)s::uuid, "
-            "%(summary)s, '{}'::jsonb, NULL FROM changed RETURNING entity_uid"
+            f"%(summary)s, '{{}}'::jsonb, NULL FROM {source} RETURNING entity_uid"
         )
         result = self._operation(
             operation="insert",

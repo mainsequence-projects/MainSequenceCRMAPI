@@ -97,7 +97,7 @@ treated as uncertain when it reports a failed call.
 
 ## CRM usage skill pack
 
-The five authored business skills live under `.agents/skills/mainsequence_crm/`:
+The six authored business skills live under `.agents/skills/mainsequence_crm/`:
 
 | Skill | Primary tools | Business workflow |
 | --- | --- | --- |
@@ -106,10 +106,11 @@ The five authored business skills live under `.agents/skills/mainsequence_crm/`:
 | `solution-selling/crm-prospecting` | 8 | Prospecting profiles and the required-prompter outreach workflow, actual Interaction recording, Lead state and linking the next Contact Task. |
 | `solution-selling/crm-prompters` | 6 | Template maintenance, subject/body rendering and validation of edited unsaved drafts. |
 | `solution-selling/crm-discovery` | 10 | Diagnosis preparation and records, Deal assessments and Solution Selling context. |
+| `crm-campaigns` | 21 | Campaign graphs and step prompts, explicit enrollment, campaign task briefings, outcomes, waits, blocks, reconciliation and A/B interpretation. |
 
-The allocation covers all 72 business tools exactly once; workflows can reuse
-another skill's operations. With Solution Selling disabled, the 48 core/Deal tools
-remain. Simple record operations stay grouped in core; separate skills cover
+The allocation covers all 93 business tools exactly once; workflows can reuse
+another skill's operations. With Solution Selling disabled, 69 tools remain;
+with Campaigns disabled, its 21 tools are not advertised. Simple record operations stay grouped in core; separate skills cover
 the workflows with distinct decisions and evidence requirements.
 
 `crm-core/references/tool-map.json` records the exact primary allocation.
@@ -120,7 +121,7 @@ Cross-skill links use published `skill://` URIs; references within a skill
 use relative paths. The API and static
 repositories contain identical usage packs; repository development skills stay
 in their separate namespace. `tests/test_crm_skill_pack.py` checks catalogue
-coverage with the module enabled and disabled, tool references and pack links.
+coverage with each module enabled and disabled, tool references and pack links.
 
 These instructions apply to advertised CRM MCP operations, including direct
 clients and generic discovery/call bridges. They follow the connected tool

@@ -1,6 +1,6 @@
 # ADR 0001: Campaigns as a live DAG of prompted task definitions
 
-- **Status:** Proposed for review; no Campaigns models, routes, tools or runtime are implemented.
+- **Status:** Accepted and implemented (2026-10-24). The [concept](../../concepts/campaigns.md) and [API](../../api/campaigns.md) pages describe the mounted behavior; the amendments below record decisions taken during implementation.
 - **Date:** 2026-10-24
 - **Scope:** Optional Campaigns module, visual design, contact progression, application MCP and agent usage skills.
 - **Related:** Existing [Contacts](../../concepts/contacts.md), [Tasks](../../concepts/tasks-notes.md), [Agent Prompts](../../concepts/prompts.md), [application MCP](../../api/mcp.md) and [module boundaries](../../concepts/index.md).
@@ -377,8 +377,10 @@ the advertised MCP catalogue. Disabled modules retain their data.
 REST, MCP and the visual designer must call the same shared services, with
 verified effective-person authorization and ordinary CRM version fences.
 Prompts and task results never grant capabilities. Use existing `crm.read`,
-`crm.create`, `crm.update` and `crm.archive` checks as applicable, including
-the capabilities needed for related Task/Prompt changes. No manual grants,
+`crm.create`, `crm.edit` and `crm.archive` checks as applicable, including
+the capabilities needed for related Task/Prompt changes (advance creates a
+Task and needs `crm.create`; cancelling, withdrawing or the `cancel` graph
+policy archive Tasks and need `crm.archive`). No manual grants,
 new identity store or workload-permission fallback is introduced.
 
 The following is the proposed minimum MCP surface. Names are design targets
@@ -394,7 +396,9 @@ until implemented and advertised with exact schemas:
 | `crm_campaign_participants_list`, `crm_campaign_participants_get`, `crm_campaign_participants_create`, `crm_campaign_participants_update` | Read per-contact progress; enroll a Contact; update context, pause/resume or withdraw. Progress fields are service-owned. |
 | `crm_campaign_tasks_prepare` | Read-only current briefing for an existing participant Task, including its already-assigned prompt variant, context, allowed outcomes and version provenance. Never rerandomizes. |
 | `crm_campaign_tasks_advance` | Create the eligible Task and its association once, or return the existing instance; does not execute its work. |
-| `crm_campaign_tasks_complete` | Validate a result, settle the existing Task and choose the next step atomically. |
+| `crm_campaign_tasks_complete` | Validate a result, settle the existing Task and choose the next step atomically. A stale `prepared_with` records the facts and blocks the instance (`stale_briefing`) instead of routing. |
+| `crm_campaign_tasks_wait`, `crm_campaign_tasks_block`, `crm_campaign_tasks_report` | Typed commands that record a wake time, an actionable block reason, or observed evidence and partial results on the open instance without routing. |
+| `crm_campaign_tasks_reconcile` | Explicitly resolve blocked work: `resume` the stored result against the current graph, `reopen` the instance, or `cancel` it (archive the Task) and reroute to an unvisited step or finish. |
 
 Graph editing covers node and edge CRUD without adding separate tool families
 for every embedded value. Read operations need read-only annotations; writes
@@ -480,5 +484,29 @@ parallel joins, recurring campaigns or statistical decision engine. A/B uses
 embedded variants, assignments and comparison metadata; A/B/n is deferred. Those can be
 assessed separately when a concrete use case requires them.
 
-This ADR changes documentation only. It does not enable Campaigns, add runtime
-behavior, expose MCP tools, create agent skills or deploy a service.
+## Implementation amendments (2026-10-24)
+
+- `crm.update` in the original text meant the existing `crm.edit` capability.
+- Progress is stored in an internal `campaign_progress` association keyed by
+  participant and step with a unique Task UID; it remains an embedded value of
+  the participant API and has no UID, route or version of its own.
+- `next_step_uid` keeps pointing at the current step until completion routes
+  onward, so a repeated or lost-response advance resolves to the existing
+  instance. Position-only graph edits never bump a step version.
+- Live edits: material step changes block open work (`step_changed`),
+  retirements block (`step_retired`) or, with `affected_open_work: cancel`,
+  archive the Tasks and cancel progress; prompt content or contract changes
+  block open work (`prompt_changed`); all of these flag compared assignments
+  as `comparison_changed`. Participants scheduled to a retired step are
+  rerouted explicitly through the participant command.
+- Core guards: core Task completion blocks the instance as
+  `outcome_required`, reopening as `task_reopened`, Task or Prompt archiving
+  as `task_archived`/`prompt_archived`; Task Contact reassignment and Contact
+  merges involving enrollments are rejected.
+- A/B accounting groups by step and comparison key over the assignment's own
+  metric and window; a success after the window does not count, cancelled
+  assignments stay in matured denominators, and earlier keys are reported as
+  `current: false`. No scheduled worker is introduced; advancement is an
+  authenticated person or assistant command over persisted eligibility.
+- Finite bounds: 50 steps, 200 transitions, 20 outcomes, 30 inputs/result
+  fields/bindings, 50 evidence items, 16 KiB JSON values, 64 KiB Markdown.

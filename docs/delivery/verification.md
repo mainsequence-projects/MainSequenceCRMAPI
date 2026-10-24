@@ -15,6 +15,33 @@ must accompany material changes. The running FastAPI OpenAPI document can be
 compared with the [mounted route index](../api/route-index.md);
 `tests/test_documentation.py` enforces method/path parity.
 
+### Campaigns module (2026-10-24)
+
+Implemented ADR 0001 end to end: six tables (revision `0013`), the
+`src/crm/campaigns/` domain package, `CampaignStore` governed statements,
+`/extensions/campaigns/` routes, 21 MCP tools, the `crm-campaigns` usage skill
+and core Task/Prompt/merge guards. Executed locally on this checkout:
+
+- `.venv/bin/pytest -q` (the full suite, including `tests/test_campaigns.py`
+  contract, graph, service and MCP/HTTP parity checks, updated catalogue
+  counts of 93/69 tools and migration head `0013`).
+- `CRM_TEST_POSTGRES_DOCKER=1 .venv/bin/pytest -q tests/test_campaign_postgres.py`:
+  five scenarios on a disposable `postgres:17` container, covering the
+  two-contact Dubai example on different paths, duplicate and premature
+  advance, persisted waits, core completion/reopen guards, Task contact
+  reassignment rejection, Prompt archive blocking, merge rejection,
+  withdrawal, layout-only versus material graph edits, stale saves rolling
+  back whole, stale-briefing preservation, resume, cancel with reroute,
+  changed-exposure flags, shared Prompt version bumps, A/B maturity and
+  late-report accounting, and revision `0013` upgrade/downgrade on PostgreSQL.
+- `.venv/bin/ruff check api/crm src/crm tests`, `.venv/bin/mkdocs build --strict`.
+
+Not executed here: hosted `migrate-crm` for `0013`, deployment, hosted MCP
+authorization with a delegated requester, and a live assistant executing a
+campaign Task. Concurrency across two database connections is covered by the
+`FOR UPDATE` participant lock and unique constraints, exercised on one
+connection only. The real local-agent pre-push gate must run before pushing.
+
 ### MCP stage diagnostics (2026-10-22)
 
 The CRM now correlates business calls with server-generated request UUIDs and

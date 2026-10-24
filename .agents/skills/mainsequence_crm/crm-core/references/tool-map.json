@@ -81,6 +81,29 @@
       "crm_assessments_update",
       "crm_diagnoses_prepare",
       "crm_solution_selling_context_get"
+    ],
+    "crm-campaigns": [
+      "crm_campaigns_list",
+      "crm_campaigns_get",
+      "crm_campaigns_create",
+      "crm_campaigns_update",
+      "crm_campaigns_graph_validate",
+      "crm_campaigns_graph_update",
+      "crm_campaign_prompts_list",
+      "crm_campaign_prompts_get",
+      "crm_campaign_prompts_create",
+      "crm_campaign_prompts_update",
+      "crm_campaign_participants_list",
+      "crm_campaign_participants_get",
+      "crm_campaign_participants_create",
+      "crm_campaign_participants_update",
+      "crm_campaign_tasks_prepare",
+      "crm_campaign_tasks_advance",
+      "crm_campaign_tasks_complete",
+      "crm_campaign_tasks_wait",
+      "crm_campaign_tasks_block",
+      "crm_campaign_tasks_report",
+      "crm_campaign_tasks_reconcile"
     ]
   }
 }

@@ -56,7 +56,7 @@ class ReadyBootstrap:
                 "list_page_max": 100, "bulk_explicit_max": 200,
                 "upload_bytes_max": 20971520, "transfer_rows_max": 20000,
             },
-            "modules": {"solution_selling": True, "google_workspace": True},
+            "modules": {"solution_selling": True, "google_workspace": True, "campaigns": True},
         }
 
 

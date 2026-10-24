@@ -129,6 +129,7 @@ def install_crm_mcp(application: FastAPI) -> None:
             records=request_port(request, "crm_record_store"),
             bootstrap=request_port(request, "crm_bootstrap"),
             denial_reporter=report_denial,
+            campaign_store=request_port(request, "crm_campaign_store"),
         )
 
     catalogue = {tool.definition.name: tool for tool in build_crm_tools(runtime)}

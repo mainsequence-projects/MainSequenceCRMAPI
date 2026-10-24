@@ -252,11 +252,11 @@ def test_protocol_initialize_catalogue_and_strict_validation(signed_caller):
         })
         assert init["serverInfo"]["name"] == "crm"
         catalogue = rpc(client, "tools/list")["tools"]
-        assert len(catalogue) == 72
+        assert len(catalogue) == 93
         names = {tool["name"] for tool in catalogue}
         assert "crm_contacts_archive" not in names
         assert "crm_contacts_merge_execute" not in names
-        assert sum(t["annotations"]["readOnlyHint"] for t in catalogue) == 41
+        assert sum(t["annotations"]["readOnlyHint"] for t in catalogue) == 49
         result = call(client, "crm_contacts_create", {"payload": {"first_name": "Ada"}})
         assert result["structuredContent"]["code"] == "forbidden"
         result = call(client, "crm_contacts_create", {
@@ -327,7 +327,7 @@ def test_disabled_module_runtime_unavailable_and_transport_guard(signed_caller, 
     config_file(solution_selling=False)
     with TestClient(app_for(), headers=delegated(signed_caller)) as client:
         tools = rpc(client, "tools/list")["tools"]
-        assert len(tools) == 48
+        assert len(tools) == 69
         assert "crm_leads_list" not in {t["name"] for t in tools}
         assert call(client, "crm_leads_list")["structuredContent"]["code"] == "not_found"
         assert call(client, "crm_contacts_list")["structuredContent"]["code"] == "unavailable"
@@ -397,7 +397,7 @@ def test_local_bridge_uses_real_mcp_protocol_and_no_duplicate_tools(monkeypatch,
     async def scenario():
         async with app.router.lifespan_context(app):
             catalogue = await tools["crm__list_tools"].execute("list", {})
-            assert len(catalogue.details["tools"]) == 72
+            assert len(catalogue.details["tools"]) == 93
             result = await tools["crm__call_tool"].execute("create", {
                 "tool": "crm_contacts_create", "arguments": {"payload": {"first_name": "Ada"}},
             })
