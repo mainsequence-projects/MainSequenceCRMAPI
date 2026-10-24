@@ -36,9 +36,16 @@ and core Task/Prompt/merge guards. Executed locally on this checkout:
   late-report accounting, and revision `0013` upgrade/downgrade on PostgreSQL.
 - `.venv/bin/ruff check api/crm src/crm tests`, `.venv/bin/mkdocs build --strict`.
 
-Not executed here: hosted `migrate-crm` for `0013`, deployment, hosted MCP
-authorization with a delegated requester, and a live assistant executing a
-campaign Task. Concurrency across two database connections is covered by the
+Hosted rollout (2026-10-24, commit `5d12f8e` on `main`): the workflow's
+`migrate-crm` Job run 25 reported `0013 (migrated; catalog reconciled)`, the
+`crm` and `tau` deployment runs succeeded, and an authenticated read-only check
+through the release's runtime access returned readiness `ready`,
+`modules.campaigns: true`, 17 mounted `/extensions/campaigns/` routes and empty
+campaign/prompt collections. The paired frontend's workflow file had to move to
+`api_version: 3.0.0` before the platform published the Campaigns build.
+
+Not executed here: hosted MCP authorization with a delegated requester and a
+live assistant executing a campaign Task. Concurrency across two database connections is covered by the
 `FOR UPDATE` participant lock and unique constraints, exercised on one
 connection only. The real local-agent pre-push gate must run before pushing.
 
