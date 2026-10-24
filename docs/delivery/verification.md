@@ -44,8 +44,27 @@ through the release's runtime access returned readiness `ready`,
 campaign/prompt collections. The paired frontend's workflow file had to move to
 `api_version: 3.0.0` before the platform published the Campaigns build.
 
-Not executed here: hosted MCP authorization with a delegated requester and a
-live assistant executing a campaign Task. Concurrency across two database connections is covered by the
+Owned hosted fixture (2026-10-24, approved by the user): a disposable
+`E2E fixture fd7c87cf` campaign ran through the deployed API with real
+governed SQL — two step prompts (one specializing an Agent Prompt at version
+2), graph validation and atomic save, stale-save 409, activation, enrollment
+and duplicate rejection, Sarah and Omar on different outcome paths, A/B
+assignment with persisted comparison facts, campaign-context and
+previous-result bindings, four completed core Tasks, an immature comparison
+report, core-completion `outcome_required`, Task reassignment and enrolled
+merge rejection, reconcile reopen, live-edit impact and `step_changed`
+blocking, withdrawal archiving the open Task, and MCP/REST parity — 29 checks
+passed. Cleanup was confirmed afterwards: the campaign, both prompts and all
+three Contacts are archived and no campaign Task is open; activity history
+remains by design. The local MetaTables SQLite runtime cannot run these
+PostgreSQL business statements (`compiled_sql_dialect_mismatch`), so this
+deployed fixture is the write evidence.
+
+A real local Tau agent (`openai-codex/gpt-5.6-luna`) against the Environment's
+data loaded `crm-campaigns`, discovered the 21 tools, made exactly the three
+requested read-only campaign list calls and matched fresh API reads. A live
+assistant executing a campaign Task write and hosted MCP authorization with a
+delegated requester were not exercised. Concurrency across two database connections is covered by the
 `FOR UPDATE` participant lock and unique constraints, exercised on one
 connection only. The real local-agent pre-push gate must run before pushing.
 
