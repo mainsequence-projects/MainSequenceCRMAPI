@@ -97,7 +97,10 @@ treated as uncertain when it reports a failed call.
 
 ## CRM usage skill pack
 
-The six authored business skills live under `.agents/skills/mainsequence_crm/`:
+The six authored business skills live under `.tau/skills/`, the deployed CRM assistant's own
+skills folder, beside its `solution-selling/solution-selling-workflow` skill. The API publishes
+that folder as a whole, so the assistant's skills and the published skills are one set; the
+development skills under `.agents/skills/` are never published:
 
 | Skill | Primary tools | Business workflow |
 | --- | --- | --- |
@@ -175,7 +178,8 @@ The publisher reads the selected folder directly at application creation;
 there is no generated package or second publication folder:
 
 ```text
-.agents/skills/mainsequence_crm/
+.tau/skills/
+  crm-campaigns/SKILL.md
   crm-core/
     SKILL.md
     references/mcp-usage.md
@@ -187,6 +191,7 @@ there is no generated package or second publication folder:
       SKILL.md
       references/template-context.md
     crm-discovery/SKILL.md
+    solution-selling-workflow/SKILL.md
 ```
 
 Each skill's frontmatter name matches its folder. Group names use hyphens;
@@ -203,7 +208,7 @@ capabilities, but the registered skill methods and file reads are available.
 Manifests contain the byte size and SHA-256 digest of every served file.
 Unpublished files and unknown URIs return MCP errors.
 
-All five skills remain published when Solution Selling is disabled. Its tools
+All seven skills remain published when Solution Selling is disabled. Its tools
 then disappear from `tools/list`; skill presence does not enable a module.
 Discovery and file reads require the same verified HTTP identity and permitted
 Origin as tools. They expose authored instructions, require no CRM database

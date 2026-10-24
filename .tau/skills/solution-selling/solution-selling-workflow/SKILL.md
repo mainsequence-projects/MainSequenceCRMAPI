@@ -1,5 +1,5 @@
 ---
-name: solution-selling
+name: solution-selling-workflow
 description: Use CRM Solution Selling profiles, prompters, interactions, diagnoses and Deal assessments with explicit evidence and deliberate saves.
 ---
 

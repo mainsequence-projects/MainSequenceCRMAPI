@@ -123,5 +123,5 @@ tools through the same service and effective-person checks: `crm_campaigns_
 `crm_campaign_tasks_{prepare,advance,complete,wait,block,report,reconcile}`.
 Reads carry read-only annotations. Schemas mirror the HTTP payloads
 (`payload` wrappers for create/update, `uid` for one record). The
-`crm-campaigns` usage skill in `.agents/skills/mainsequence_crm/` explains the
+`crm-campaigns` usage skill in `.tau/skills/` explains the
 workflows; see [application MCP](mcp.md).

@@ -20,7 +20,7 @@ except ImportError:
     # Main Sequence ships the official extension until MCP includes it natively.
     from mainsequence.server._mcp_skills_upstream.shared import ListSkillsRequest, ListSkillsResult
 
-PACK = Path(__file__).resolve().parents[1] / ".agents/skills/mainsequence_crm"
+PACK = Path(__file__).resolve().parents[1] / ".tau/skills"
 ACTOR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 EXTENSION = "io.modelcontextprotocol/skills"
 RPC_HEADERS = {
@@ -52,7 +52,7 @@ def test_published_pack_matches_files_and_all_links_are_served(
         skills = rpc(client, "skills/list")["result"]["skills"]
         expected = {"skill://" + path.relative_to(PACK).as_posix() for path in PACK.rglob("SKILL.md")}
         assert {skill["uri"] for skill in skills} == expected
-        assert len(skills) == 6
+        assert len(skills) == 7
         served = {}
         for skill in skills:
             assert rpc(client, "skills/get", {"uri": skill["uri"]})["result"]["skill"] == skill
@@ -68,7 +68,7 @@ def test_published_pack_matches_files_and_all_links_are_served(
                 assert "sha256:" + hashlib.sha256(data).hexdigest() == resource["digest"]
                 assert resource["uri"] not in served
                 served[resource["uri"]] = actual["text"]
-        assert len(served) == 9
+        assert len(served) == 10
         for uri, text in served.items():
             for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
                 if target.startswith("skill://"):
@@ -105,8 +105,9 @@ def test_only_files_in_published_skills_are_readable(local_backend):
     with TestClient(create_app(), headers=local_backend.sign_in(ACTOR)) as client:
         for uri in (
             "skill://build-mainsequence-crm-api/SKILL.md",
-            "skill://crm-core/../mainsequence_crm_development/build-mainsequence-crm-api/SKILL.md",
-            (PACK.parents[2] / "AGENTS.md").as_uri(),
+            "skill://crm-core/../../extensions/crm.py",
+            "skill://crm-core/../../SYSTEM.md",
+            (PACK.parents[1] / "AGENTS.md").as_uri(),
         ):
             result = rpc(client, "resources/read", {"uri": uri})
             assert "error" in result and "result" not in result
@@ -130,7 +131,7 @@ def test_modern_client_discovers_skill_extension_from_any_working_directory(
                     discovery = await session.discover()
                     assert EXTENSION in discovery.capabilities.extensions
                     skills = await session.send_request(ListSkillsRequest(), ListSkillsResult)
-                    assert len(skills.skills) == 6
+                    assert len(skills.skills) == 7
                     result = await session.read_resource("skill://crm-core/SKILL.md")
                     assert result.contents[0].text == (PACK / "crm-core/SKILL.md").read_text()
                     assert len((await session.list_tools()).tools) == 93

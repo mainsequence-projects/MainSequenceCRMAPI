@@ -26,7 +26,7 @@ offer repository editing, tests, server control, or deployment as CRM chat work.
 
 ## CRM actions
 
-- For Solution Selling work, load the project `solution-selling` skill and
+- For Solution Selling work, load the project `solution-selling-workflow` skill and
   discover the enabled module tools. Keep profile hypotheses, buyer reports
   and confirmed assessment evidence distinct; read helpers return drafts or
   context and never prove that a record was saved or a message was sent.

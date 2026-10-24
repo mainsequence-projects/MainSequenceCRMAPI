@@ -11,7 +11,7 @@ import yaml
 
 from api.crm.mcp_tools import build_crm_tools
 
-PACK = Path(__file__).resolve().parents[1] / ".agents/skills/mainsequence_crm"
+PACK = Path(__file__).resolve().parents[1] / ".tau/skills"
 ALLOCATION = json.loads((PACK / "crm-core/references/tool-map.json").read_text())["skills"]
 
 
@@ -47,7 +47,9 @@ def test_skill_pack_contains_resolvable_guidance_for_its_tools(config_file):
         assert frontmatter["description"].strip()
         # A manifest entry alone is insufficient: its owning skill must explain
         # which concrete tools to select, without inventing new operations.
-        mentioned = set(re.findall(r"`(crm_[a-z_]+)`", text))
+        # One underscore: `crm__list_tools` and `crm__call_tool` are the Tau application tools
+        # the assistant calls the CRM through, not CRM catalogue tools.
+        mentioned = set(re.findall(r"`(crm_[a-z][a-z_]*)`", text))
         assert set(names) <= mentioned, (skill, set(names) - mentioned)
         assert mentioned <= catalogue, (skill, mentioned - catalogue)
 

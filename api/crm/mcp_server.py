@@ -156,7 +156,7 @@ def install_crm_mcp(application: FastAPI) -> None:
 
     server = CRMMCPServer(
         "crm", version="1",
-        extensions=[skills_extension(".agents/skills/mainsequence_crm")],
+        extensions=[skills_extension(".tau/skills")],
     )
     # install_mcp owns authentication and browser Origin admission for both
     # platform release hosts and local URLs, as with the previous transport.

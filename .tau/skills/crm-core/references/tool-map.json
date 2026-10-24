@@ -104,6 +104,7 @@
       "crm_campaign_tasks_block",
       "crm_campaign_tasks_report",
       "crm_campaign_tasks_reconcile"
-    ]
+    ],
+    "solution-selling/solution-selling-workflow": []
   }
 }

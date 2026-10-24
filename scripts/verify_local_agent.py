@@ -355,7 +355,7 @@ def verify(contact_uid=None, solution_selling_fixture=None, *, hosted_data=False
             allowed = {"crm__list_tools", "crm__call_tool", "read"}
             require(all(p["toolName"] in allowed for p in calls),
                     "The agent used a tool outside the requested CRM read workflow.")
-            skill_root = (ROOT / ".agents/skills/mainsequence_crm").resolve()
+            skill_root = (ROOT / ".tau/skills").resolve()
             for call in calls:
                 if call["toolName"] == "read":
                     path = Path(str(call.get("args", {}).get("path", "")))

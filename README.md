@@ -105,7 +105,7 @@ new release; Google OAuth registration for it remains unverified. See the
 [verification evidence](docs/delivery/verification.md).
 
 The CRM uses MCP Python SDK 2.3.0's `MCPServer` and publishes
-`.agents/skills/mainsequence_crm/` directly through the Main Sequence SDK's
-`skills_extension`. Its five skills and eight files are available on the same
+`.tau/skills/`, the deployed assistant's own skills, directly through the Main Sequence SDK's
+`skills_extension`. Its seven skills and ten files are available on the same
 authenticated `/mcp` endpoint as the typed business tools. See
 [MCP skill publication](docs/api/mcp.md#sdk-skill-publication).
