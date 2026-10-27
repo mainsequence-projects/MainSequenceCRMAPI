@@ -1,10 +1,10 @@
 # Persistence and migrations
 
 The CRM requires `mainsequence-metatable>=0.1.51,<0.2`; the lockfile and runtime
-requirements select `0.1.51` with Main Sequence SDK `9.0.30`.
+requirements select `0.1.51` with Main Sequence SDK `9.0.33`.
 MetaTables `0.1.51` removed the `ShareableObjectMixin` import that prevented
-`0.1.50` from loading with Main Sequence `9.0.30`. The CRM assistant pins
-`ms-tau-sdk` `2.0.20`.
+`0.1.50` from loading with Main Sequence `9.0.30`. The lock resolves the CRM
+assistant's `ms-tau-sdk` to `2.0.26`.
 Migration execution continues through the public
 `upgrade_application` entry point in the deployment Job, which receives the
 installed package's migration improvements automatically. Updating the client

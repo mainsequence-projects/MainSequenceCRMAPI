@@ -551,8 +551,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -793,10 +793,11 @@ wheels = [
 
 [[package]]
 name = "mainsequence"
-version = "9.0.30"
+version = "9.0.33"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cachetools" },
+    { name = "certifi" },
     { name = "click" },
     { name = "concurrent-log-handler" },
     { name = "keyring" },
@@ -815,9 +816,9 @@ dependencies = [
     { name = "typer" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/25/e63fa76b7cea1a9f10056e71f6aa0fdd294493dd673f8a5383b5a6faae8f/mainsequence-9.0.30.tar.gz", hash = "sha256:50e5dfacf33bcd0dfbfb44249498e4107dbf3591cb5a1337d547a79ad771a710", size = 397987, upload-time = "2026-10-19T06:41:03.299Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/4c/aaac144586c642b92d68e5babdb17e4600db2a8709466d77d5d9c9d55f31/mainsequence-9.0.33.tar.gz", hash = "sha256:53cf13a0f1109785cfe0c9f852fdc67aeac1c45d640be03c99f7bf8ae2f374d3", size = 398475, upload-time = "2026-10-25T07:16:46.763Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/43/142c4910c13370fb21d2c4417307f63c14574af0f2b0478ab24517b1e01e/mainsequence-9.0.30-py3-none-any.whl", hash = "sha256:32c94c68725fa1dccf5db713be71afe041478d0c799f4f8f67c7e93f172c302c", size = 316024, upload-time = "2026-10-19T06:41:01.519Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/e2/c34516b2340d808be7029ed284f59a7dc2fd48d5f67c90733b0b290b8935/mainsequence-9.0.33-py3-none-any.whl", hash = "sha256:9fad87aba5d288ec5e07c7eec069296149196c347942fd0ae789b9a243aebd21", size = 316508, upload-time = "2026-10-25T07:16:44.914Z" },
 ]
 
 [package.optional-dependencies]
@@ -899,7 +900,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "httpx2", specifier = ">=2.13,<3" },
     { name = "jinja2", specifier = ">=3.1.6,<4" },
-    { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.30,<10" },
+    { name = "mainsequence", extras = ["mcp"], specifier = ">=9.0.31,<10" },
     { name = "mainsequence-metatable", specifier = ">=0.1.51,<0.2" },
     { name = "mcp", specifier = ">=2.3,<3" },
     { name = "ms-tau-sdk", git = "https://github.com/mainsequence-sdk/ms-tau-sdk.git?rev=v2.0.26" },
@@ -2215,8 +2216,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [

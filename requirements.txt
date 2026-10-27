@@ -31,6 +31,7 @@ certifi==2026.10.19
     # via
     #   httpcore
     #   httpx
+    #   mainsequence
     #   ms-tau-sdk
     #   requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy'
@@ -144,7 +145,7 @@ linkify-it-py==2.2.0
     # via markdown-it-py
 loguru==0.7.3
     # via fastembed
-mainsequence==9.0.30
+mainsequence==9.0.33
     # via
     #   mainsequence-metatable
     #   mainsequencecrmapi

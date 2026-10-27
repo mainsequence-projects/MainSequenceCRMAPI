@@ -1,5 +1,6 @@
 """One-request bootstrap and assistant runtime selection contract."""
 
+import json
 import uuid
 
 import anyio
@@ -145,3 +146,43 @@ def test_invalid_card_disables_both_transports(monkeypatch, tmp_path):
     monkeypatch.setattr(runtime, "_platform_agent", lambda name: pytest.fail("Platform lookup must not run"))
     result = anyio.run(resolve_assistant, None)
     assert result["enabled"] is False and result["display_name"] is None
+
+
+def test_platform_agent_accepts_a_read_without_runtime_update(monkeypatch):
+    """Platform Agent reads no longer carry `runtime_update`; SDK 9.0.30 required it."""
+    import mainsequence.code_repository_context as context
+    import src.crm.assistant_runtime as runtime
+    from mainsequence.client.agent_runtime_models import Agent
+
+    card = json.loads(runtime.CARD_PATH.read_text(encoding="utf-8"))
+    agent_uid, environment_uid, branch_uid, release_uid = (str(uuid.uuid4()) for _ in range(4))
+    read = {
+        "uid": agent_uid,
+        "name": card["name"],
+        "description": card["description"],
+        "agent_card": card,
+        "llm_thinking": "medium",
+        "repository_branch": "main",
+        "organization_environment_uid": environment_uid,
+        "organization_environment_name": "Production",
+        "code_repository_branch_uid": branch_uid,
+        "runtime_release_uid": release_uid,
+    }
+    lookups = []
+
+    def platform_filter(cls, **filters):
+        lookups.append(filters)
+        return [cls.model_validate(read)]
+
+    monkeypatch.setattr(Agent, "filter", classmethod(platform_filter))
+    monkeypatch.setattr(context, "resolve_organization_environment_uid", lambda operation: environment_uid)
+    monkeypatch.setattr(context, "resolve_code_repository_branch_uid", lambda operation: branch_uid)
+
+    assert runtime._platform_agent(card["name"]) == {
+        "enabled": True,
+        "runtime": {"mode": "platform"},
+        "agent_uid": agent_uid,
+        "environment_uid": environment_uid,
+        "display_name": card["name"],
+    }
+    assert lookups == [{"name": card["name"]}]
